@@ -1,0 +1,23 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "name": "VibeGram API Reference",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "plugin": [],
+  "theme": "default",
+  "categoryOrder": [
+    "Core",
+    "Middleware",
+    "Markup",
+    "Error",
+    "Types",
+    "*"
+  ],
+  "navigationLinks": {
+    "GitHub": "https://github.com/[username]/vibegram",
+    "Docs": "https://vibegram.dev"
+  }
+}

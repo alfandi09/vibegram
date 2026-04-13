@@ -1,0 +1,31 @@
+# Source files (consumers only need the compiled dist/ output)
+src/
+tests/
+examples/
+scripts/
+docs/
+
+# Build artifacts and system logs
+brain/
+.gemini/
+*.log
+coverage/
+.nyc_output/
+
+# Internal configuration files
+tsconfig*.json
+tslint.json
+.eslintrc*
+.prettierrc*
+vitest.config.ts
+typedoc.json
+
+# CI/CD
+.github/
+
+# Environment secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db

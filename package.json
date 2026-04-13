@@ -1,0 +1,84 @@
+{
+  "name": "vibegram",
+  "version": "1.0.0-rc.1",
+  "description": "Modern, enterprise-grade Telegram Bot Framework for Node.js — Full Bot API v9.6 coverage",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alfandi09/vibegram.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alfandi09/vibegram/issues"
+  },
+  "homepage": "https://alfandi09.github.io/vibegram/",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build:cjs": "tsc",
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm && node scripts/postbuild.js",
+    "build:watch": "tsc --watch",
+    "prepublishOnly": "npm run build && npm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "docs:api": "typedoc",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "api",
+    "vibegram",
+    "bot-api",
+    "framework",
+    "telegram-bot",
+    "middleware",
+    "typescript",
+    "webhook",
+    "conversation",
+    "session",
+    "pagination"
+  ],
+  "author": "Alfa",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "1.15.0",
+    "form-data": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.1",
+    "@typescript-eslint/parser": "^8.58.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.2",
+    "ts-node": "^10.9.2",
+    "typedoc": "^0.28.0",
+    "typescript": "^6.0.2",
+    "vitepress": "^1.6.4",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.32"
+  }
+}
