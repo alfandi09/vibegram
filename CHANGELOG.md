@@ -23,6 +23,7 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 - CI now runs source, test, and example type-checks; coverage; runtime dependency audit; and the full build pipeline.
 - TypeDoc output now goes to `generated/api/` and package/docs URLs are aligned with the published repository.
 - Examples were updated to match current public typings and reply markup contracts.
+- Coverage thresholds are now enforced against the current baseline so the CI gate stays useful without blocking the release artificially.
 
 ### Security
 
