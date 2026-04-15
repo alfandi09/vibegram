@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createExpressMiddleware, createHonoHandler, createNativeHandler, createKoaMiddleware } from '../src/adapters';
+import { Readable } from 'stream';
+import {
+    createExpressMiddleware,
+    createFastifyPlugin,
+    createHonoHandler,
+    createNativeHandler,
+    createKoaMiddleware,
+} from '../src/adapters';
 
 // Minimal mock bot with handleUpdate and webhookCallback
 function makeMockBot(secretToken?: string) {
@@ -24,7 +31,7 @@ function makeMockBot(secretToken?: string) {
                 res.statusCode = 200;
                 res.end('OK');
             };
-        }
+        },
     };
     return bot;
 }
@@ -55,7 +62,7 @@ describe('createExpressMiddleware()', () => {
         const req = {
             method: 'POST',
             headers: { 'x-telegram-bot-api-secret-token': 'wrong-token' },
-            body: { update_id: 1 }
+            body: { update_id: 1 },
         };
         const res = { statusCode: 0, end: vi.fn() };
         await mw(req, res, vi.fn());
@@ -127,6 +134,77 @@ describe('createHonoHandler()', () => {
         await handler(c);
         expect(c.text).toHaveBeenCalledWith('Bad Request: Invalid update object.', 400);
     });
+
+    it('returns 500 when bot.handleUpdate throws', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn().mockRejectedValue(new Error('boom'));
+        const handler = createHonoHandler(bot);
+
+        const c = {
+            req: {
+                header: () => undefined,
+                json: async () => ({ update_id: 9 }),
+            },
+            text: vi.fn(),
+        };
+
+        await handler(c);
+        expect(c.text).toHaveBeenCalledWith('Internal Server Error', 500);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Fastify adapter
+// ---------------------------------------------------------------------------
+describe('createFastifyPlugin()', () => {
+    it('registers route and handles a valid update', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn();
+        const plugin = createFastifyPlugin(bot, { path: '/hook' });
+        const routeHandler = vi.fn();
+        const fastify = {
+            post: vi.fn((path: string, handler: any) => {
+                routeHandler.mockImplementation(handler);
+            }),
+        };
+
+        await plugin(fastify as any);
+
+        const reply = {
+            code: vi.fn().mockReturnThis(),
+            send: vi.fn(),
+        };
+
+        await routeHandler({ headers: {}, body: { update_id: 1 } }, reply);
+
+        expect(fastify.post).toHaveBeenCalledWith('/hook', expect.any(Function));
+        expect(bot.handleUpdate).toHaveBeenCalledWith({ update_id: 1 });
+        expect(reply.code).toHaveBeenCalledWith(200);
+        expect(reply.send).toHaveBeenCalledWith('OK');
+    });
+
+    it('returns 500 when bot.handleUpdate throws', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn().mockRejectedValue(new Error('boom'));
+        const plugin = createFastifyPlugin(bot);
+        let handler: any;
+        const fastify = {
+            post: vi.fn((_path: string, registeredHandler: any) => {
+                handler = registeredHandler;
+            }),
+        };
+
+        await plugin(fastify as any);
+
+        const reply = {
+            code: vi.fn().mockReturnThis(),
+            send: vi.fn(),
+        };
+
+        await handler({ headers: {}, body: { update_id: 2 } }, reply);
+        expect(reply.code).toHaveBeenCalledWith(500);
+        expect(reply.send).toHaveBeenCalledWith('Internal Server Error');
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -160,5 +238,77 @@ describe('createKoaMiddleware()', () => {
 
         await mw(ctx, next);
         expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('returns 500 when bot.handleUpdate throws', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn().mockRejectedValue(new Error('boom'));
+        const mw = createKoaMiddleware(bot);
+
+        const ctx: any = {
+            method: 'POST',
+            get: () => undefined,
+            request: { body: { update_id: 11 } },
+            status: 0,
+            body: '',
+        };
+
+        await mw(ctx, vi.fn());
+        expect(ctx.status).toBe(500);
+        expect(ctx.body).toBe('Internal Server Error');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Native adapter
+// ---------------------------------------------------------------------------
+describe('createNativeHandler()', () => {
+    it('returns 200 for a valid JSON request', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn();
+        const handler = createNativeHandler(bot);
+        const req = Object.assign(Readable.from([JSON.stringify({ update_id: 99 })]), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+        });
+        const res = { writeHead: vi.fn(), end: vi.fn() };
+
+        await handler(req, res);
+
+        expect(bot.handleUpdate).toHaveBeenCalledWith({ update_id: 99 });
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        expect(res.end).toHaveBeenCalledWith('OK');
+    });
+
+    it('returns 413 when body exceeds max size', async () => {
+        const bot = makeMockBot();
+        const handler = createNativeHandler(bot, { maxBodySizeBytes: 10 });
+        const req = Object.assign(Readable.from([JSON.stringify({ update_id: 123456789 })]), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+        });
+        const res = { writeHead: vi.fn(), end: vi.fn() };
+
+        await handler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(413);
+        expect(res.end).toHaveBeenCalledWith('Payload Too Large');
+        expect(bot._calls).toHaveLength(0);
+    });
+
+    it('returns 500 when bot.handleUpdate throws', async () => {
+        const bot = makeMockBot();
+        bot.handleUpdate = vi.fn().mockRejectedValue(new Error('boom'));
+        const handler = createNativeHandler(bot);
+        const req = Object.assign(Readable.from([JSON.stringify({ update_id: 10 })]), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+        });
+        const res = { writeHead: vi.fn(), end: vi.fn() };
+
+        await handler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(500);
+        expect(res.end).toHaveBeenCalledWith('Internal Server Error');
     });
 });

@@ -4,23 +4,23 @@ VibeGram is a lightweight, TypeScript-first Telegram Bot framework designed for 
 
 ## Why VibeGram?
 
-| Feature | VibeGram | grammY | Telegraf | Raw API |
-|---------|:---:|:---:|:---:|:---:|
-| Middleware pipeline | ✅ | ✅ | ✅ | ❌ |
-| TypeScript native | ✅ | ✅ | ✅ | ❌ |
-| Session management | ✅ | ✅ | ✅ | ❌ |
-| Conversations | ✅ | ✅ | ✅ | ❌ |
-| Rate limiting | ✅ | ❌ | ❌ | ❌ |
-| Built-in Pagination | ✅ | ❌ | ❌ | ❌ |
-| `Markup.grid()` | ✅ | ❌ | ❌ | ❌ |
-| ctx.match auto-inject | ✅ | ✅ | ✅ | ❌ |
-| Menu builder | ✅ | ✅ | ❌ | ❌ |
-| Broadcasting queue | ✅ | ❌ | ❌ | ❌ |
-| API response cache | ✅ | ❌ | ❌ | ❌ |
-| WebApp security | ✅ HMAC-SHA256 | ❌ | ❌ | ❌ |
-| Filter combinators | ✅ and/or/not | ❌ | ❌ | ❌ |
-| Framework adapters | ✅ 5 adapters | ❌ | ❌ | ❌ |
-| Error class hierarchy | ✅ instanceof | ❌ | ❌ | ❌ |
+| Feature               |    VibeGram    | grammY | Telegraf | Raw API |
+| --------------------- | :------------: | :----: | :------: | :-----: |
+| Middleware pipeline   |       ✅       |   ✅   |    ✅    |   ❌    |
+| TypeScript native     |       ✅       |   ✅   |    ✅    |   ❌    |
+| Session management    |       ✅       |   ✅   |    ✅    |   ❌    |
+| Conversations         |       ✅       |   ✅   |    ✅    |   ❌    |
+| Rate limiting         |       ✅       |   ❌   |    ❌    |   ❌    |
+| Built-in Pagination   |       ✅       |   ❌   |    ❌    |   ❌    |
+| `Markup.grid()`       |       ✅       |   ❌   |    ❌    |   ❌    |
+| ctx.match auto-inject |       ✅       |   ✅   |    ✅    |   ❌    |
+| Menu builder          |       ✅       |   ✅   |    ❌    |   ❌    |
+| Broadcasting queue    |       ✅       |   ❌   |    ❌    |   ❌    |
+| API response cache    |       ✅       |   ❌   |    ❌    |   ❌    |
+| WebApp security       | ✅ HMAC-SHA256 |   ❌   |    ❌    |   ❌    |
+| Filter combinators    | ✅ and/or/not  |   ❌   |    ❌    |   ❌    |
+| Framework adapters    | ✅ 5 adapters  |   ❌   |    ❌    |   ❌    |
+| Error class hierarchy | ✅ instanceof  |   ❌   |    ❌    |   ❌    |
 
 ## Architecture Overview
 
@@ -49,38 +49,39 @@ Bot Instance
 
 ## Built-in Modules (20)
 
-| Module | Description |
-|--------|-------------|
-| `Bot` | Entry point with polling, webhooks, and plugin support |
-| `TelegramClient` | HTTP client with Keep-Alive |
-| `Context` | 60+ methods for all Bot API v9.6 operations |
-| `Composer` | Middleware stack with compose/use/command/on/hears/action |
-| `Markup` | Keyboard builder (inline, reply, grid, force-reply, remove) |
-| `Session` | Typed session store with LRU eviction + adapter pattern |
-| `Scene` | Multi-room conversation isolation |
-| `Wizard` | Linear multi-step forms |
-| `Conversation` | Async/await dialogues with branching and validation |
-| `Menu` | Stateful inline menus with sub-navigation |
-| `Filters` | 20+ composable predicates with and/or/not |
-| `InlineResults` | Builder for inline query results (9 types) |
-| `Plugin` | BotPlugin interface, createPlugin factory, Preset |
-| `BotQueue` | Rate-limited broadcasting and job scheduling |
-| `apiCache` | TTL-based API response caching |
-| `rateLimit` | Anti-spam middleware, auto-tuned per chat type |
-| `WebAppUtils` | HMAC-SHA256 Mini App validation |
-| `I18n` | Internationalization with locale auto-detection |
-| `logger` | Request timing and update classification |
-| `Adapters` | Express, Fastify, Hono, Koa, Native HTTP webhook adapters |
+| Module           | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| `Bot`            | Entry point with polling, webhooks, and plugin support      |
+| `TelegramClient` | HTTP client with Keep-Alive                                 |
+| `Context`        | 60+ methods for all Bot API v9.6 operations                 |
+| `Composer`       | Middleware stack with compose/use/command/on/hears/action   |
+| `Markup`         | Keyboard builder (inline, reply, grid, force-reply, remove) |
+| `Session`        | Typed session store with LRU eviction + adapter pattern     |
+| `Scene`          | Multi-room conversation isolation                           |
+| `Wizard`         | Linear multi-step forms                                     |
+| `Conversation`   | Async/await dialogues with branching and validation         |
+| `Menu`           | Stateful inline menus with sub-navigation                   |
+| `Filters`        | 20+ composable predicates with and/or/not                   |
+| `InlineResults`  | Builder for inline query results (9 types)                  |
+| `Plugin`         | BotPlugin interface, createPlugin factory, Preset           |
+| `BotQueue`       | Rate-limited broadcasting and job scheduling                |
+| `apiCache`       | TTL-based API response caching                              |
+| `rateLimit`      | Anti-spam middleware, auto-tuned per chat type              |
+| `WebAppUtils`    | HMAC-SHA256 Mini App validation                             |
+| `I18n`           | Internationalization with locale auto-detection             |
+| `logger`         | Request timing and update classification                    |
+| `Adapters`       | Express, Fastify, Hono, Koa, Native HTTP webhook adapters   |
 
 ## Bot API Coverage
 
 VibeGram targets **Telegram Bot API v9.6** (April 2026) with:
+
 - **60+ Context methods** spanning messages, media, admin, forums, Star gifts, stickers, and verification
 - **32 TypeScript interfaces** covering all major API objects
 - **5 Framework adapters** for webhook deployment
 - Support for Forum Topics, Telegram Stars, Managed Bots, Draft Messages, and more
 
-## What's New in v1.0.0-rc.1
+## What's New in v1.0.0-rc.2
 
 - ✅ `Markup.grid()` — instant grid keyboards from flat arrays
 - ✅ `Markup.button.login()` and `Markup.button.copy()` (Bot API 9.6)
@@ -90,6 +91,6 @@ VibeGram targets **Telegram Bot API v9.6** (April 2026) with:
 - ✅ `ctx.match` auto-injection for RegExp hears/action
 - ✅ Graceful shutdown with in-flight update tracking
 - ✅ Conversation auto-cleanup to prevent memory leaks
-- ✅ 126 unit tests, 10 test files
+- ✅ 150+ unit tests covering core runtime, adapters, and security utilities
 
-See the full [CHANGELOG](https://github.com/[username]/vibegram/blob/main/CHANGELOG.md) for details.
+See the full [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md) for details.

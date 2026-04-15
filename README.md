@@ -1,7 +1,7 @@
 <h1 align="center">VibeGram</h1>
 
 <p align="center">
-  <b>Modern, modular, enterprise-grade Telegram Bot Framework for Node.js.</b>
+  <b>Modern, modular, production-ready Telegram Bot Framework for Node.js.</b>
 </p>
 
 <p align="center">
@@ -14,35 +14,36 @@
 
 ---
 
-VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. It provides a complete toolkit for building production-grade bots — including middleware pipelines, state management, pagination, rate limiting, and WebApp security — all in a single package with minimal memory footprint.
+VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. It provides a complete toolkit for building production-ready bots — including middleware pipelines, state management, pagination, rate limiting, WebApp security, and webhook adapters — all in a single package with minimal memory footprint.
 
 ## ✨ Key Features
 
-* 🚀 **Middleware Pipeline** — Koa.js-style async middleware with onion-model routing
-* 📨 **Full Bot API v9.6 Coverage** — 43+ Context methods, typed interfaces for all major API objects
-* 🗂️ **Scene & Wizard** — Multi-room navigation and step-by-step conversation flows
-* 📦 **Auto Pagination** — Turn any array into paginated inline keyboards automatically
-* 🛡️ **Built-in Security** — Rate limiter, HMAC-SHA256 WebApp validation, webhook secret tokens
-* ⌨️ **Keyboard Builder** — Declarative inline, reply, and force-reply keyboard construction
-* 💡 **Smart Argument Parser** — Automatic `/command arg1 arg2` parsing via `ctx.command.args`
-* 🌐 **I18n Support** — Built-in internationalization middleware with locale auto-detection
-* 📊 **Observability** — Request logger with timing metrics and update type classification
+- 🚀 **Middleware Pipeline** — Koa.js-style async middleware with onion-model routing
+- 📨 **Full Bot API v9.6 Coverage** — 60+ Context methods, typed interfaces for major API objects
+- 🗂️ **Scene & Wizard** — Multi-room navigation and step-by-step conversation flows
+- 📦 **Auto Pagination** — Turn any array into paginated inline keyboards automatically
+- 🛡️ **Built-in Security** — Rate limiter, HMAC-SHA256 WebApp validation, webhook secret tokens
+- ⌨️ **Keyboard Builder** — Declarative inline, reply, and force-reply keyboard construction
+- 💡 **Smart Argument Parser** — Automatic `/command arg1 arg2` parsing via `ctx.command.args`
+- 🌐 **I18n Support** — Built-in internationalization middleware with locale auto-detection
+- 📊 **Observability** — Request logger with timing metrics and update type classification
+- 🧪 **Verified Release Pipeline** — 150+ passing tests, source/test/example typecheck, dual CJS/ESM build, and docs generation
 
 ---
 
 ## 🧬 Why VibeGram?
 
-| Feature | VibeGram | grammY | Telegraf |
-|---------|:---:|:---:|:---:|
-| Built-in Pagination | ✅ | ❌ | ❌ |
-| Broadcast Queue | ✅ | ❌ | ❌ |
-| API Response Cache | ✅ | ❌ | ❌ |
-| Job Scheduler | ✅ | ❌ | ❌ |
-| Conversation Engine | ✅ | ✅ | ✅ |
-| Menu Builder | ✅ | ✅ | ❌ |
-| Inline Result Builder | ✅ | ❌ | ❌ |
-| TypeScript Native | ✅ | ✅ | ✅ |
-| Plugin System | ✅ | ✅ | 🟡 |
+| Feature               | VibeGram | grammY | Telegraf |
+| --------------------- | :------: | :----: | :------: |
+| Built-in Pagination   |    ✅    |   ❌   |    ❌    |
+| Broadcast Queue       |    ✅    |   ❌   |    ❌    |
+| API Response Cache    |    ✅    |   ❌   |    ❌    |
+| Job Scheduler         |    ✅    |   ❌   |    ❌    |
+| Conversation Engine   |    ✅    |   ✅   |    ✅    |
+| Menu Builder          |    ✅    |   ✅   |    ❌    |
+| Inline Result Builder |    ✅    |   ❌   |    ❌    |
+| TypeScript Native     |    ✅    |   ✅   |    ✅    |
+| Plugin System         |    ✅    |   ✅   |    🟡    |
 
 ---
 
@@ -63,12 +64,12 @@ import { Bot } from 'vibegram';
 
 const bot = new Bot('YOUR_BOT_TOKEN');
 
-bot.command('start', async (ctx) => {
+bot.command('start', async ctx => {
     const name = ctx.from?.first_name || 'there';
     await ctx.reply(`Hello ${name}! Welcome to VibeGram.`);
 });
 
-bot.hears(/hello|hi/i, async (ctx) => {
+bot.hears(/hello|hi/i, async ctx => {
     await ctx.reply('Hey! How can I help you?');
 });
 
@@ -86,7 +87,7 @@ import { Markup } from 'vibegram';
 
 const products = [...Array(100)].map((_, i) => ({
     text: `Product #${i + 1}`,
-    callback_data: `buy_${i + 1}`
+    callback_data: `buy_${i + 1}`,
 }));
 
 const keyboard = Markup.pagination(products, {
@@ -94,7 +95,7 @@ const keyboard = Markup.pagination(products, {
     itemsPerPage: 5,
     actionNext: 'page_2',
     actionPrev: 'page_0',
-    pageIndicatorPattern: 'Page {current}/{total}'
+    pageIndicatorPattern: 'Page {current}/{total}',
 });
 
 await ctx.reply('Browse products:', { reply_markup: keyboard });
@@ -108,15 +109,15 @@ import { Wizard, session } from 'vibegram';
 bot.use(session());
 
 const checkout = new Wizard('checkout', [
-    async (ctx) => {
+    async ctx => {
         await ctx.reply('What is the recipient name?');
         ctx.wizard?.next();
     },
-    async (ctx) => {
+    async ctx => {
         const name = ctx.message?.text;
         await ctx.reply(`Package for ${name} will be shipped. Done!`);
         ctx.wizard?.leave();
-    }
+    },
 ]);
 
 bot.use(checkout.middleware());
@@ -182,11 +183,16 @@ import { Markup } from 'vibegram';
 
 // Automatically arranges flat buttons into rows
 await ctx.reply('Choose a day:', {
-    reply_markup: Markup.grid([
-        Markup.button.callback('Mon', 'mon'), Markup.button.callback('Tue', 'tue'),
-        Markup.button.callback('Wed', 'wed'), Markup.button.callback('Thu', 'thu'),
-        Markup.button.callback('Fri', 'fri'),
-    ], 2) // 2 buttons per row
+    reply_markup: Markup.grid(
+        [
+            Markup.button.callback('Mon', 'mon'),
+            Markup.button.callback('Tue', 'tue'),
+            Markup.button.callback('Wed', 'wed'),
+            Markup.button.callback('Thu', 'thu'),
+            Markup.button.callback('Fri', 'fri'),
+        ],
+        2
+    ), // 2 buttons per row
 });
 ```
 
@@ -212,7 +218,7 @@ bot.action(/^item_(\d+)$/, async ctx => {
 Full documentation is available in the `docs/` directory and can be served locally with VitePress:
 
 ```bash
-cd docs && npx vitepress dev
+npm run docs:dev
 ```
 
 Generate API reference with TypeDoc:
@@ -220,6 +226,8 @@ Generate API reference with TypeDoc:
 ```bash
 npm run docs:api
 ```
+
+Generated API HTML is written to `generated/api/`.
 
 ---
 

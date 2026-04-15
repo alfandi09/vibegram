@@ -1,9 +1,20 @@
 import { TelegramClient } from './client';
 import {
-    Update, Message, User, Chat, ChatPermissions,
-    ExtraReplyMessage, ExtraMedia, ExtraEditMessage,
-    ExtraPoll, ExtraBanMember, ExtraRestrictMember, ExtraPromoteMember,
-    ExtraInviteLink, ReplyParameters, PollOption
+    Update,
+    Message,
+    User,
+    Chat,
+    ChatPermissions,
+    ExtraReplyMessage,
+    ExtraMedia,
+    ExtraEditMessage,
+    ExtraPoll,
+    ExtraBanMember,
+    ExtraRestrictMember,
+    ExtraPromoteMember,
+    ExtraInviteLink,
+    ReplyParameters,
+    PollOption,
 } from './types';
 import * as crypto from 'crypto';
 
@@ -15,11 +26,11 @@ export class Context {
     public readonly update: Update;
     public readonly client: TelegramClient;
     public session?: any; // Injected by session() middleware
-    public wizard?: { 
+    public wizard?: {
         state: any;
-        next: () => void; 
-        leave: () => void; 
-        cursor: number; 
+        next: () => void;
+        leave: () => void;
+        cursor: number;
     }; // Wizard step navigation helpers
 
     public i18n?: {
@@ -55,21 +66,46 @@ export class Context {
      * Getter for the Message object (if available in this update)
      */
     get message() {
-        return this.update.message || this.update.edited_message || this.update.channel_post || this.update.edited_channel_post || this.update.business_message;
+        return (
+            this.update.message ||
+            this.update.edited_message ||
+            this.update.channel_post ||
+            this.update.edited_channel_post ||
+            this.update.business_message ||
+            this.update.edited_business_message
+        );
     }
 
     /**
      * Getter for the specific chat where this update happened
      */
     get chat() {
-        return this.message?.chat || this.update.callback_query?.message?.chat || this.update.my_chat_member?.chat || this.update.chat_member?.chat;
+        return (
+            this.message?.chat ||
+            this.update.callback_query?.message?.chat ||
+            this.update.my_chat_member?.chat ||
+            this.update.chat_member?.chat ||
+            this.update.chat_join_request?.chat ||
+            this.update.chat_boost?.chat ||
+            this.update.removed_chat_boost?.chat
+        );
     }
 
     /**
      * Getter for the user who triggered this update
      */
     get from() {
-        return this.message?.from || this.update.callback_query?.from || this.update.inline_query?.from || this.update.chosen_inline_result?.from;
+        return (
+            this.message?.from ||
+            this.update.callback_query?.from ||
+            this.update.inline_query?.from ||
+            this.update.chosen_inline_result?.from ||
+            this.update.my_chat_member?.from ||
+            this.update.chat_member?.from ||
+            this.update.chat_join_request?.from ||
+            this.update.shipping_query?.from ||
+            this.update.pre_checkout_query?.from
+        );
     }
 
     /**
@@ -77,6 +113,26 @@ export class Context {
      */
     get businessConnectionId() {
         return this.update.business_connection?.id || (this.message as any)?.business_connection_id;
+    }
+
+    private getEditTarget() {
+        const inlineMessageId = this.update.callback_query?.inline_message_id;
+        if (inlineMessageId) {
+            return { inline_message_id: inlineMessageId };
+        }
+
+        const messageId =
+            this.message?.message_id || this.update.callback_query?.message?.message_id;
+        if (!this.chat || !messageId) {
+            throw new Error(
+                'Cannot edit message: Chat ID, Message ID, or inline message ID is not available'
+            );
+        }
+
+        return {
+            chat_id: this.chat.id,
+            message_id: messageId,
+        };
     }
 
     /**
@@ -90,7 +146,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             text,
-            ...extra
+            ...extra,
         });
     }
 
@@ -118,7 +174,10 @@ export class Context {
     /**
      * Shortcut: Draft Message API 9.5 (Pre-fills text input on client side)
      */
-    async replyWithDraft(text: string, extra?: ExtraReplyMessage & { random_id?: number | string }) {
+    async replyWithDraft(
+        text: string,
+        extra?: ExtraReplyMessage & { random_id?: number | string }
+    ) {
         if (!this.chat) throw new Error('Cannot send draft: Chat ID is not available');
         // Generate cryptographically safe 64-bit random ID for MTProto validation
         const randomId = extra?.random_id || crypto.randomBytes(8).readBigUInt64BE().toString();
@@ -127,7 +186,7 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             text,
             random_id: randomId,
-            ...extra
+            ...extra,
         });
     }
 
@@ -140,7 +199,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             photo,
-            ...extra
+            ...extra,
         });
     }
 
@@ -153,7 +212,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             video,
-            ...extra
+            ...extra,
         });
     }
 
@@ -166,7 +225,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             document,
-            ...extra
+            ...extra,
         });
     }
 
@@ -179,7 +238,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             audio,
-            ...extra
+            ...extra,
         });
     }
 
@@ -192,7 +251,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             voice,
-            ...extra
+            ...extra,
         });
     }
 
@@ -205,7 +264,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             video_note: videoNote,
-            ...extra
+            ...extra,
         });
     }
 
@@ -218,7 +277,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             animation,
-            ...extra
+            ...extra,
         });
     }
 
@@ -231,7 +290,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             sticker,
-            ...extra
+            ...extra,
         });
     }
 
@@ -244,7 +303,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             media,
-            ...extra
+            ...extra,
         });
     }
 
@@ -258,7 +317,7 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             question,
             options,
-            ...extra
+            ...extra,
         });
     }
 
@@ -272,14 +331,20 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             latitude,
             longitude,
-            ...extra
+            ...extra,
         });
     }
 
     /**
      * Interface Shortcut: Venue
      */
-    async replyWithVenue(latitude: number, longitude: number, title: string, address: string, extra?: any) {
+    async replyWithVenue(
+        latitude: number,
+        longitude: number,
+        title: string,
+        address: string,
+        extra?: any
+    ) {
         if (!this.chat) throw new Error('Cannot send venue: Chat ID is not available');
         return this.client.callApi('sendVenue', {
             chat_id: this.chat.id,
@@ -288,7 +353,7 @@ export class Context {
             longitude,
             title,
             address,
-            ...extra
+            ...extra,
         });
     }
 
@@ -302,24 +367,20 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             phone_number: phoneNumber,
             first_name: firstName,
-            ...extra
+            ...extra,
         });
     }
-
 
     /**
      * Edit Message Text directly
      */
     async editMessageText(text: string, extra?: ExtraEditMessage) {
-        if (!this.chat || (!this.message?.message_id && !this.update.callback_query?.message?.message_id)) {
-            throw new Error('Cannot edit message: Chat ID or Message ID is not available');
-        }
+        const target = this.getEditTarget();
         return this.client.callApi('editMessageText', {
-            chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
-            message_id: this.message?.message_id || this.update.callback_query?.message?.message_id,
+            ...target,
             text,
-            ...extra
+            ...extra,
         });
     }
 
@@ -327,12 +388,12 @@ export class Context {
      * Edit Message Reply Markup directly
      */
     async editMessageReplyMarkup(reply_markup: any, extra?: any) {
+        const target = this.getEditTarget();
         return this.client.callApi('editMessageReplyMarkup', {
-            chat_id: this.chat?.id,
             business_connection_id: this.businessConnectionId,
-            message_id: this.message?.message_id || this.update.callback_query?.message?.message_id,
+            ...target,
             reply_markup,
-            ...extra
+            ...extra,
         });
     }
 
@@ -340,12 +401,12 @@ export class Context {
      * Edit Message Caption
      */
     async editMessageCaption(caption: string, extra?: any) {
+        const target = this.getEditTarget();
         return this.client.callApi('editMessageCaption', {
-            chat_id: this.chat?.id,
             business_connection_id: this.businessConnectionId,
-            message_id: this.message?.message_id || this.update.callback_query?.message?.message_id,
+            ...target,
             caption,
-            ...extra
+            ...extra,
         });
     }
 
@@ -354,17 +415,27 @@ export class Context {
      */
     async deleteMessage(messageId?: number) {
         if (!this.chat) throw new Error('Cannot delete message: Chat ID is not available');
-        const targetId = messageId || this.message?.message_id || this.update.callback_query?.message?.message_id;
+        const targetId =
+            messageId ||
+            this.message?.message_id ||
+            this.update.callback_query?.message?.message_id;
         return this.client.callApi('deleteMessage', {
             chat_id: this.chat.id,
-            message_id: targetId
+            message_id: targetId,
         });
     }
 
     /**
      * Web3 Monetization: Create Star Invoice Payload (XTR)
      */
-    async replyWithInvoice(title: string, description: string, payload: string, currency: string, prices: any[], extra?: any) {
+    async replyWithInvoice(
+        title: string,
+        description: string,
+        payload: string,
+        currency: string,
+        prices: any[],
+        extra?: any
+    ) {
         if (!this.chat) throw new Error('Cannot send invoice: Chat ID is not available');
         return this.client.callApi('sendInvoice', {
             chat_id: this.chat.id,
@@ -373,7 +444,7 @@ export class Context {
             payload,
             currency,
             prices,
-            ...extra
+            ...extra,
         });
     }
 
@@ -381,11 +452,12 @@ export class Context {
      * Inline Core Query Answering (Global bot invocation tracking)
      */
     async answerInlineQuery(results: any[], extra?: any) {
-        if (!this.update.inline_query) throw new Error('Cannot answer inline query: Not an inline query update');
+        if (!this.update.inline_query)
+            throw new Error('Cannot answer inline query: Not an inline query update');
         return this.client.callApi('answerInlineQuery', {
             inline_query_id: this.update.inline_query.id,
             results,
-            ...extra
+            ...extra,
         });
     }
 
@@ -400,7 +472,7 @@ export class Context {
             callback_query_id: this.update.callback_query.id,
             text,
             show_alert: showAlert,
-            ...extra
+            ...extra,
         });
     }
 
@@ -408,11 +480,12 @@ export class Context {
      * E-Commerce / Stars: Checkout Answering validation payload
      */
     async answerPreCheckoutQuery(ok: boolean, errorMessage?: string) {
-        if (!this.update.pre_checkout_query) throw new Error('Cannot answer pre-checkout: No pending pre_checkout_query');
+        if (!this.update.pre_checkout_query)
+            throw new Error('Cannot answer pre-checkout: No pending pre_checkout_query');
         return this.client.callApi('answerPreCheckoutQuery', {
             pre_checkout_query_id: this.update.pre_checkout_query.id,
             ok,
-            error_message: errorMessage
+            error_message: errorMessage,
         });
     }
 
@@ -426,7 +499,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             action,
-            message_thread_id: messageThreadId
+            message_thread_id: messageThreadId,
         });
     }
 
@@ -434,19 +507,20 @@ export class Context {
      * Set Message Reaction
      */
     async setReaction(reaction: string | any[], isBig?: boolean) {
-        if (!this.chat || !this.message?.message_id) throw new Error('Cannot set reaction: Chat ID or Message ID is not available');
-        
+        if (!this.chat || !this.message?.message_id)
+            throw new Error('Cannot set reaction: Chat ID or Message ID is not available');
+
         // Parse a string emoji into the MessageReaction array format.
         let formattedReaction = reaction;
         if (typeof reaction === 'string') {
             formattedReaction = [{ type: 'emoji', emoji: reaction }];
         }
-        
+
         return this.client.callApi('setMessageReaction', {
             chat_id: this.chat.id,
             message_id: this.message.message_id,
             reaction: formattedReaction,
-            is_big: isBig
+            is_big: isBig,
         });
     }
 
@@ -460,7 +534,7 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             star_count,
             media,
-            ...extra
+            ...extra,
         });
     }
 
@@ -468,12 +542,13 @@ export class Context {
      * Copy Message (Silent transfer)
      */
     async copyMessage(toChatId: number | string, extra?: any) {
-        if (!this.chat || !this.message?.message_id) throw new Error('Cannot copy message: Origin Chat ID or Message ID is not available');
+        if (!this.chat || !this.message?.message_id)
+            throw new Error('Cannot copy message: Origin Chat ID or Message ID is not available');
         return this.client.callApi('copyMessage', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_id: this.message.message_id,
-            ...extra
+            ...extra,
         });
     }
 
@@ -481,12 +556,15 @@ export class Context {
      * Administration: Standard Message Forwarding
      */
     async forwardMessage(toChatId: number | string, extra?: any) {
-        if (!this.chat || !this.message?.message_id) throw new Error('Cannot forward message: Origin Chat ID or Message ID is not available');
+        if (!this.chat || !this.message?.message_id)
+            throw new Error(
+                'Cannot forward message: Origin Chat ID or Message ID is not available'
+            );
         return this.client.callApi('forwardMessage', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_id: this.message.message_id,
-            ...extra
+            ...extra,
         });
     }
 
@@ -501,7 +579,7 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             message_id: targetId,
-            disable_notification: disableNotification
+            disable_notification: disableNotification,
         });
     }
 
@@ -513,7 +591,7 @@ export class Context {
         return this.client.callApi('unpinChatMessage', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
-            message_id: messageId || this.message?.message_id
+            message_id: messageId || this.message?.message_id,
         });
     }
 
@@ -525,20 +603,24 @@ export class Context {
         return this.client.callApi('banChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
-            ...extra
+            ...extra,
         });
     }
 
     /**
      * Group Admin: Restrict user permissions (e.g., mute or disable media)
      */
-    async restrictChatMember(userId: number, permissions: ChatPermissions, extra?: ExtraRestrictMember) {
+    async restrictChatMember(
+        userId: number,
+        permissions: ChatPermissions,
+        extra?: ExtraRestrictMember
+    ) {
         if (!this.chat) throw new Error('Cannot restrict member: Chat ID is not available');
         return this.client.callApi('restrictChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
             permissions,
-            ...extra
+            ...extra,
         });
     }
 
@@ -549,7 +631,7 @@ export class Context {
         if (!this.chat) throw new Error('Cannot approve join request: Chat ID is not available');
         return this.client.callApi('approveChatJoinRequest', {
             chat_id: this.chat.id,
-            user_id: userId
+            user_id: userId,
         });
     }
 
@@ -560,7 +642,7 @@ export class Context {
         if (!this.chat) throw new Error('Cannot decline join request: Chat ID is not available');
         return this.client.callApi('declineChatJoinRequest', {
             chat_id: this.chat.id,
-            user_id: userId
+            user_id: userId,
         });
     }
 
@@ -570,7 +652,7 @@ export class Context {
     async leaveChat() {
         if (!this.chat) throw new Error('Cannot leave chat: Chat ID is not available');
         return this.client.callApi('leaveChat', {
-            chat_id: this.chat.id
+            chat_id: this.chat.id,
         });
     }
 
@@ -583,7 +665,7 @@ export class Context {
             chat_id: this.chat.id,
             user_id: userId,
             only_if_banned: true,
-            ...extra
+            ...extra,
         });
     }
 
@@ -595,19 +677,22 @@ export class Context {
         return this.client.callApi('promoteChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
-            ...permissions
+            ...permissions,
         });
     }
 
     /**
      * Group Admin: Set default chat permissions
      */
-    async setChatPermissions(permissions: ChatPermissions, extra?: { use_independent_chat_permissions?: boolean }) {
+    async setChatPermissions(
+        permissions: ChatPermissions,
+        extra?: { use_independent_chat_permissions?: boolean }
+    ) {
         if (!this.chat) throw new Error('Cannot set permissions: Chat ID is not available');
         return this.client.callApi('setChatPermissions', {
             chat_id: this.chat.id,
             permissions,
-            ...extra
+            ...extra,
         });
     }
 
@@ -618,7 +703,7 @@ export class Context {
         if (!this.chat) throw new Error('Cannot get chat member: Chat ID is not available');
         return this.client.callApi('getChatMember', {
             chat_id: this.chat.id,
-            user_id: userId
+            user_id: userId,
         });
     }
 
@@ -628,7 +713,7 @@ export class Context {
     async getChatMembersCount() {
         if (!this.chat) throw new Error('Cannot get member count: Chat ID is not available');
         return this.client.callApi('getChatMemberCount', {
-            chat_id: this.chat.id
+            chat_id: this.chat.id,
         });
     }
 
@@ -639,7 +724,7 @@ export class Context {
         if (!this.chat) throw new Error('Cannot create invite link: Chat ID is not available');
         return this.client.callApi('createChatInviteLink', {
             chat_id: this.chat.id,
-            ...extra
+            ...extra,
         });
     }
 
@@ -649,7 +734,7 @@ export class Context {
     async exportChatInviteLink() {
         if (!this.chat) throw new Error('Cannot export invite link: Chat ID is not available');
         return this.client.callApi('exportChatInviteLink', {
-            chat_id: this.chat.id
+            chat_id: this.chat.id,
         });
     }
 
@@ -659,7 +744,7 @@ export class Context {
     async getChat() {
         if (!this.chat) throw new Error('Cannot get chat: Chat ID is not available');
         return this.client.callApi('getChat', {
-            chat_id: this.chat.id
+            chat_id: this.chat.id,
         });
     }
 
@@ -684,7 +769,10 @@ export class Context {
     /**
      * Create a new topic in a supergroup forum chat.
      */
-    async createForumTopic(name: string, extra?: { icon_color?: number; icon_custom_emoji_id?: string }) {
+    async createForumTopic(
+        name: string,
+        extra?: { icon_color?: number; icon_custom_emoji_id?: string }
+    ) {
         if (!this.chat) throw new Error('Cannot create forum topic: Chat ID is not available');
         return this.client.callApi('createForumTopic', { chat_id: this.chat.id, name, ...extra });
     }
@@ -692,9 +780,16 @@ export class Context {
     /**
      * Edit name or icon of an existing forum topic.
      */
-    async editForumTopic(messageThreadId: number, extra?: { name?: string; icon_custom_emoji_id?: string }) {
+    async editForumTopic(
+        messageThreadId: number,
+        extra?: { name?: string; icon_custom_emoji_id?: string }
+    ) {
         if (!this.chat) throw new Error('Cannot edit forum topic: Chat ID is not available');
-        return this.client.callApi('editForumTopic', { chat_id: this.chat.id, message_thread_id: messageThreadId, ...extra });
+        return this.client.callApi('editForumTopic', {
+            chat_id: this.chat.id,
+            message_thread_id: messageThreadId,
+            ...extra,
+        });
     }
 
     /**
@@ -702,7 +797,10 @@ export class Context {
      */
     async closeForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot close forum topic: Chat ID is not available');
-        return this.client.callApi('closeForumTopic', { chat_id: this.chat.id, message_thread_id: messageThreadId });
+        return this.client.callApi('closeForumTopic', {
+            chat_id: this.chat.id,
+            message_thread_id: messageThreadId,
+        });
     }
 
     /**
@@ -710,7 +808,10 @@ export class Context {
      */
     async reopenForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot reopen forum topic: Chat ID is not available');
-        return this.client.callApi('reopenForumTopic', { chat_id: this.chat.id, message_thread_id: messageThreadId });
+        return this.client.callApi('reopenForumTopic', {
+            chat_id: this.chat.id,
+            message_thread_id: messageThreadId,
+        });
     }
 
     /**
@@ -718,15 +819,22 @@ export class Context {
      */
     async deleteForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot delete forum topic: Chat ID is not available');
-        return this.client.callApi('deleteForumTopic', { chat_id: this.chat.id, message_thread_id: messageThreadId });
+        return this.client.callApi('deleteForumTopic', {
+            chat_id: this.chat.id,
+            message_thread_id: messageThreadId,
+        });
     }
 
     /**
      * Unpin all messages in a forum topic.
      */
     async unpinAllForumTopicMessages(messageThreadId: number) {
-        if (!this.chat) throw new Error('Cannot unpin forum topic messages: Chat ID is not available');
-        return this.client.callApi('unpinAllForumTopicMessages', { chat_id: this.chat.id, message_thread_id: messageThreadId });
+        if (!this.chat)
+            throw new Error('Cannot unpin forum topic messages: Chat ID is not available');
+        return this.client.callApi('unpinAllForumTopicMessages', {
+            chat_id: this.chat.id,
+            message_thread_id: messageThreadId,
+        });
     }
 
     /**
@@ -767,14 +875,22 @@ export class Context {
     /**
      * Send a Star gift to another user.
      */
-    async sendGift(userId: number, giftId: string, extra?: { text?: string; text_parse_mode?: string; text_entities?: any[] }) {
+    async sendGift(
+        userId: number,
+        giftId: string,
+        extra?: { text?: string; text_parse_mode?: string; text_entities?: any[] }
+    ) {
         return this.client.callApi('sendGift', { user_id: userId, gift_id: giftId, ...extra });
     }
 
     /**
      * Get the list of gifts owned by the given user or the bot.
      */
-    async getUserGifts(extra?: { user_id?: number; offset?: string; limit?: number }): Promise<any> {
+    async getUserGifts(extra?: {
+        user_id?: number;
+        offset?: string;
+        limit?: number;
+    }): Promise<any> {
         return this.client.callApi('getUserGifts', extra);
     }
 
@@ -782,14 +898,25 @@ export class Context {
      * Convert a received gift to Telegram Stars.
      */
     async convertGiftToStars(businessConnectionId: string, messageId: number): Promise<boolean> {
-        return this.client.callApi('convertGiftToStars', { business_connection_id: businessConnectionId, message_id: messageId });
+        return this.client.callApi('convertGiftToStars', {
+            business_connection_id: businessConnectionId,
+            message_id: messageId,
+        });
     }
 
     /**
      * Save a received gift to the bot's profile.
      */
-    async saveGift(businessConnectionId: string, messageId: number, extra?: { is_saved?: boolean }): Promise<boolean> {
-        return this.client.callApi('saveGift', { business_connection_id: businessConnectionId, message_id: messageId, ...extra });
+    async saveGift(
+        businessConnectionId: string,
+        messageId: number,
+        extra?: { is_saved?: boolean }
+    ): Promise<boolean> {
+        return this.client.callApi('saveGift', {
+            business_connection_id: businessConnectionId,
+            message_id: messageId,
+            ...extra,
+        });
     }
 
     /**
@@ -803,7 +930,10 @@ export class Context {
      * Refund a Telegram Stars payment to the user.
      */
     async refundStarPayment(userId: number, telegramPaymentChargeId: string): Promise<boolean> {
-        return this.client.callApi('refundStarPayment', { user_id: userId, telegram_payment_charge_id: telegramPaymentChargeId });
+        return this.client.callApi('refundStarPayment', {
+            user_id: userId,
+            telegram_payment_charge_id: telegramPaymentChargeId,
+        });
     }
 
     /**
@@ -834,7 +964,10 @@ export class Context {
     /**
      * Verify a chat on behalf of the organization which is represented by the bot.
      */
-    async verifyChat(chatId: number | string, extra?: { custom_description?: string }): Promise<boolean> {
+    async verifyChat(
+        chatId: number | string,
+        extra?: { custom_description?: string }
+    ): Promise<boolean> {
         return this.client.callApi('verifyChat', { chat_id: chatId, ...extra });
     }
 
@@ -860,15 +993,35 @@ export class Context {
     /**
      * Upload a sticker file for use in a sticker set.
      */
-    async uploadStickerFile(userId: number, sticker: any, stickerFormat: 'static' | 'animated' | 'video'): Promise<any> {
-        return this.client.callApi('uploadStickerFile', { user_id: userId, sticker, sticker_format: stickerFormat });
+    async uploadStickerFile(
+        userId: number,
+        sticker: any,
+        stickerFormat: 'static' | 'animated' | 'video'
+    ): Promise<any> {
+        return this.client.callApi('uploadStickerFile', {
+            user_id: userId,
+            sticker,
+            sticker_format: stickerFormat,
+        });
     }
 
     /**
      * Create a new sticker set owned by a user.
      */
-    async createNewStickerSet(userId: number, name: string, title: string, stickers: any[], extra?: any): Promise<boolean> {
-        return this.client.callApi('createNewStickerSet', { user_id: userId, name, title, stickers, ...extra });
+    async createNewStickerSet(
+        userId: number,
+        name: string,
+        title: string,
+        stickers: any[],
+        extra?: any
+    ): Promise<boolean> {
+        return this.client.callApi('createNewStickerSet', {
+            user_id: userId,
+            name,
+            title,
+            stickers,
+            ...extra,
+        });
     }
 
     /**
@@ -888,7 +1041,11 @@ export class Context {
     /**
      * Set the thumbnail of a custom sticker set.
      */
-    async setStickerSetThumbnail(name: string, userId: number, extra?: { thumbnail?: any; format?: string }): Promise<boolean> {
+    async setStickerSetThumbnail(
+        name: string,
+        userId: number,
+        extra?: { thumbnail?: any; format?: string }
+    ): Promise<boolean> {
         return this.client.callApi('setStickerSetThumbnail', { name, user_id: userId, ...extra });
     }
 
@@ -912,7 +1069,10 @@ export class Context {
      */
     async deleteUserMessagesFromChat(userId: number): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot delete user messages: Chat ID is not available');
-        return this.client.callApi('deleteChatMessages', { chat_id: this.chat.id, user_id: userId });
+        return this.client.callApi('deleteChatMessages', {
+            chat_id: this.chat.id,
+            user_id: userId,
+        });
     }
 
     /**
@@ -920,7 +1080,11 @@ export class Context {
      */
     async setChatAdministratorCustomTitle(userId: number, customTitle: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set admin title: Chat ID is not available');
-        return this.client.callApi('setChatAdministratorCustomTitle', { chat_id: this.chat.id, user_id: userId, custom_title: customTitle });
+        return this.client.callApi('setChatAdministratorCustomTitle', {
+            chat_id: this.chat.id,
+            user_id: userId,
+            custom_title: customTitle,
+        });
     }
 
     /**
@@ -934,39 +1098,50 @@ export class Context {
     /**
      * Send an animated dice emoji (🎲, 🎯, 🏀, etc).
      */
-    async replyWithDice(emoji: '🎲' | '🎯' | '🏀' | '⚽' | '🎳' | '🎰' = '🎲', extra?: ExtraReplyMessage) {
+    async replyWithDice(
+        emoji: '🎲' | '🎯' | '🏀' | '⚽' | '🎳' | '🎰' = '🎲',
+        extra?: ExtraReplyMessage
+    ) {
         if (!this.chat) throw new Error('Cannot send dice: Chat ID is not available');
         return this.client.callApi('sendDice', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             emoji,
-            ...extra
+            ...extra,
         });
     }
 
     /**
      * Send a checklist message (Bot API 9.6).
      */
-    async replyWithChecklist(title: string, tasks: { text: string; text_parse_mode?: string }[], extra?: ExtraReplyMessage) {
+    async replyWithChecklist(
+        title: string,
+        tasks: { text: string; text_parse_mode?: string }[],
+        extra?: ExtraReplyMessage
+    ) {
         if (!this.chat) throw new Error('Cannot send checklist: Chat ID is not available');
         return this.client.callApi('sendChecklist', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             title,
             tasks,
-            ...extra
+            ...extra,
         });
     }
 
     /**
      * Answer a shipping query for digital goods delivery.
      */
-    async answerShippingQuery(ok: boolean, extra?: { shipping_options?: any[]; error_message?: string }): Promise<boolean> {
-        if (!this.update.shipping_query) throw new Error('Cannot answer shipping query: Not a shipping_query update');
+    async answerShippingQuery(
+        ok: boolean,
+        extra?: { shipping_options?: any[]; error_message?: string }
+    ): Promise<boolean> {
+        if (!this.update.shipping_query)
+            throw new Error('Cannot answer shipping query: Not a shipping_query update');
         return this.client.callApi('answerShippingQuery', {
             shipping_query_id: this.update.shipping_query.id,
             ok,
-            ...extra
+            ...extra,
         });
     }
 
@@ -1021,6 +1196,9 @@ export class Context {
      * Read business story reactions (Bot API 9.x).
      */
     async readBusinessStory(businessConnectionId: string, storyId: number): Promise<boolean> {
-        return this.client.callApi('readBusinessStory', { business_connection_id: businessConnectionId, story_id: storyId });
+        return this.client.callApi('readBusinessStory', {
+            business_connection_id: businessConnectionId,
+            story_id: storyId,
+        });
     }
 }

@@ -24,12 +24,37 @@
  */
 
 import type { Bot } from './bot';
+import * as crypto from 'crypto';
+
+const DEFAULT_MAX_BODY_SIZE_BYTES = 1_000_000;
 
 export interface AdapterOptions {
     /** Telegram secret token to validate X-Telegram-Bot-Api-Secret-Token header. */
     secretToken?: string;
     /** URL path to listen on. Used only by Fastify plugin adapter. Default: '/webhook'. */
     path?: string;
+    /** Maximum raw body size for the native adapter. Default: 1 MB. */
+    maxBodySizeBytes?: number;
+}
+
+function matchesSecretToken(actual: unknown, expected?: string): boolean {
+    if (!expected) return true;
+    if (typeof actual !== 'string') return false;
+
+    const actualBuffer = Buffer.from(actual);
+    const expectedBuffer = Buffer.from(expected);
+
+    if (actualBuffer.length !== expectedBuffer.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function hasJsonContentType(contentType: unknown): boolean {
+    return (
+        typeof contentType === 'string' && contentType.toLowerCase().includes('application/json')
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -73,11 +98,9 @@ export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
     return async function plugin(fastify: any) {
         fastify.post(path, async (request: any, reply: any) => {
             // Validate secret token if provided.
-            if (secretToken) {
-                const header = request.headers['x-telegram-bot-api-secret-token'];
-                if (header !== secretToken) {
-                    return reply.code(403).send('Forbidden');
-                }
+            const header = request.headers['x-telegram-bot-api-secret-token'];
+            if (!matchesSecretToken(header, secretToken)) {
+                return reply.code(403).send('Forbidden');
             }
 
             const update = request.body;
@@ -87,8 +110,12 @@ export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
                 return reply.code(400).send('Bad Request: Invalid update object.');
             }
 
-            await bot.handleUpdate(update);
-            return reply.code(200).send('OK');
+            try {
+                await bot.handleUpdate(update);
+                return reply.code(200).send('OK');
+            } catch {
+                return reply.code(500).send('Internal Server Error');
+            }
         });
     };
 }
@@ -108,11 +135,9 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
     const secretToken = options?.secretToken;
 
     return async (c: any) => {
-        if (secretToken) {
-            const header = c.req.header('x-telegram-bot-api-secret-token');
-            if (header !== secretToken) {
-                return c.text('Forbidden', 403);
-            }
+        const header = c.req.header('x-telegram-bot-api-secret-token');
+        if (!matchesSecretToken(header, secretToken)) {
+            return c.text('Forbidden', 403);
         }
 
         let update: any;
@@ -126,8 +151,12 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
             return c.text('Bad Request: Invalid update object.', 400);
         }
 
-        await bot.handleUpdate(update);
-        return c.text('OK', 200);
+        try {
+            await bot.handleUpdate(update);
+            return c.text('OK', 200);
+        } catch {
+            return c.text('Internal Server Error', 500);
+        }
     };
 }
 
@@ -145,6 +174,7 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
  */
 export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
     const secretToken = options?.secretToken;
+    const maxBodySizeBytes = options?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
 
     return async (req: any, res: any) => {
         if (req.method !== 'POST') {
@@ -154,19 +184,33 @@ export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
         }
 
         // Validate secret token.
-        if (secretToken) {
-            const header = req.headers['x-telegram-bot-api-secret-token'];
-            if (header !== secretToken) {
-                res.writeHead(403);
-                res.end('Forbidden');
-                return;
-            }
+        const header = req.headers['x-telegram-bot-api-secret-token'];
+        if (!matchesSecretToken(header, secretToken)) {
+            res.writeHead(403);
+            res.end('Forbidden');
+            return;
+        }
+
+        if (!hasJsonContentType(req.headers['content-type'])) {
+            res.writeHead(415);
+            res.end('Unsupported Media Type');
+            return;
         }
 
         // Read the raw request body.
         const chunks: Buffer[] = [];
+        let totalBytes = 0;
         for await (const chunk of req) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            const bufferChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            totalBytes += bufferChunk.length;
+
+            if (totalBytes > maxBodySizeBytes) {
+                res.writeHead(413);
+                res.end('Payload Too Large');
+                return;
+            }
+
+            chunks.push(bufferChunk);
         }
 
         let update: any;
@@ -186,8 +230,10 @@ export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
 
         try {
             await bot.handleUpdate(update);
-        } catch (err) {
-            console.error('[VibeGram] Native handler error:', err);
+        } catch {
+            res.writeHead(500);
+            res.end('Internal Server Error');
+            return;
         }
 
         res.writeHead(200);
@@ -215,13 +261,11 @@ export function createKoaMiddleware(bot: Bot, options?: AdapterOptions) {
             return next();
         }
 
-        if (secretToken) {
-            const header = ctx.get('x-telegram-bot-api-secret-token');
-            if (header !== secretToken) {
-                ctx.status = 403;
-                ctx.body = 'Forbidden';
-                return;
-            }
+        const header = ctx.get('x-telegram-bot-api-secret-token');
+        if (!matchesSecretToken(header, secretToken)) {
+            ctx.status = 403;
+            ctx.body = 'Forbidden';
+            return;
         }
 
         const update = ctx.request.body;
@@ -232,8 +276,13 @@ export function createKoaMiddleware(bot: Bot, options?: AdapterOptions) {
             return;
         }
 
-        await bot.handleUpdate(update);
-        ctx.status = 200;
-        ctx.body = 'OK';
+        try {
+            await bot.handleUpdate(update);
+            ctx.status = 200;
+            ctx.body = 'OK';
+        } catch {
+            ctx.status = 500;
+            ctx.body = 'Internal Server Error';
+        }
     };
 }

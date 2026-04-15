@@ -1,5 +1,6 @@
 import { Context } from './context';
 import { Middleware } from './composer';
+import { ConversationTimeoutError } from './errors';
 
 /**
  * Wait options for conversation steps.
@@ -16,9 +17,9 @@ export interface WaitOptions {
 /**
  * Conversation timeout error.
  */
-export class ConversationTimeout extends Error {
+export class ConversationTimeout extends ConversationTimeoutError {
     constructor(public readonly chatId: number) {
-        super(`Conversation timed out for chat ${chatId}`);
+        super(chatId);
         this.name = 'ConversationTimeout';
     }
 }
@@ -32,7 +33,11 @@ export class ConversationContext {
 
     constructor(
         public readonly ctx: Context,
-        private readonly chatKey: string
+        private readonly chatKey: string,
+        private readonly _setWaitState: (
+            waitOptions?: WaitOptions,
+            waitTimer?: ReturnType<typeof setTimeout>
+        ) => void = () => {}
     ) {}
 
     /**
@@ -42,12 +47,12 @@ export class ConversationContext {
     async waitForText(options?: WaitOptions): Promise<string> {
         const ctx = await this.wait({
             ...options,
-            validate: async (ctx) => {
+            validate: async ctx => {
                 if (!ctx.message?.text) return false;
                 if (options?.validate) return options.validate(ctx);
                 return true;
             },
-            validationError: options?.validationError || 'Please send a text message.'
+            validationError: options?.validationError || 'Please send a text message.',
         });
         return ctx.message!.text!;
     }
@@ -58,12 +63,12 @@ export class ConversationContext {
     async waitForPhoto(options?: WaitOptions): Promise<any[]> {
         const ctx = await this.wait({
             ...options,
-            validate: async (ctx) => {
+            validate: async ctx => {
                 if (!ctx.message?.photo?.length) return false;
                 if (options?.validate) return options.validate(ctx);
                 return true;
             },
-            validationError: options?.validationError || 'Please send a photo.'
+            validationError: options?.validationError || 'Please send a photo.',
         });
         return ctx.message!.photo!;
     }
@@ -74,12 +79,12 @@ export class ConversationContext {
     async waitForCallbackQuery(options?: WaitOptions): Promise<string> {
         const ctx = await this.wait({
             ...options,
-            validate: async (ctx) => {
+            validate: async ctx => {
                 if (!ctx.update.callback_query?.data) return false;
                 if (options?.validate) return options.validate(ctx);
                 return true;
             },
-            validationError: options?.validationError || 'Please press a button.'
+            validationError: options?.validationError || 'Please press a button.',
         });
         return ctx.update.callback_query!.data!;
     }
@@ -90,12 +95,12 @@ export class ConversationContext {
     async waitForContact(options?: WaitOptions): Promise<any> {
         const ctx = await this.wait({
             ...options,
-            validate: async (ctx) => {
+            validate: async ctx => {
                 if (!ctx.message?.contact) return false;
                 if (options?.validate) return options.validate(ctx);
                 return true;
             },
-            validationError: options?.validationError || 'Please share your contact.'
+            validationError: options?.validationError || 'Please share your contact.',
         });
         return ctx.message!.contact!;
     }
@@ -106,12 +111,12 @@ export class ConversationContext {
     async waitForLocation(options?: WaitOptions): Promise<any> {
         const ctx = await this.wait({
             ...options,
-            validate: async (ctx) => {
+            validate: async ctx => {
                 if (!ctx.message?.location) return false;
                 if (options?.validate) return options.validate(ctx);
                 return true;
             },
-            validationError: options?.validationError || 'Please share your location.'
+            validationError: options?.validationError || 'Please share your location.',
         });
         return ctx.message!.location!;
     }
@@ -124,13 +129,20 @@ export class ConversationContext {
             this._resolve = resolve;
             this._reject = reject;
 
+            let waitTimer: ReturnType<typeof setTimeout> | undefined;
+
             if (options?.timeout) {
-                setTimeout(() => {
+                waitTimer = setTimeout(() => {
                     this._resolve = null;
                     this._reject = null;
+                    this._setWaitState(undefined);
                     reject(new ConversationTimeout(this.ctx.chat?.id || 0));
                 }, options.timeout);
+
+                waitTimer.unref?.();
             }
+
+            this._setWaitState(options, waitTimer);
         });
     }
 
@@ -152,6 +164,7 @@ export class ConversationContext {
         const resolve = this._resolve;
         this._resolve = null;
         this._reject = null;
+        this._setWaitState(undefined);
         resolve(ctx);
         return true;
     }
@@ -163,10 +176,12 @@ export class ConversationContext {
             this._resolve = null;
             this._reject = null;
         }
+
+        this._setWaitState(undefined);
     }
 }
 
-type ConversationHandler = (ctx: Context, conv: ConversationContext) => Promise<void>;
+export type ConversationHandler = (ctx: Context, conv: ConversationContext) => Promise<void>;
 
 /**
  * Conversation manager for fluent, non-linear multi-step dialogues.
@@ -203,11 +218,15 @@ export interface ConversationOptions {
 
 export class Conversation {
     private definitions = new Map<string, ConversationHandler>();
-    private active = new Map<string, {
-        conv: ConversationContext;
-        waitOptions?: WaitOptions;
-        cleanupTimer?: ReturnType<typeof setTimeout>;
-    }>();
+    private active = new Map<
+        string,
+        {
+            conv: ConversationContext;
+            waitOptions?: WaitOptions;
+            waitTimer?: ReturnType<typeof setTimeout>;
+            cleanupTimer?: ReturnType<typeof setTimeout>;
+        }
+    >();
     private readonly defaultTimeout: number;
 
     constructor(options: ConversationOptions = {}) {
@@ -235,8 +254,18 @@ export class Conversation {
         // Cancel any existing conversation for this chat first.
         this.leave(chatKey);
 
-        const conv = new ConversationContext(ctx, chatKey);
-        
+        const conv = new ConversationContext(ctx, chatKey, (waitOptions, waitTimer) => {
+            const entry = this.active.get(chatKey);
+            if (!entry) return;
+
+            if (entry.waitTimer && entry.waitTimer !== waitTimer) {
+                clearTimeout(entry.waitTimer);
+            }
+
+            entry.waitOptions = waitOptions;
+            entry.waitTimer = waitTimer;
+        });
+
         // Auto-cleanup: cancel and remove the conversation if it idles beyond the timeout.
         const cleanupTimer = setTimeout(() => {
             if (this.active.has(chatKey)) {
@@ -250,23 +279,40 @@ export class Conversation {
         this.active.set(chatKey, { conv, cleanupTimer });
 
         // Run the handler asynchronously — it will suspend at each conv.waitFor*() call.
-        handler(ctx, conv).catch(() => {}).finally(() => {
-            clearTimeout(cleanupTimer);
-            this.active.delete(chatKey);
-        });
+        handler(ctx, conv)
+            .catch(error => {
+                if (error instanceof ConversationTimeoutError) {
+                    return;
+                }
+
+                if (error instanceof Error && error.message === 'Conversation cancelled') {
+                    return;
+                }
+
+                console.error('[VibeGram] Conversation error:', error);
+            })
+            .finally(() => {
+                const entry = this.active.get(chatKey);
+                clearTimeout(cleanupTimer);
+                if (entry?.waitTimer) {
+                    clearTimeout(entry.waitTimer);
+                }
+                this.active.delete(chatKey);
+            });
     }
 
     /**
      * Leave/cancel the active conversation for a chat.
      */
     leave(chatKeyOrCtx: string | Context): void {
-        const key = typeof chatKeyOrCtx === 'string'
-            ? chatKeyOrCtx
-            : this.getChatKey(chatKeyOrCtx);
+        const key = typeof chatKeyOrCtx === 'string' ? chatKeyOrCtx : this.getChatKey(chatKeyOrCtx);
 
         const entry = this.active.get(key);
         if (entry) {
             clearTimeout(entry.cleanupTimer); // Clear auto-cleanup timer.
+            if (entry.waitTimer) {
+                clearTimeout(entry.waitTimer);
+            }
             entry.conv._cancel();
             this.active.delete(key);
         }

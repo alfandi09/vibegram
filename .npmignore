@@ -5,9 +5,17 @@ examples/
 scripts/
 docs/
 
+# Always publish compiled artifacts and release metadata
+!dist/
+!dist/**
+!README.md
+!CHANGELOG.md
+!LICENSE
+
 # Build artifacts and system logs
 brain/
 .gemini/
+generated/
 *.log
 coverage/
 .nyc_output/

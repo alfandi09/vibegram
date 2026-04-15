@@ -43,7 +43,7 @@ export class MemoryCache implements CacheStore {
 
         this.data.set(key, {
             value,
-            expiresAt: Date.now() + ttlMs
+            expiresAt: Date.now() + ttlMs,
         });
     }
 
@@ -86,17 +86,26 @@ export interface CacheOptions {
 export function apiCache(options?: CacheOptions): Middleware<any> {
     const store = options?.store || new MemoryCache();
     const ttlMs = (options?.ttl ?? 300) * 1000;
-    const keyGen = options?.keyGenerator || ((method: string, params: any) => {
-        return `${method}:${JSON.stringify(params || {})}`;
-    });
+    const keyGen =
+        options?.keyGenerator ||
+        ((method: string, params: any) => {
+            return `${method}:${JSON.stringify(params || {})}`;
+        });
 
     // Cacheable API methods (read-only, idempotent)
     const cacheableMethods = new Set([
-        'getChat', 'getChatMember', 'getChatMemberCount',
-        'getChatAdministrators', 'getFile', 'getMe',
-        'getMyCommands', 'getStickerSet', 'getCustomEmojiStickers',
-        'getUserProfilePhotos', 'getGameHighScores',
-        'getForumTopicIconStickers'
+        'getChat',
+        'getChatMember',
+        'getChatMemberCount',
+        'getChatAdministrators',
+        'getFile',
+        'getMe',
+        'getMyCommands',
+        'getStickerSet',
+        'getCustomEmojiStickers',
+        'getUserProfilePhotos',
+        'getGameHighScores',
+        'getForumTopicIconStickers',
     ]);
 
     return async (ctx, next) => {
@@ -119,10 +128,12 @@ export function apiCache(options?: CacheOptions): Middleware<any> {
             return result;
         };
 
-        await next();
-
-        // Restore original to prevent leaking across updates
-        ctx.client.callApi = originalCallApi;
+        try {
+            await next();
+        } finally {
+            // Restore original to prevent leaking across updates
+            ctx.client.callApi = originalCallApi;
+        }
     };
 }
 

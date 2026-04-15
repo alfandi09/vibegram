@@ -60,11 +60,25 @@ export class Markup {
         /** Payment button for Telegram Stars / Stripe monetization. */
         pay: (text: string) => ({ text, pay: true }),
         /** Inline Query trigger — opens inline mode directed at this bot. */
-        switchInlineQuery: (text: string, query: string = '') => ({ text, switch_inline_query: query }),
+        switchInlineQuery: (text: string, query: string = '') => ({
+            text,
+            switch_inline_query: query,
+        }),
         /** Inline Query trigger — opens inline mode within the current chat only. */
-        switchInlineQueryCurrentChat: (text: string, query: string = '') => ({ text, switch_inline_query_current_chat: query }),
+        switchInlineQueryCurrentChat: (text: string, query: string = '') => ({
+            text,
+            switch_inline_query_current_chat: query,
+        }),
         /** Login button using Telegram Login Widget (OAuth flow). */
-        login: (text: string, loginUrl: { url: string; forward_text?: string; bot_username?: string; request_write_access?: boolean }) => ({ text, login_url: loginUrl }),
+        login: (
+            text: string,
+            loginUrl: {
+                url: string;
+                forward_text?: string;
+                bot_username?: string;
+                request_write_access?: boolean;
+            }
+        ) => ({ text, login_url: loginUrl }),
         /** Copy-to-clipboard button (Bot API 9.6). */
         copy: (text: string, textToCopy: string) => ({ text, copy_text: { text: textToCopy } }),
     };
@@ -88,7 +102,7 @@ export class Markup {
         for (let i = 0; i < itemsOnPage.length; i += columns) {
             const row = itemsOnPage.slice(i, i + columns).map(item => ({
                 text: item.text,
-                callback_data: item.callback_data
+                callback_data: item.callback_data,
             }));
             keyboard.push(row);
         }
@@ -103,7 +117,9 @@ export class Markup {
 
         // Page indicator button (non-interactive, uses a no-op callback_data).
         const indicatorText = options.pageIndicatorPattern
-            ? options.pageIndicatorPattern.replace('{current}', page.toString()).replace('{total}', totalPages.toString())
+            ? options.pageIndicatorPattern
+                  .replace('{current}', page.toString())
+                  .replace('{total}', totalPages.toString())
             : `${page}/${totalPages}`;
 
         // Empty callback_data prevents a "Loading..." flash on the client.
@@ -142,7 +158,9 @@ export class Markup {
             resize_keyboard: options?.resize_keyboard ?? true,
             one_time_keyboard: options?.one_time_keyboard ?? false,
             is_persistent: options?.is_persistent ?? false,
-            ...(options?.input_field_placeholder && { input_field_placeholder: options.input_field_placeholder }),
+            ...(options?.input_field_placeholder && {
+                input_field_placeholder: options.input_field_placeholder,
+            }),
             ...(options?.selective !== undefined && { selective: options.selective }),
         };
     }
@@ -150,16 +168,16 @@ export class Markup {
     /** Instruct the Telegram client to remove the custom reply keyboard from the screen. */
     static removeKeyboard(selective?: boolean) {
         return {
-            remove_keyboard: true,
-            selective: selective ?? false
+            remove_keyboard: true as const,
+            selective: selective ?? false,
         };
     }
 
     /** Emit a force reply request, prompting the user to reply to the bot's message. */
     static forceReply(options?: { input_field_placeholder?: string; selective?: boolean }) {
         return {
-            force_reply: true,
-            ...options
+            force_reply: true as const,
+            ...options,
         };
     }
 
@@ -172,12 +190,24 @@ export class Markup {
         /** Request the user's current GPS location. */
         requestLocation: (text: string) => ({ text, request_location: true }),
         /** Open a poll creation dialog (quiz or regular). */
-        requestPoll: (text: string, type?: 'quiz' | 'regular') => ({ text, request_poll: type ? { type } : {} }),
+        requestPoll: (text: string, type?: 'quiz' | 'regular') => ({
+            text,
+            request_poll: type ? { type } : {},
+        }),
         /** Select a specific user or bot (Bot API 6.x). */
-        requestUser: (text: string, request_id: number, extraOptions: any = {}) => ({ text, request_user: { request_id, ...extraOptions } }),
+        requestUser: (text: string, request_id: number, extraOptions: any = {}) => ({
+            text,
+            request_user: { request_id, ...extraOptions },
+        }),
         /** Select a specific group or channel (Bot API 6.x). */
-        requestChat: (text: string, request_id: number, extraOptions: any = {}) => ({ text, request_chat: { request_id, ...extraOptions } }),
+        requestChat: (text: string, request_id: number, extraOptions: any = {}) => ({
+            text,
+            request_chat: { request_id, ...extraOptions },
+        }),
         /** Authorize a Managed Bot on behalf of the user (Bot API 9.6). */
-        requestManagedBot: (text: string, request_id: number, extraOptions: any = {}) => ({ text, request_managed_bot: { request_id, ...extraOptions } })
+        requestManagedBot: (text: string, request_id: number, extraOptions: any = {}) => ({
+            text,
+            request_managed_bot: { request_id, ...extraOptions },
+        }),
     };
 }

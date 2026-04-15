@@ -16,13 +16,16 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 const app = express();
 
 app.use(express.json());
-app.post('/webhook', createExpressMiddleware(bot, {
-    secretToken: process.env.WEBHOOK_SECRET
-}));
+app.post(
+    '/webhook',
+    createExpressMiddleware(bot, {
+        secretToken: process.env.WEBHOOK_SECRET,
+    })
+);
 
 app.listen(3000, async () => {
     await bot.setWebhook(`https://your-domain.com/webhook`, {
-        secret_token: process.env.WEBHOOK_SECRET
+        secret_token: process.env.WEBHOOK_SECRET,
     });
     console.log('Webhook server running on :3000');
 });
@@ -41,10 +44,12 @@ import { Bot, createFastifyPlugin } from 'vibegram';
 const bot = new Bot(process.env.BOT_TOKEN!);
 const fastify = Fastify({ logger: true });
 
-await fastify.register(createFastifyPlugin(bot, {
-    path: '/webhook',
-    secretToken: process.env.WEBHOOK_SECRET
-}));
+await fastify.register(
+    createFastifyPlugin(bot, {
+        path: '/webhook',
+        secretToken: process.env.WEBHOOK_SECRET,
+    })
+);
 
 await fastify.listen({ port: 3000, host: '0.0.0.0' });
 ```
@@ -64,9 +69,12 @@ import { Bot, createHonoHandler } from 'vibegram';
 const bot = new Bot(process.env.BOT_TOKEN!);
 const app = new Hono();
 
-app.post('/webhook', createHonoHandler(bot, {
-    secretToken: process.env.WEBHOOK_SECRET
-}));
+app.post(
+    '/webhook',
+    createHonoHandler(bot, {
+        secretToken: process.env.WEBHOOK_SECRET,
+    })
+);
 
 export default app;
 ```
@@ -88,9 +96,12 @@ const app = new Koa();
 const router = new Router();
 
 app.use(koaBody());
-router.post('/webhook', createKoaMiddleware(bot, {
-    secretToken: process.env.WEBHOOK_SECRET
-}));
+router.post(
+    '/webhook',
+    createKoaMiddleware(bot, {
+        secretToken: process.env.WEBHOOK_SECRET,
+    })
+);
 
 app.use(router.routes());
 app.listen(3000);
@@ -106,24 +117,29 @@ import { Bot, createNativeHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-http.createServer(
-    createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SECRET })
-).listen(3000, () => console.log('Listening on :3000'));
+http.createServer(createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SECRET })).listen(
+    3000,
+    () => console.log('Listening on :3000')
+);
 ```
 
 ## AdapterOptions
 
 All adapters accept an `AdapterOptions` object:
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `secretToken` | `string` | Token to validate `X-Telegram-Bot-Api-Secret-Token` header |
-| `path` | `string` | Route path (Fastify only). Default: `'/webhook'` |
+| Option             | Type     | Description                                                      |
+| ------------------ | -------- | ---------------------------------------------------------------- |
+| `secretToken`      | `string` | Token to validate `X-Telegram-Bot-Api-Secret-Token` header       |
+| `path`             | `string` | Route path (Fastify only). Default: `'/webhook'`                 |
+| `maxBodySizeBytes` | `number` | Maximum raw body size for the native adapter. Default: `1000000` |
 
 ## Response Codes
 
-| Condition | HTTP Status |
-|-----------|-------------|
-| Valid update processed | `200 OK` |
-| Secret token mismatch | `403 Forbidden` |
-| Missing / invalid `update_id` | `400 Bad Request` |
+| Condition                             | HTTP Status                  |
+| ------------------------------------- | ---------------------------- |
+| Valid update processed                | `200 OK`                     |
+| Secret token mismatch                 | `403 Forbidden`              |
+| Missing / invalid `update_id`         | `400 Bad Request`            |
+| Invalid content type (native adapter) | `415 Unsupported Media Type` |
+| Payload too large (native adapter)    | `413 Payload Too Large`      |
+| Update handling failed                | `500 Internal Server Error`  |

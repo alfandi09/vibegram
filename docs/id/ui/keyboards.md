@@ -15,8 +15,8 @@ await ctx.reply('Pilih opsi:', {
             Markup.button.callback('✅ Setuju', 'setuju'),
             Markup.button.callback('❌ Tolak', 'tolak'),
         ],
-        [Markup.button.url('🌐 Website', 'https://vibegram.dev')]
-    ])
+        [Markup.button.url('🌐 Website', 'https://alfandi09.github.io/vibegram/')],
+    ]),
 });
 ```
 
@@ -31,7 +31,7 @@ await ctx.reply('Pilih hari:', {
     reply_markup: Markup.grid(
         hari.map(d => Markup.button.callback(d, `hari_${d.toLowerCase()}`)),
         3 // 3 tombol per baris
-    )
+    ),
 });
 
 // Menghasilkan:
@@ -42,27 +42,29 @@ await ctx.reply('Pilih hari:', {
 
 ## Tipe Tombol Inline
 
-| Factory | Deskripsi |
-|---------|-----------|
-| `Markup.button.callback(text, data)` | Tombol callback — memicu `bot.action()` |
-| `Markup.button.url(text, url)` | Tautan URL eksternal |
-| `Markup.button.webApp(text, url)` | Buka Telegram Mini App |
-| `Markup.button.pay(text)` | Tombol pembayaran Telegram Stars |
-| `Markup.button.switchInlineQuery(text, query)` | Buka inline mode |
-| `Markup.button.switchInlineQueryCurrentChat(text, query)` | Inline mode di chat saat ini |
-| `Markup.button.login(text, loginUrl)` | Tombol Login Telegram (OAuth) |
-| `Markup.button.copy(text, textToCopy)` | Salin teks ke clipboard (API 9.6) |
+| Factory                                                   | Deskripsi                               |
+| --------------------------------------------------------- | --------------------------------------- |
+| `Markup.button.callback(text, data)`                      | Tombol callback — memicu `bot.action()` |
+| `Markup.button.url(text, url)`                            | Tautan URL eksternal                    |
+| `Markup.button.webApp(text, url)`                         | Buka Telegram Mini App                  |
+| `Markup.button.pay(text)`                                 | Tombol pembayaran Telegram Stars        |
+| `Markup.button.switchInlineQuery(text, query)`            | Buka inline mode                        |
+| `Markup.button.switchInlineQueryCurrentChat(text, query)` | Inline mode di chat saat ini            |
+| `Markup.button.login(text, loginUrl)`                     | Tombol Login Telegram (OAuth)           |
+| `Markup.button.copy(text, textToCopy)`                    | Salin teks ke clipboard (API 9.6)       |
 
 ### Contoh: Login Button
 
 ```typescript
 await ctx.reply('Login ke aplikasi kami:', {
-    reply_markup: Markup.inlineKeyboard([[
-        Markup.button.login('🔑 Login dengan Telegram', {
-            url: 'https://auth.contoh.com/telegram',
-            request_write_access: true,
-        })
-    ]])
+    reply_markup: Markup.inlineKeyboard([
+        [
+            Markup.button.login('🔑 Login dengan Telegram', {
+                url: 'https://auth.contoh.com/telegram',
+                request_write_access: true,
+            }),
+        ],
+    ]),
 });
 ```
 
@@ -70,9 +72,7 @@ await ctx.reply('Login ke aplikasi kami:', {
 
 ```typescript
 await ctx.reply('Kode referral Anda:', {
-    reply_markup: Markup.inlineKeyboard([[
-        Markup.button.copy('📋 Salin Kode', 'REF-ABCD1234')
-    ]])
+    reply_markup: Markup.inlineKeyboard([[Markup.button.copy('📋 Salin Kode', 'REF-ABCD1234')]]),
 });
 ```
 
@@ -112,13 +112,16 @@ Keyboard yang menggantikan keyboard native di bawah layar:
 
 ```typescript
 await ctx.reply('Pilih menu:', {
-    reply_markup: Markup.keyboard([
-        [Markup.replyButton.text('📦 Produk'), Markup.replyButton.text('🛒 Keranjang')],
-        [Markup.replyButton.text('👤 Profil'), Markup.replyButton.text('📞 Bantuan')],
-    ], {
-        resize_keyboard: true,
-        input_field_placeholder: 'Pilih menu...',
-    })
+    reply_markup: Markup.keyboard(
+        [
+            [Markup.replyButton.text('📦 Produk'), Markup.replyButton.text('🛒 Keranjang')],
+            [Markup.replyButton.text('👤 Profil'), Markup.replyButton.text('📞 Bantuan')],
+        ],
+        {
+            resize_keyboard: true,
+            input_field_placeholder: 'Pilih menu...',
+        }
+    ),
 });
 ```
 
@@ -126,20 +129,20 @@ await ctx.reply('Pilih menu:', {
 
 ```typescript
 // Minta nomor telepon
-Markup.replyButton.requestContact('📱 Bagikan Kontak')
+Markup.replyButton.requestContact('📱 Bagikan Kontak');
 
 // Minta lokasi GPS
-Markup.replyButton.requestLocation('📍 Bagikan Lokasi')
+Markup.replyButton.requestLocation('📍 Bagikan Lokasi');
 
 // Minta buat polling
-Markup.replyButton.requestPoll('📊 Buat Poll', 'regular')
+Markup.replyButton.requestPoll('📊 Buat Poll', 'regular');
 ```
 
 ## Hapus Keyboard
 
 ```typescript
 await ctx.reply('Keyboard dihapus.', {
-    reply_markup: Markup.removeKeyboard()
+    reply_markup: Markup.removeKeyboard(),
 });
 ```
 
@@ -151,6 +154,6 @@ Paksa pengguna untuk membalas pesan bot:
 await ctx.reply('Masukkan nama Anda:', {
     reply_markup: Markup.forceReply({
         input_field_placeholder: 'Ketik nama...',
-    })
+    }),
 });
 ```

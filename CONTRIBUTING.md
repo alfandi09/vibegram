@@ -5,21 +5,28 @@ Thank you for your interest in contributing to VibeGram! This document provides 
 ## Setup
 
 1. Fork and clone the repository:
+
 ```bash
-git clone https://github.com/[your-username]/vibegram.git
+git clone https://github.com/alfandi09/vibegram.git
 cd vibegram
 npm install
 ```
 
 2. Make your changes in the `src/` directory
 3. Ensure the build passes:
+
 ```bash
 npm run build
+npm run typecheck
+npm run typecheck:test
+npm run typecheck:examples
+npm test
 ```
 
 ## Zero-Dependency Policy
 
 VibeGram strictly maintains a **zero-bloat** architecture. We do not accept pull requests that add new npm dependencies unless:
+
 - The functionality cannot be achieved with Node.js built-in modules
 - The dependency has been discussed and approved via GitHub Issues first
 - The package is extremely small and well-maintained
@@ -42,6 +49,7 @@ VibeGram strictly maintains a **zero-bloat** architecture. We do not accept pull
 ## Reporting Bugs
 
 Please file bug reports via GitHub Issues. Include:
+
 - Node.js version (`node -v`)
 - TypeScript version (`tsc -v`)
 - Minimal reproducible code snippet
@@ -50,6 +58,7 @@ Please file bug reports via GitHub Issues. Include:
 ## Documentation
 
 When contributing documentation:
+
 - All headings must be in English
 - Use professional, concise language
 - Include code examples for every feature

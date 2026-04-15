@@ -2,6 +2,10 @@ import axios, { AxiosInstance } from 'axios';
 import FormData from 'form-data';
 import * as fs from 'fs';
 import * as https from 'https';
+import { NetworkError, RateLimitError, TelegramApiError } from './errors';
+
+const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
+const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 
 export class TelegramClient {
     private http: AxiosInstance;
@@ -38,8 +42,8 @@ export class TelegramClient {
 
             if (data && typeof data === 'object') {
                 // Detect Buffer or Stream values that require multipart encoding.
-                const isMultipart = Object.values(data).some(val =>
-                    Buffer.isBuffer(val) || (val && typeof (val as any).pipe === 'function')
+                const isMultipart = Object.values(data).some(
+                    val => Buffer.isBuffer(val) || (val && typeof (val as any).pipe === 'function')
                 );
 
                 if (isMultipart) {
@@ -48,7 +52,11 @@ export class TelegramClient {
                         if (data[key] !== undefined) {
                             let value = data[key];
                             // Serialize plain objects to JSON to prevent implicit "[object Object]" casting.
-                            if (typeof value === 'object' && !Buffer.isBuffer(value) && !(value && typeof (value as any).pipe === 'function')) {
+                            if (
+                                typeof value === 'object' &&
+                                !Buffer.isBuffer(value) &&
+                                !(value && typeof (value as any).pipe === 'function')
+                            ) {
                                 value = JSON.stringify(value);
                             }
                             form.append(key, value);
@@ -62,10 +70,22 @@ export class TelegramClient {
             const response = await this.http.post(method, reqData, { headers });
             const result = response.data;
             if (!result.ok) {
-                throw new Error(`Telegram API Error: [${result.error_code}] ${result.description}`);
+                throw new TelegramApiError(
+                    `Telegram request failed: [${result.error_code}] ${result.description}`,
+                    result.error_code,
+                    result.description
+                );
             }
             return result.result;
         } catch (error: any) {
+            if (
+                error instanceof TelegramApiError ||
+                error instanceof NetworkError ||
+                error instanceof RateLimitError
+            ) {
+                throw error;
+            }
+
             // Handle Rate Limiting (429 Too Many Requests) with auto-retry.
             if (error.response && error.response.status === 429 && retries > 0) {
                 const retryAfter = error.response.data?.parameters?.retry_after || 1;
@@ -76,9 +96,21 @@ export class TelegramClient {
 
             if (error.response && error.response.data) {
                 const apiError = error.response.data;
-                throw new Error(`Telegram request failed: [${apiError.error_code}] ${apiError.description}`);
+                if (error.response.status === 429) {
+                    throw new RateLimitError(apiError.parameters?.retry_after || 1);
+                }
+
+                throw new TelegramApiError(
+                    `Telegram request failed: [${apiError.error_code}] ${apiError.description}`,
+                    apiError.error_code,
+                    apiError.description
+                );
             }
-            throw new Error(`Network Error: ${error.message}`);
+
+            throw new NetworkError(
+                `Network Error: ${error.message}`,
+                error instanceof Error ? error : undefined
+            );
         }
     }
 
@@ -95,14 +127,47 @@ export class TelegramClient {
      */
     async downloadFile(fileId: string, destPath?: string): Promise<Buffer | void> {
         const url = await this.getFileLink(fileId);
-        const response = await axios.get(url, { responseType: destPath ? 'stream' : 'arraybuffer' });
+        const response = await axios.get(url, {
+            responseType: destPath ? 'stream' : 'arraybuffer',
+            timeout: DEFAULT_DOWNLOAD_TIMEOUT_MS,
+            maxContentLength: DEFAULT_MAX_DOWNLOAD_BYTES,
+            maxBodyLength: DEFAULT_MAX_DOWNLOAD_BYTES,
+        });
+
+        const contentLengthHeader = response.headers?.['content-length'];
+        const contentLength = Number(contentLengthHeader);
+        if (Number.isFinite(contentLength) && contentLength > DEFAULT_MAX_DOWNLOAD_BYTES) {
+            throw new NetworkError(
+                `Download exceeds maximum size of ${DEFAULT_MAX_DOWNLOAD_BYTES} bytes.`
+            );
+        }
 
         if (destPath) {
             return new Promise((resolve, reject) => {
                 const writer = fs.createWriteStream(destPath);
+                const stream = response.data as NodeJS.ReadableStream;
+                let settled = false;
+
+                const fail = (err: Error) => {
+                    if (settled) return;
+                    settled = true;
+                    writer.destroy();
+                    fs.promises
+                        .unlink(destPath)
+                        .catch(() => undefined)
+                        .finally(() => {
+                            reject(new NetworkError(`Download failed: ${err.message}`, err));
+                        });
+                };
+
+                stream.on('error', fail);
                 response.data.pipe(writer);
-                writer.on('finish', resolve);
-                writer.on('error', reject);
+                writer.on('finish', () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve();
+                });
+                writer.on('error', fail);
             });
         }
         return Buffer.from(response.data);

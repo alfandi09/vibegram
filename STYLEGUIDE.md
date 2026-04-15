@@ -1,6 +1,6 @@
 # Code & Documentation Style Guide
 
-VibeGram is an enterprise-grade framework. All code and documentation must adhere to professional standards.
+VibeGram is a production-ready framework. All code and documentation must adhere to professional standards.
 
 ## 1. Language
 

@@ -10,6 +10,8 @@ export interface QueueOptions {
     concurrency?: number;
     /** Delay between batches in ms (default: 1000) */
     delayMs?: number;
+    /** Optional identifier for a specific broadcast job. */
+    broadcastId?: string;
     /** Callback when a single job fails */
     onError?: (error: Error, chatId: number | string) => void;
     /** Callback for progress tracking */
@@ -31,6 +33,11 @@ export interface ScheduledJob {
     timeout: ReturnType<typeof setTimeout> | null;
 }
 
+interface BroadcastJobState {
+    id: string;
+    cancelled: boolean;
+}
+
 /**
  * Rate-limited job queue for safe mass broadcasting and scheduling.
  *
@@ -48,9 +55,10 @@ export interface ScheduledJob {
  */
 export class BotQueue {
     private client: TelegramClient;
-    private options: Required<Omit<QueueOptions, 'onError' | 'onProgress'>> & Pick<QueueOptions, 'onError' | 'onProgress'>;
+    private options: Required<Omit<QueueOptions, 'broadcastId' | 'onError' | 'onProgress'>> &
+        Pick<QueueOptions, 'onError' | 'onProgress'>;
     private scheduledJobs = new Map<string, ScheduledJob>();
-    private isProcessing = false;
+    private activeBroadcasts = new Map<string, BroadcastJobState>();
 
     constructor(client: TelegramClient, options?: QueueOptions) {
         this.client = client;
@@ -58,8 +66,12 @@ export class BotQueue {
             concurrency: options?.concurrency ?? 25,
             delayMs: options?.delayMs ?? 1000,
             onError: options?.onError,
-            onProgress: options?.onProgress
+            onProgress: options?.onProgress,
         };
+    }
+
+    private createBroadcastId(): string {
+        return `broadcast:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
     }
 
     /**
@@ -75,51 +87,56 @@ export class BotQueue {
         const delayMs = options?.delayMs ?? this.options.delayMs;
         const onError = options?.onError ?? this.options.onError;
         const onProgress = options?.onProgress ?? this.options.onProgress;
+        const broadcastId = options?.broadcastId ?? this.createBroadcastId();
 
         const startTime = Date.now();
         let success = 0;
         let failed = 0;
         const errors: Array<{ chatId: number | string; error: Error }> = [];
+        const job: BroadcastJobState = { id: broadcastId, cancelled: false };
 
-        this.isProcessing = true;
+        this.activeBroadcasts.set(broadcastId, job);
 
         // Process in batches
-        for (let i = 0; i < chatIds.length; i += concurrency) {
-            if (!this.isProcessing) break;
+        try {
+            for (let i = 0; i < chatIds.length; i += concurrency) {
+                if (job.cancelled) break;
 
-            const batch = chatIds.slice(i, i + concurrency);
-            const results = await Promise.allSettled(
-                batch.map(chatId => fn(chatId))
-            );
+                const batch = chatIds.slice(i, i + concurrency);
+                const results = await Promise.allSettled(batch.map(chatId => fn(chatId)));
 
-            for (let j = 0; j < results.length; j++) {
-                const result = results[j];
-                if (result.status === 'fulfilled') {
-                    success++;
-                } else {
-                    failed++;
-                    const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
-                    errors.push({ chatId: batch[j], error });
-                    if (onError) onError(error, batch[j]);
+                for (let j = 0; j < results.length; j++) {
+                    const result = results[j];
+                    if (result.status === 'fulfilled') {
+                        success++;
+                    } else {
+                        failed++;
+                        const error =
+                            result.reason instanceof Error
+                                ? result.reason
+                                : new Error(String(result.reason));
+                        errors.push({ chatId: batch[j], error });
+                        if (onError) onError(error, batch[j]);
+                    }
+                }
+
+                if (onProgress) onProgress(success + failed, chatIds.length);
+
+                // Rate limiting delay between batches
+                if (i + concurrency < chatIds.length && !job.cancelled) {
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
             }
-
-            if (onProgress) onProgress(success + failed, chatIds.length);
-
-            // Rate limiting delay between batches
-            if (i + concurrency < chatIds.length && this.isProcessing) {
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-            }
+        } finally {
+            this.activeBroadcasts.delete(broadcastId);
         }
-
-        this.isProcessing = false;
 
         return {
             total: chatIds.length,
             success,
             failed,
             errors,
-            durationMs: Date.now() - startTime
+            durationMs: Date.now() - startTime,
         };
     }
 
@@ -131,11 +148,11 @@ export class BotQueue {
         text: string,
         extra?: any
     ): Promise<BroadcastResult> {
-        return this.broadcast(chatIds, async (chatId) => {
+        return this.broadcast(chatIds, async chatId => {
             await this.client.callApi('sendMessage', {
                 chat_id: chatId,
                 text,
-                ...extra
+                ...extra,
             });
         });
     }
@@ -143,7 +160,11 @@ export class BotQueue {
     /**
      * Schedule a recurring job.
      */
-    scheduleInterval(id: string, intervalMs: number, handler: () => void | Promise<void>): ScheduledJob {
+    scheduleInterval(
+        id: string,
+        intervalMs: number,
+        handler: () => void | Promise<void>
+    ): ScheduledJob {
         this.cancelScheduled(id);
 
         const job: ScheduledJob = {
@@ -154,11 +175,14 @@ export class BotQueue {
                     await handler();
                 } catch (err) {
                     if (this.options.onError) {
-                        this.options.onError(err instanceof Error ? err : new Error(String(err)), id);
+                        this.options.onError(
+                            err instanceof Error ? err : new Error(String(err)),
+                            id
+                        );
                     }
                 }
             }, intervalMs),
-            timeout: null
+            timeout: null,
         };
 
         this.scheduledJobs.set(id, job);
@@ -180,11 +204,14 @@ export class BotQueue {
                     await handler();
                 } catch (err) {
                     if (this.options.onError) {
-                        this.options.onError(err instanceof Error ? err : new Error(String(err)), id);
+                        this.options.onError(
+                            err instanceof Error ? err : new Error(String(err)),
+                            id
+                        );
                     }
                 }
                 this.scheduledJobs.delete(id);
-            }, delayMs)
+            }, delayMs),
         };
 
         this.scheduledJobs.set(id, job);
@@ -216,8 +243,18 @@ export class BotQueue {
     /**
      * Stop a running broadcast.
      */
-    stopBroadcast(): void {
-        this.isProcessing = false;
+    stopBroadcast(broadcastId?: string): void {
+        if (broadcastId) {
+            const job = this.activeBroadcasts.get(broadcastId);
+            if (job) {
+                job.cancelled = true;
+            }
+            return;
+        }
+
+        for (const job of this.activeBroadcasts.values()) {
+            job.cancelled = true;
+        }
     }
 
     /**
@@ -225,5 +262,10 @@ export class BotQueue {
      */
     get activeJobs(): number {
         return this.scheduledJobs.size;
+    }
+
+    /** Get count of active broadcast jobs. */
+    get activeBroadcastCount(): number {
+        return this.activeBroadcasts.size;
     }
 }

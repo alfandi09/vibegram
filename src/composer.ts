@@ -1,7 +1,10 @@
 import { Context } from './context';
 
 export type NextFunction = () => Promise<void>;
-export type Middleware<C extends Context = Context> = (ctx: C, next: NextFunction) => Promise<void> | void;
+export type Middleware<C extends Context = Context> = (
+    ctx: C,
+    next: NextFunction
+) => Promise<void> | void;
 
 /**
  * Composer is responsible for building and executing the middleware stack.
@@ -19,7 +22,7 @@ export class Composer<C extends Context> {
 
     /**
      * Register a middleware that triggers only when the message is a specific command (e.g. /start).
-     * Supports @botname suffix stripping and multi-command arrays.
+     * Supports command names suffixed with the bot username and multi-command arrays.
      */
     command(command: string | string[], ...fns: Middleware<C>[]): this {
         const commands = Array.isArray(command) ? command : [command];
@@ -75,7 +78,10 @@ export class Composer<C extends Context> {
 
         return this.use((ctx, next) => {
             // Search for text in regular messages, edited messages, and media captions.
-            const text = ctx.message?.text || (ctx.update as any).edited_message?.text || ctx.message?.caption;
+            const text =
+                ctx.message?.text ||
+                (ctx.update as any).edited_message?.text ||
+                ctx.message?.caption;
             if (!text) return next();
 
             for (const t of triggers) {

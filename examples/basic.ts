@@ -9,19 +9,19 @@ bot.use(async (ctx, next) => {
 });
 
 // /start command with inline keyboard
-bot.command('start', async (ctx) => {
+bot.command('start', async ctx => {
     const keyboard = Markup.inlineKeyboard([
         [Markup.button.callback('Send Image', 'send_pic')],
-        [Markup.button.url('Visit Website', 'https://telegram.org')]
+        [Markup.button.url('Visit Website', 'https://telegram.org')],
     ]);
-    await ctx.reply('Welcome! Choose an option below:', keyboard);
+    await ctx.reply('Welcome! Choose an option below:', { reply_markup: keyboard });
 });
 
 // Action handler for the "Send Image" button
-bot.action('send_pic', async (ctx) => {
+bot.action('send_pic', async ctx => {
     await ctx.answerCbQuery('Sending image...');
     await ctx.replyWithPhoto('https://picsum.photos/400', {
-        caption: 'Demo image from Picsum.'
+        caption: 'Demo image from Picsum.',
     });
 });
 

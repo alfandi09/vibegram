@@ -6,7 +6,30 @@ import { WebAppUtils } from './webapp';
 import { BotPlugin } from './plugin';
 import { InvalidTokenError } from './errors';
 
-export type UpdateType = 'message' | 'edited_message' | 'channel_post' | 'edited_channel_post' | 'inline_query' | 'chosen_inline_result' | 'callback_query' | 'shipping_query' | 'pre_checkout_query' | 'poll' | 'poll_answer' | 'my_chat_member' | 'chat_member' | 'chat_join_request' | 'chat_boost' | 'removed_chat_boost' | 'message_reaction' | 'message_reaction_count' | 'business_connection' | 'business_message' | 'edited_business_message' | 'deleted_business_messages' | 'purchased_paid_media';
+export type UpdateType =
+    | 'message'
+    | 'edited_message'
+    | 'channel_post'
+    | 'edited_channel_post'
+    | 'inline_query'
+    | 'chosen_inline_result'
+    | 'callback_query'
+    | 'shipping_query'
+    | 'pre_checkout_query'
+    | 'poll'
+    | 'poll_answer'
+    | 'my_chat_member'
+    | 'chat_member'
+    | 'chat_join_request'
+    | 'chat_boost'
+    | 'removed_chat_boost'
+    | 'message_reaction'
+    | 'message_reaction_count'
+    | 'business_connection'
+    | 'business_message'
+    | 'edited_business_message'
+    | 'deleted_business_messages'
+    | 'purchased_paid_media';
 
 export interface BotOptions {
     polling?: {
@@ -24,12 +47,46 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     private pollingOffset: number = 0;
     private _composedMiddleware: Middleware<any> | null = null;
     private _activeUpdates: number = 0;
-    private _stopResolve?: () => void;
+    private _pollingTask: Promise<void> | null = null;
+    private _updatesDrainedResolve?: () => void;
 
-    constructor(token: string, public options?: BotOptions) {
+    constructor(
+        token: string,
+        public options?: BotOptions
+    ) {
         super();
         if (!token) throw new Error('Telegram Bot token is required.');
         this.client = new TelegramClient(token);
+    }
+
+    override use(...fns: Middleware<C>[]): this {
+        super.use(...fns);
+        this._composedMiddleware = null;
+        return this;
+    }
+
+    override command(command: string | string[], ...fns: Middleware<C>[]): this {
+        super.command(command, ...fns);
+        this._composedMiddleware = null;
+        return this;
+    }
+
+    override on(updateType: string | string[], ...fns: Middleware<C>[]): this {
+        super.on(updateType, ...fns);
+        this._composedMiddleware = null;
+        return this;
+    }
+
+    override hears(trigger: string | RegExp | (string | RegExp)[], ...fns: Middleware<C>[]): this {
+        super.hears(trigger, ...fns);
+        this._composedMiddleware = null;
+        return this;
+    }
+
+    override action(trigger: string | RegExp | (string | RegExp)[], ...fns: Middleware<C>[]): this {
+        super.action(trigger, ...fns);
+        this._composedMiddleware = null;
+        return this;
     }
 
     /**
@@ -46,7 +103,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         // Validate the token and log bot identity before starting.
         let me: User;
         try {
-            me = await this.client.callApi('getMe') as User;
+            me = (await this.client.callApi('getMe')) as User;
         } catch {
             throw new InvalidTokenError();
         }
@@ -58,7 +115,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         this._registerSignals();
 
         this.isPolling = true;
-        this.pollingLoop();
+        this._pollingTask = this.pollingLoop().finally(() => {
+            this._pollingTask = null;
+        });
     }
 
     /**
@@ -71,9 +130,15 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         if (reason) console.log(`[VibeGram] Shutdown initiated: ${reason}`);
         this.isPolling = false;
 
+        if (this._pollingTask) {
+            await this._pollingTask;
+        }
+
         // Wait for all active update handlers to resolve.
         if (this._activeUpdates > 0) {
-            await new Promise<void>(resolve => { this._stopResolve = resolve; });
+            await new Promise<void>(resolve => {
+                this._updatesDrainedResolve = resolve;
+            });
         }
 
         console.log('[VibeGram] Bot stopped gracefully.');
@@ -101,18 +166,28 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
                 const updates: any[] = await this.client.callApi('getUpdates', params);
 
+                if (!this.isPolling) {
+                    break;
+                }
+
                 if (updates && updates.length > 0) {
                     for (const update of updates) {
+                        if (!this.isPolling) {
+                            break;
+                        }
                         this.pollingOffset = Math.max(this.pollingOffset, update.update_id + 1);
                         await this.handleUpdate(update);
                     }
                 }
             } catch (error) {
                 console.error('[VibeGram] Polling error:', error);
+                if (!this.isPolling) {
+                    break;
+                }
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
 
-            if (interval > 0) {
+            if (interval > 0 && this.isPolling) {
                 await new Promise(resolve => setTimeout(resolve, interval));
             }
         }
@@ -146,14 +221,14 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             if (this.errorHandler) {
                 await this.errorHandler(err, ctx);
             } else {
-                console.error('[VibeGram] Unhandled error while processing update:', err);
+                throw err;
             }
         } finally {
             this._activeUpdates--;
             // If stop() is waiting, resolve it when all in-flight updates are done.
-            if (!this.isPolling && this._activeUpdates === 0 && this._stopResolve) {
-                this._stopResolve();
-                this._stopResolve = undefined;
+            if (!this.isPolling && this._activeUpdates === 0 && this._updatesDrainedResolve) {
+                this._updatesDrainedResolve();
+                this._updatesDrainedResolve = undefined;
             }
         }
     }
@@ -180,22 +255,23 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                 }
             }
 
+            const update = req.body;
+
+            // Basic structural validation — must be an object with a numeric update_id.
+            if (!update || typeof update !== 'object' || typeof update.update_id !== 'number') {
+                res.statusCode = 400;
+                res.end('Bad Request: Invalid update object.');
+                return;
+            }
+
             try {
-                const update = req.body;
-
-                // Basic structural validation — must be an object with a numeric update_id.
-                if (!update || typeof update !== 'object' || typeof update.update_id !== 'number') {
-                    res.statusCode = 400;
-                    res.end('Bad Request: Invalid update object.');
-                    return;
-                }
-
                 await this.handleUpdate(update as Update);
-            } catch (e) {
-                console.error('[VibeGram] Webhook processing error:', e);
-            } finally {
                 res.statusCode = 200;
                 res.end('OK');
+            } catch (e) {
+                console.error('[VibeGram] Webhook processing error:', e);
+                res.statusCode = 500;
+                res.end('Internal Server Error');
             }
         };
     }
@@ -266,7 +342,10 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     /**
      * Set the list of bot commands shown in the Telegram menu.
      */
-    async setMyCommands(commands: { command: string; description: string }[], extra?: any): Promise<boolean> {
+    async setMyCommands(
+        commands: { command: string; description: string }[],
+        extra?: any
+    ): Promise<boolean> {
         return this.client.callApi('setMyCommands', { commands, ...extra });
     }
 
@@ -287,7 +366,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     /** @internal Register SIGINT/SIGTERM handlers for graceful shutdown. */
     private _registerSignals(): void {
         const handler = (signal: string) => {
-            this.stop(signal).then(() => process.exit(0)).catch(() => process.exit(1));
+            this.stop(signal)
+                .then(() => process.exit(0))
+                .catch(() => process.exit(1));
         };
         process.once('SIGINT', () => handler('SIGINT'));
         process.once('SIGTERM', () => handler('SIGTERM'));

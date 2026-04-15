@@ -1,4 +1,7 @@
 import * as crypto from 'crypto';
+import { WebAppValidationError } from './errors';
+
+const HASH_HEX_PATTERN = /^[0-9a-f]{64}$/i;
 
 export class WebAppUtils {
     /**
@@ -14,7 +17,16 @@ export class WebAppUtils {
         const urlParams = new URLSearchParams(initData);
 
         const hash = urlParams.get('hash');
-        if (!hash) throw new Error('Validation failed: Hash signature not found in initData.');
+        if (!hash) {
+            throw new WebAppValidationError(
+                'Validation failed: Hash signature not found in initData.'
+            );
+        }
+
+        if (!HASH_HEX_PATTERN.test(hash)) {
+            throw new WebAppValidationError('Validation failed: Hash signature format is invalid.');
+        }
+
         urlParams.delete('hash');
 
         // 1. Sort keys alphabetically per Telegram spec.
@@ -25,13 +37,21 @@ export class WebAppUtils {
         const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
 
         // 3. Compute and compare the hash signature.
-        const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+        const calculatedHash = crypto
+            .createHmac('sha256', secretKey)
+            .update(dataCheckString)
+            .digest('hex');
 
         // Constant-time comparison to prevent timing attacks.
         const hashBuffer = Buffer.from(hash, 'hex');
         const calculatedBuffer = Buffer.from(calculatedHash, 'hex');
-        if (hashBuffer.length !== calculatedBuffer.length || !crypto.timingSafeEqual(hashBuffer, calculatedBuffer)) {
-            throw new Error('WebApp data validation failed: Hash mismatch. Data may have been tampered.');
+        if (
+            hashBuffer.length !== calculatedBuffer.length ||
+            !crypto.timingSafeEqual(hashBuffer, calculatedBuffer)
+        ) {
+            throw new WebAppValidationError(
+                'WebApp data validation failed: Hash mismatch. Data may have been tampered.'
+            );
         }
 
         // Parse fields, attempting JSON deserialization for nested objects (e.g. "user").
@@ -44,15 +64,34 @@ export class WebAppUtils {
             }
         }
 
-        // 4. Prevent replay attacks by validating auth_date expiration.
-        if (result.auth_date) {
-            const authDate = parseInt(result.auth_date);
-            const now = Math.floor(Date.now() / 1000);
-            const maxAge = options?.maxAgeSeconds ?? 86400; // Default: 24 hours
+        // 4. Prevent replay attacks by validating auth_date presence and freshness.
+        const authDateRaw = result.auth_date;
+        if (authDateRaw === undefined || authDateRaw === null || authDateRaw === '') {
+            throw new WebAppValidationError(
+                'WebApp data validation failed: auth_date is required.'
+            );
+        }
 
-            if (now - authDate > maxAge) {
-                throw new Error('WebApp data expired: auth_date exceeds maximum allowed age (potential replay attack).');
-            }
+        const authDate = Number(authDateRaw);
+        if (!Number.isInteger(authDate) || authDate <= 0) {
+            throw new WebAppValidationError(
+                'WebApp data validation failed: auth_date must be a valid Unix timestamp.'
+            );
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const maxAge = options?.maxAgeSeconds ?? 86400; // Default: 24 hours
+
+        if (authDate > now + 30) {
+            throw new WebAppValidationError(
+                'WebApp data validation failed: auth_date is in the future.'
+            );
+        }
+
+        if (now - authDate > maxAge) {
+            throw new WebAppValidationError(
+                'WebApp data expired: auth_date exceeds maximum allowed age (potential replay attack).'
+            );
         }
 
         return result;

@@ -1,6 +1,5 @@
 import { Context } from './context';
 import { Middleware } from './composer';
-import { Markup } from './markup';
 
 /**
  * Menu item definition.
@@ -60,16 +59,43 @@ export class Menu {
 
     constructor(public readonly id: string) {}
 
+    private async showMenu(ctx: Context, menu: Menu): Promise<void> {
+        await ctx.answerCbQuery();
+        await ctx.editMessageReplyMarkup(await menu.render(ctx));
+    }
+
+    private findHandler(
+        callbackData: string
+    ): ((ctx: Context) => void | Promise<void>) | undefined {
+        const ownHandler = this.handlers.get(callbackData);
+        if (ownHandler) {
+            return ownHandler;
+        }
+
+        for (const submenu of this.submenus.values()) {
+            const nestedHandler = submenu.findHandler(callbackData);
+            if (nestedHandler) {
+                return nestedHandler;
+            }
+        }
+
+        return undefined;
+    }
+
     /**
      * Add a text button with a callback handler.
      */
-    text(label: string, handler: (ctx: Context) => void | Promise<void>, options?: { hide?: (ctx: Context) => boolean | Promise<boolean> }): this {
+    text(
+        label: string,
+        handler: (ctx: Context) => void | Promise<void>,
+        options?: { hide?: (ctx: Context) => boolean | Promise<boolean> }
+    ): this {
         const cbData = `menu:${this.id}:${this.rows.length}_${this.rows[this.currentRow].items.length}`;
         this.rows[this.currentRow].items.push({
             text: label,
             handler,
             callbackData: cbData,
-            hide: options?.hide
+            hide: options?.hide,
         });
         this.handlers.set(cbData, handler);
         return this;
@@ -81,7 +107,7 @@ export class Menu {
     url(label: string, url: string): this {
         this.rows[this.currentRow].items.push({
             text: label,
-            url
+            url,
         });
         return this;
     }
@@ -106,17 +132,14 @@ export class Menu {
         this.rows[this.currentRow].items.push({
             text: label,
             callbackData: cbData,
-            handler: async (ctx) => {
-                await ctx.answerCbQuery();
-                const keyboard = await parentMenu.render(ctx);
-                await ctx.client.callApi('editMessageReplyMarkup', {
-                    chat_id: ctx.chat?.id,
-                    message_id: ctx.update.callback_query?.message?.message_id,
-                    reply_markup: keyboard
-                });
-            }
+            handler: async ctx => {
+                await this.showMenu(ctx, parentMenu);
+            },
         });
-        this.handlers.set(cbData, this.rows[this.currentRow].items[this.rows[this.currentRow].items.length - 1].handler!);
+        this.handlers.set(
+            cbData,
+            this.rows[this.currentRow].items[this.rows[this.currentRow].items.length - 1].handler!
+        );
         return this;
     }
 
@@ -133,17 +156,14 @@ export class Menu {
         this.rows[this.currentRow].items.push({
             text: label,
             callbackData: cbData,
-            handler: async (ctx) => {
-                await ctx.answerCbQuery();
-                const keyboard = await child.render(ctx);
-                await ctx.client.callApi('editMessageReplyMarkup', {
-                    chat_id: ctx.chat?.id,
-                    message_id: ctx.update.callback_query?.message?.message_id,
-                    reply_markup: keyboard
-                });
-            }
+            handler: async ctx => {
+                await this.showMenu(ctx, child);
+            },
         });
-        this.handlers.set(cbData, this.rows[this.currentRow].items[this.rows[this.currentRow].items.length - 1].handler!);
+        this.handlers.set(
+            cbData,
+            this.rows[this.currentRow].items[this.rows[this.currentRow].items.length - 1].handler!
+        );
 
         return child;
     }
@@ -178,18 +198,11 @@ export class Menu {
     middleware(): Middleware<any> {
         return async (ctx, next) => {
             const cbData = ctx.update.callback_query?.data;
-            if (!cbData || !cbData.startsWith(`menu:${this.id}:`)) {
-                // Check sub-menus
-                for (const [, submenu] of this.submenus) {
-                    if (cbData && cbData.startsWith(`menu:${submenu.id}:`)) {
-                        const handler = submenu.handlers.get(cbData);
-                        if (handler) return handler(ctx);
-                    }
-                }
+            if (!cbData) {
                 return next();
             }
 
-            const handler = this.handlers.get(cbData);
+            const handler = this.findHandler(cbData);
             if (handler) {
                 return handler(ctx);
             }
