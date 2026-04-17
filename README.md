@@ -9,46 +9,45 @@
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" />
   <img alt="Bot API" src="https://img.shields.io/badge/Bot%20API-v9.6-blue?style=for-the-badge" />
   <img alt="Lightweight" src="https://img.shields.io/badge/Footprint-Lightweight-success?style=for-the-badge" />
-  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img alt="Node.js version" src="https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=for-the-badge&logo=node.js&logoColor=white" />
 </p>
 
 ---
 
-VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. It provides a complete toolkit for building production-ready bots — including middleware pipelines, state management, pagination, rate limiting, WebApp security, and webhook adapters — all in a single package with minimal memory footprint.
+VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. It gives you the core pieces for production bots in one package: middleware, typed context helpers, state management, pagination, rate limiting, WebApp validation, and webhook adapters.
 
-## ✨ Key Features
+## Key Features
 
-- 🚀 **Middleware Pipeline** — Koa.js-style async middleware with onion-model routing
-- 📨 **Broad Bot API v9.6 Support** — 60+ Context methods and typed support for major current-era API objects
-- 🗂️ **Scene & Wizard** — Multi-room navigation and step-by-step conversation flows
-- 📦 **Auto Pagination** — Turn any array into paginated inline keyboards automatically
-- 🛡️ **Built-in Security** — Rate limiter, HMAC-SHA256 WebApp validation, webhook secret tokens
-- ⌨️ **Keyboard Builder** — Declarative inline, reply, and force-reply keyboard construction
-- 💡 **Smart Argument Parser** — Automatic `/command arg1 arg2` parsing via `ctx.command.args`
-- 🌐 **I18n Support** — Built-in internationalization middleware with locale auto-detection
-- 📊 **Observability** — Request logger with timing metrics and update type classification
-- 🔭 **Lifecycle Hooks** — Observe bot updates, webhook failures, and outbound API retries without monkey-patching
-- 🧪 **Verified Release Pipeline** — 190+ passing tests, source/test/example typecheck, smoke-tested examples, dual CJS/ESM build, and docs generation
+- **Middleware Pipeline** - Koa.js-style async middleware with onion-model routing
+- **Broad Bot API v9.6 Support** - 60+ context methods and typed support for major Telegram Bot API objects
+- **Scene, Wizard, and Conversation Flows** - Multiple approaches for structured multi-step interactions
+- **Auto Pagination and Menu Utilities** - Build interactive inline UIs with less boilerplate
+- **Built-in Security** - Rate limiting, HMAC-SHA256 WebApp validation, and webhook secret tokens
+- **Keyboard Builder** - Declarative inline, reply, and force-reply keyboard construction
+- **Smart Command Parsing** - Parse `/command arg1 arg2` via `ctx.command.args`
+- **I18n Support** - Locale-aware middleware with auto-detection
+- **Observability Hooks** - Request logging, timing metrics, and lifecycle hooks for retries and failures
+- **Verified Release Pipeline** - Automated tests, typechecks, example validation, dual CJS/ESM build, and docs generation
 
 ---
 
-## 🧬 Why VibeGram?
+## Why VibeGram?
 
 | Feature               | VibeGram | grammY | Telegraf |
 | --------------------- | :------: | :----: | :------: |
-| Built-in Pagination   |    ✅    |   ❌   |    ❌    |
-| Broadcast Queue       |    ✅    |   ❌   |    ❌    |
-| API Response Cache    |    ✅    |   ❌   |    ❌    |
-| Job Scheduler         |    ✅    |   ❌   |    ❌    |
-| Conversation Engine   |    ✅    |   ✅   |    ✅    |
-| Menu Builder          |    ✅    |   ✅   |    ❌    |
-| Inline Result Builder |    ✅    |   ❌   |    ❌    |
-| TypeScript Native     |    ✅    |   ✅   |    ✅    |
-| Plugin System         |    ✅    |   ✅   |    🟡    |
+| Built-in Pagination   |   Yes    |   No   |    No    |
+| Broadcast Queue       |   Yes    |   No   |    No    |
+| API Response Cache    |   Yes    |   No   |    No    |
+| Job Scheduler         |   Yes    |   No   |    No    |
+| Conversation Engine   |   Yes    |  Yes   |   Yes    |
+| Menu Builder          |   Yes    |  Yes   |    No    |
+| Inline Result Builder |   Yes    |   No   |    No    |
+| TypeScript Native     |   Yes    |  Yes   |   Yes    |
+| Plugin System         |   Yes    |  Yes   | Partial  |
 
 ---
 
-## 📦 Installation
+## Installation
 
 Requires [Node.js](https://nodejs.org/) v18.0 or later.
 
@@ -58,7 +57,7 @@ npm install vibegram
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ```typescript
 import { Bot } from 'vibegram';
@@ -74,12 +73,12 @@ bot.hears(/hello|hi/i, async ctx => {
     await ctx.reply('Hey! How can I help you?');
 });
 
-bot.launch().then(() => console.log('Bot is running 🚀'));
+bot.launch().then(() => console.log('Bot is running'));
 ```
 
 ---
 
-## 🧩 Feature Highlights
+## Feature Highlights
 
 ### Pagination
 
@@ -159,25 +158,25 @@ const data = bot.validateWebAppData(initData, { maxAgeSeconds: 300 });
 
 ### Webhook with Framework Adapters
 
-VibeGram ships with first-class adapters for all major Node.js frameworks:
+VibeGram ships with first-class adapters for major Node.js frameworks:
 
 ```typescript
 import { createExpressMiddleware, createFastifyPlugin, createHonoHandler } from 'vibegram';
-
-// ─── Express ─────────────────────────────────────────────────────────────────
 import express from 'express';
+
+// Express
 const app = express();
 app.use(express.json());
 app.post('/webhook', createExpressMiddleware(bot, { secretToken: 'my-secret' }));
 
-// ─── Fastify ──────────────────────────────────────────────────────────────────
+// Fastify
 fastify.register(createFastifyPlugin(bot, { path: '/webhook', secretToken: 'my-secret' }));
 
-// ─── Hono ─────────────────────────────────────────────────────────────────────
+// Hono
 app.post('/webhook', createHonoHandler(bot, { secretToken: 'my-secret' }));
 ```
 
-### Grid Keyboard — `Markup.grid()`
+### Grid Keyboard - `Markup.grid()`
 
 ```typescript
 import { Markup } from 'vibegram';
@@ -197,12 +196,12 @@ await ctx.reply('Choose a day:', {
 });
 ```
 
-### RegExp Capture Groups — `ctx.match`
+### RegExp Capture Groups - `ctx.match`
 
 ```typescript
 // ctx.match is populated automatically for RegExp triggers
 bot.hears(/^order (\d+)$/, async ctx => {
-    const orderId = ctx.match![1]; // ✅ capture group available
+    const orderId = ctx.match![1];
     await ctx.reply(`Looking up order #${orderId}...`);
 });
 
@@ -214,9 +213,9 @@ bot.action(/^item_(\d+)$/, async ctx => {
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-Full documentation is available in the `docs/` directory and can be served locally with VitePress:
+Full documentation lives in `docs/` and can be served locally with VitePress:
 
 ```bash
 npm run docs:dev
@@ -230,14 +229,15 @@ npm run docs:api
 
 Generated API HTML is written to `generated/api/`.
 
-Operational references:
+Maintainer references:
 
 - `docs/core/observability.md`
+- `meta/README.md`
 - `meta/RELEASE_CHECKLIST.md`
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
