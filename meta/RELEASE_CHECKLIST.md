@@ -28,7 +28,7 @@ npm run pack:dry
 ## Release Quality Checks
 
 1. Confirm examples still pass smoke tests and typecheck.
-2. Confirm `QUALITY_BASELINE.md` reflects the current metrics if they changed materially.
+2. Confirm `meta/QUALITY_BASELINE.md` reflects the current metrics if they changed materially.
 3. Confirm generated package contents include `dist/cjs`, `dist/esm`, and `dist/types`.
 4. Confirm docs and README do not overclaim unsupported API coverage.
 

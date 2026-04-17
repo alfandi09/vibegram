@@ -211,8 +211,8 @@ Additional compatibility improvements:
 
 - Repository claims were adjusted from “full coverage” wording to more accurate “broad support” wording.
 - `docs/api/context.md` now documents modern helper additions.
-- `QUALITY_BASELINE.md` now records parity-sync and monetization-sync outcomes.
-- `TELEGRAM_API_SYNC_CHECKLIST.md` remains as a structured backlog and traceability artifact.
+- `meta/QUALITY_BASELINE.md` now records parity-sync and monetization-sync outcomes.
+- `meta/TELEGRAM_API_SYNC_CHECKLIST.md` remains as a structured backlog and traceability artifact.
 
 ## Quantitative Before vs After
 

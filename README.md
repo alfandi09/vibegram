@@ -233,7 +233,7 @@ Generated API HTML is written to `generated/api/`.
 Operational references:
 
 - `docs/core/observability.md`
-- `RELEASE_CHECKLIST.md`
+- `meta/RELEASE_CHECKLIST.md`
 
 ---
 
