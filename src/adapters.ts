@@ -37,6 +37,28 @@ export interface AdapterOptions {
     maxBodySizeBytes?: number;
 }
 
+function assertAdapterOptions(options?: AdapterOptions): void {
+    if (!options) return;
+
+    if (options.secretToken !== undefined) {
+        if (typeof options.secretToken !== 'string' || options.secretToken.trim() === '') {
+            throw new TypeError('Adapter option "secretToken" must be a non-empty string.');
+        }
+    }
+
+    if (options.path !== undefined) {
+        if (typeof options.path !== 'string' || !options.path.startsWith('/')) {
+            throw new TypeError('Adapter option "path" must be a string that starts with "/".');
+        }
+    }
+
+    if (options.maxBodySizeBytes !== undefined) {
+        if (!Number.isInteger(options.maxBodySizeBytes) || options.maxBodySizeBytes <= 0) {
+            throw new TypeError('Adapter option "maxBodySizeBytes" must be a positive integer.');
+        }
+    }
+}
+
 function matchesSecretToken(actual: unknown, expected?: string): boolean {
     if (!expected) return true;
     if (typeof actual !== 'string') return false;
@@ -70,6 +92,7 @@ function hasJsonContentType(contentType: unknown): boolean {
  * app.post('/webhook', createExpressMiddleware(bot, { secretToken: 'abc' }));
  */
 export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
+    assertAdapterOptions(options);
     const handler = bot.webhookCallback(options?.secretToken);
     return async (req: any, res: any, next: any) => {
         try {
@@ -92,6 +115,7 @@ export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
  * await fastify.register(createFastifyPlugin(bot), { secretToken: 'abc', path: '/webhook' });
  */
 export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
+    assertAdapterOptions(options);
     const path = options?.path || '/webhook';
     const secretToken = options?.secretToken;
 
@@ -132,6 +156,7 @@ export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
  * app.post('/webhook', createHonoHandler(bot, { secretToken: 'abc' }));
  */
 export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
+    assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
     return async (c: any) => {
@@ -173,6 +198,7 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
  * http.createServer(createNativeHandler(bot, { secretToken: 'abc' })).listen(3000);
  */
 export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
+    assertAdapterOptions(options);
     const secretToken = options?.secretToken;
     const maxBodySizeBytes = options?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
 
@@ -254,6 +280,7 @@ export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
  * router.post('/webhook', createKoaMiddleware(bot, { secretToken: 'abc' }));
  */
 export function createKoaMiddleware(bot: Bot, options?: AdapterOptions) {
+    assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
     return async (ctx: any, next: any) => {

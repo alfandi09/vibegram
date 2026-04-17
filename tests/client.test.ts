@@ -68,4 +68,50 @@ describe('TelegramClient', () => {
             })
         );
     });
+
+    it('emits request lifecycle hooks on success and retry', async () => {
+        const hooks = {
+            onRequestStart: vi.fn(),
+            onRequestSuccess: vi.fn(),
+            onRequestError: vi.fn(),
+            onRateLimitRetry: vi.fn(),
+        };
+        const client = new TelegramClient('test-token', { hooks });
+        (client as any).http = {
+            post: vi
+                .fn()
+                .mockRejectedValueOnce({
+                    response: {
+                        status: 429,
+                        data: { parameters: { retry_after: 1 } },
+                    },
+                })
+                .mockResolvedValueOnce({ data: { ok: true, result: { ok: true } } }),
+        };
+
+        vi.spyOn(global, 'setTimeout').mockImplementation(((fn: any) => {
+            fn();
+            return 0;
+        }) as any);
+
+        await expect(client.callApi('sendMessage')).resolves.toEqual({ ok: true });
+
+        expect(hooks.onRequestStart).toHaveBeenCalledTimes(2);
+        expect(hooks.onRateLimitRetry).toHaveBeenCalledTimes(1);
+        expect(hooks.onRequestSuccess).toHaveBeenCalledTimes(1);
+        expect(hooks.onRequestError).not.toHaveBeenCalled();
+    });
+
+    it('emits request error hook on terminal failures', async () => {
+        const hooks = {
+            onRequestError: vi.fn(),
+        };
+        const client = new TelegramClient('test-token', { hooks });
+        (client as any).http = {
+            post: vi.fn().mockRejectedValue(new Error('socket hang up')),
+        };
+
+        await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
+        expect(hooks.onRequestError).toHaveBeenCalledTimes(1);
+    });
 });

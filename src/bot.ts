@@ -1,4 +1,4 @@
-import { TelegramClient } from './client';
+import { TelegramClient, TelegramClientHooks } from './client';
 import { Composer, Middleware } from './composer';
 import { Context } from './context';
 import { Update, User } from './types';
@@ -29,9 +29,10 @@ export type UpdateType =
     | 'business_message'
     | 'edited_business_message'
     | 'deleted_business_messages'
-    | 'purchased_paid_media';
+    | 'purchased_paid_media'
+    | 'managed_bot';
 
-export interface BotOptions {
+export interface BotOptions<C extends Context = Context> {
     polling?: {
         interval?: number;
         limit?: number;
@@ -39,9 +40,52 @@ export interface BotOptions {
         /** Specify the types of updates you want to receive. If not set, all types are received. */
         allowed_updates?: UpdateType[];
     };
+    observability?: {
+        client?: TelegramClientHooks;
+        hooks?: BotHooks<C>;
+    };
+}
+
+export interface BotLaunchEvent {
+    botInfo: User;
+}
+
+export interface BotStopEvent {
+    reason?: string;
+}
+
+export interface BotUpdateEvent<C extends Context = Context> {
+    ctx: C;
+    update: Update;
+    updateType: string;
+    durationMs?: number;
+}
+
+export interface BotUpdateErrorEvent<C extends Context = Context> extends BotUpdateEvent<C> {
+    error: unknown;
+}
+
+export interface BotPollingErrorEvent {
+    error: unknown;
+}
+
+export interface BotWebhookErrorEvent {
+    error: unknown;
+    update?: unknown;
+}
+
+export interface BotHooks<C extends Context = Context> {
+    onLaunch?: (event: BotLaunchEvent) => void | Promise<void>;
+    onStop?: (event: BotStopEvent) => void | Promise<void>;
+    onUpdateStart?: (event: BotUpdateEvent<C>) => void | Promise<void>;
+    onUpdateSuccess?: (event: BotUpdateEvent<C>) => void | Promise<void>;
+    onUpdateError?: (event: BotUpdateErrorEvent<C>) => void | Promise<void>;
+    onPollingError?: (event: BotPollingErrorEvent) => void | Promise<void>;
+    onWebhookError?: (event: BotWebhookErrorEvent) => void | Promise<void>;
 }
 
 export class Bot<C extends Context = Context> extends Composer<C> {
+    private static readonly NOOP_NEXT = async () => {};
     public client: TelegramClient;
     private isPolling: boolean = false;
     private pollingOffset: number = 0;
@@ -52,11 +96,21 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
     constructor(
         token: string,
-        public options?: BotOptions
+        public options?: BotOptions<C>
     ) {
         super();
         if (!token) throw new Error('Telegram Bot token is required.');
-        this.client = new TelegramClient(token);
+        this.client = new TelegramClient(token, { hooks: this.options?.observability?.client });
+    }
+
+    private async invokeHook(name: string, hook?: () => void | Promise<void>): Promise<void> {
+        if (!hook) return;
+
+        try {
+            await hook();
+        } catch (error) {
+            console.error(`[VibeGram] ${name} hook error:`, error);
+        }
     }
 
     override use(...fns: Middleware<C>[]): this {
@@ -110,6 +164,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
         console.log(`[VibeGram] @${me.username} (${me.id}) started. Polling for updates...`);
         options?.onStart?.(me);
+        await this.invokeHook('onLaunch', () =>
+            this.options?.observability?.hooks?.onLaunch?.({ botInfo: me })
+        );
 
         // Auto-register process signal handlers for clean shutdown.
         this._registerSignals();
@@ -142,6 +199,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         }
 
         console.log('[VibeGram] Bot stopped gracefully.');
+        await this.invokeHook('onStop', () =>
+            this.options?.observability?.hooks?.onStop?.({ reason })
+        );
     }
 
     /**
@@ -180,6 +240,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                     }
                 }
             } catch (error) {
+                await this.invokeHook('onPollingError', () =>
+                    this.options?.observability?.hooks?.onPollingError?.({ error })
+                );
                 console.error('[VibeGram] Polling error:', error);
                 if (!this.isPolling) {
                     break;
@@ -208,6 +271,8 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      */
     public async handleUpdate(update: Update): Promise<void> {
         const ctx = new Context(update, this.client) as C;
+        const updateType = ctx.updateType;
+        const start = Date.now();
 
         // Use the cached middleware chain — avoids recomposing on every update.
         if (!this._composedMiddleware) {
@@ -216,8 +281,28 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
         this._activeUpdates++;
         try {
-            await this._composedMiddleware(ctx, async () => {});
+            await this.invokeHook('onUpdateStart', () =>
+                this.options?.observability?.hooks?.onUpdateStart?.({ ctx, update, updateType })
+            );
+            await this._composedMiddleware(ctx, Bot.NOOP_NEXT);
+            await this.invokeHook('onUpdateSuccess', () =>
+                this.options?.observability?.hooks?.onUpdateSuccess?.({
+                    ctx,
+                    update,
+                    updateType,
+                    durationMs: Date.now() - start,
+                })
+            );
         } catch (err) {
+            await this.invokeHook('onUpdateError', () =>
+                this.options?.observability?.hooks?.onUpdateError?.({
+                    ctx,
+                    update,
+                    updateType,
+                    durationMs: Date.now() - start,
+                    error: err,
+                })
+            );
             if (this.errorHandler) {
                 await this.errorHandler(err, ctx);
             } else {
@@ -269,6 +354,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                 res.statusCode = 200;
                 res.end('OK');
             } catch (e) {
+                await this.invokeHook('onWebhookError', () =>
+                    this.options?.observability?.hooks?.onWebhookError?.({ error: e, update })
+                );
                 console.error('[VibeGram] Webhook processing error:', e);
                 res.statusCode = 500;
                 res.end('Internal Server Error');

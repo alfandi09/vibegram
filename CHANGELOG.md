@@ -5,6 +5,36 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.0.0] - 2026-04-17
+
+### Added
+
+- Broad current-era Telegram Bot API support for reactions, business flows, checklists, paid media, gifts, Stars, suggested posts, and modern service messages.
+- Lifecycle observability hooks for bot launch/stop, update processing, webhook failures, polling failures, and outbound Telegram client requests.
+- Smoke-tested import-safe examples for the main public workflows.
+- Release engineering and quality documentation, including parity reports, release checklist, and quality baselines.
+
+### Changed
+
+- `Context` helper coverage now includes media editing, live-location editing, game sending, business-account gifts and Star balances, gift delivery to chats, and suggested-post moderation flows.
+- Core type coverage was expanded significantly across modern Telegram objects and service-message families, replacing most remaining `any` placeholders.
+- Docs and repository messaging now describe support level more accurately as broad Bot API support rather than exhaustive parity.
+- CI, build, docs, examples, and coverage validation are now part of the stable release workflow.
+
+### Fixed
+
+- Conversation wait-state validation, webhook response handling, polling shutdown, middleware invalidation, and multiple runtime edge cases uncovered during the audit and stabilization phases.
+- Inline message editing, business connection propagation, adapter safety checks, and queue cancellation behavior.
+- Logger sanitization, WebApp validation, adapter input validation, and several production-hardening issues.
+
+### Security
+
+- Added stronger request boundary validation, safer logging defaults, webhook hardening, runtime dependency auditing, and automated dependency update policy.
+
+### Tests
+
+- Test suite expanded to 200 passing tests with coverage, smoke-tested examples, and regression coverage for modern Telegram API families.
+
 ## [1.0.0-rc.2] - 2026-04-15
 
 ### Fixed
@@ -108,13 +138,3 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 - GitHub Actions CI (Node 18/20/22 matrix + auto-publish)
 - `examples/redis-session.ts` and `examples/full-bot.ts`
 - Updated `package.json`, `README.md`
-
----
-
-## [1.0.0] — Initial Release
-
-- Initial public release of VibeGram
-- Core Bot framework with Composer middleware pipeline
-- Scene, Wizard, Session, I18n, Markup, RateLimit, WebApp validation
-- Long-polling and webhook support
-- Full Bot API v9.x type definitions

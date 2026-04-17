@@ -81,6 +81,14 @@ describe('createExpressMiddleware()', () => {
 
         expect(res.statusCode).toBe(400);
     });
+
+    it('throws on invalid adapter options', () => {
+        const bot = makeMockBot();
+
+        expect(() => createExpressMiddleware(bot, { secretToken: '' })).toThrow('secretToken');
+        expect(() => createFastifyPlugin(bot, { path: 'webhook' })).toThrow('path');
+        expect(() => createNativeHandler(bot, { maxBodySizeBytes: 0 })).toThrow('maxBodySizeBytes');
+    });
 });
 
 // ---------------------------------------------------------------------------

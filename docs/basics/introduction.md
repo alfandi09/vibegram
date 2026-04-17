@@ -76,12 +76,12 @@ Bot Instance
 
 VibeGram targets **Telegram Bot API v9.6** (April 2026) with:
 
-- **60+ Context methods** spanning messages, media, admin, forums, Star gifts, stickers, and verification
-- **32 TypeScript interfaces** covering all major API objects
+- **60+ Context methods** spanning messages, media, admin, forums, business flows, checklists, stickers, and verification
+- Strong TypeScript coverage for major API objects, with ongoing sync work for the newest Telegram feature families
 - **5 Framework adapters** for webhook deployment
 - Support for Forum Topics, Telegram Stars, Managed Bots, Draft Messages, and more
 
-## What's New in v1.0.0-rc.2
+## What's New in v1.0.0
 
 - ✅ `Markup.grid()` — instant grid keyboards from flat arrays
 - ✅ `Markup.button.login()` and `Markup.button.copy()` (Bot API 9.6)
@@ -91,6 +91,6 @@ VibeGram targets **Telegram Bot API v9.6** (April 2026) with:
 - ✅ `ctx.match` auto-injection for RegExp hears/action
 - ✅ Graceful shutdown with in-flight update tracking
 - ✅ Conversation auto-cleanup to prevent memory leaks
-- ✅ 150+ unit tests covering core runtime, adapters, and security utilities
+- ✅ 190+ unit tests covering core runtime, adapters, security utilities, and example smoke tests
 
 See the full [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md) for details.

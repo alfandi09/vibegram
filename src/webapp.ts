@@ -14,6 +14,23 @@ export class WebAppUtils {
      * @returns Parsed and verified initial data object.
      */
     static validate(token: string, initData: string, options?: { maxAgeSeconds?: number }): any {
+        if (typeof token !== 'string' || token.trim() === '') {
+            throw new WebAppValidationError('Validation failed: Bot token is required.');
+        }
+
+        if (typeof initData !== 'string' || initData.trim() === '') {
+            throw new WebAppValidationError(
+                'Validation failed: initData must be a non-empty query string.'
+            );
+        }
+
+        const maxAge = options?.maxAgeSeconds ?? 86400;
+        if (!Number.isInteger(maxAge) || maxAge <= 0) {
+            throw new WebAppValidationError(
+                'Validation failed: maxAgeSeconds must be a positive integer.'
+            );
+        }
+
         const urlParams = new URLSearchParams(initData);
 
         const hash = urlParams.get('hash');
@@ -80,7 +97,6 @@ export class WebAppUtils {
         }
 
         const now = Math.floor(Date.now() / 1000);
-        const maxAge = options?.maxAgeSeconds ?? 86400; // Default: 24 hours
 
         if (authDate > now + 30) {
             throw new WebAppValidationError(

@@ -19,7 +19,7 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 ## ✨ Key Features
 
 - 🚀 **Middleware Pipeline** — Koa.js-style async middleware with onion-model routing
-- 📨 **Full Bot API v9.6 Coverage** — 60+ Context methods, typed interfaces for major API objects
+- 📨 **Broad Bot API v9.6 Support** — 60+ Context methods and typed support for major current-era API objects
 - 🗂️ **Scene & Wizard** — Multi-room navigation and step-by-step conversation flows
 - 📦 **Auto Pagination** — Turn any array into paginated inline keyboards automatically
 - 🛡️ **Built-in Security** — Rate limiter, HMAC-SHA256 WebApp validation, webhook secret tokens
@@ -27,7 +27,8 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 - 💡 **Smart Argument Parser** — Automatic `/command arg1 arg2` parsing via `ctx.command.args`
 - 🌐 **I18n Support** — Built-in internationalization middleware with locale auto-detection
 - 📊 **Observability** — Request logger with timing metrics and update type classification
-- 🧪 **Verified Release Pipeline** — 150+ passing tests, source/test/example typecheck, dual CJS/ESM build, and docs generation
+- 🔭 **Lifecycle Hooks** — Observe bot updates, webhook failures, and outbound API retries without monkey-patching
+- 🧪 **Verified Release Pipeline** — 190+ passing tests, source/test/example typecheck, smoke-tested examples, dual CJS/ESM build, and docs generation
 
 ---
 
@@ -228,6 +229,11 @@ npm run docs:api
 ```
 
 Generated API HTML is written to `generated/api/`.
+
+Operational references:
+
+- `docs/core/observability.md`
+- `RELEASE_CHECKLIST.md`
 
 ---
 

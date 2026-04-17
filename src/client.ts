@@ -7,12 +7,46 @@ import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 
+export interface TelegramClientRequestEvent {
+    method: string;
+    attempt: number;
+    isMultipart: boolean;
+}
+
+export interface TelegramClientSuccessEvent extends TelegramClientRequestEvent {
+    durationMs: number;
+}
+
+export interface TelegramClientErrorEvent extends TelegramClientRequestEvent {
+    durationMs: number;
+    error: unknown;
+    statusCode?: number;
+}
+
+export interface TelegramClientRetryEvent extends TelegramClientErrorEvent {
+    retryAfter: number;
+    remainingRetries: number;
+}
+
+export interface TelegramClientHooks {
+    onRequestStart?: (event: TelegramClientRequestEvent) => void | Promise<void>;
+    onRequestSuccess?: (event: TelegramClientSuccessEvent) => void | Promise<void>;
+    onRequestError?: (event: TelegramClientErrorEvent) => void | Promise<void>;
+    onRateLimitRetry?: (event: TelegramClientRetryEvent) => void | Promise<void>;
+}
+
+export interface TelegramClientOptions {
+    hooks?: TelegramClientHooks;
+}
+
 export class TelegramClient {
     private http: AxiosInstance;
     private readonly _token: string;
+    private readonly hooks?: TelegramClientHooks;
 
-    constructor(token: string) {
+    constructor(token: string, options?: TelegramClientOptions) {
         this._token = token;
+        this.hooks = options?.hooks;
         // Keep-Alive agent prevents repeated TCP/TLS handshakes in high-traffic environments.
         const agent = new https.Agent({ keepAlive: true, maxSockets: 100 });
 
@@ -31,18 +65,36 @@ export class TelegramClient {
         return this._token;
     }
 
+    private async invokeHook(name: string, hook?: () => void | Promise<void>): Promise<void> {
+        if (!hook) return;
+
+        try {
+            await hook();
+        } catch (error) {
+            console.error(`[VibeGram] TelegramClient ${name} hook error:`, error);
+        }
+    }
+
     /**
      * Calls a Telegram Bot API method with automatic multipart/form-data delegation
      * and recursive rate-limit retry handling.
      */
-    async callApi(method: string, data?: any, retries: number = 3): Promise<any> {
+    async callApi(
+        method: string,
+        data?: any,
+        retries: number = 3,
+        attempt: number = 1
+    ): Promise<any> {
+        const start = Date.now();
+        let isMultipart = false;
+
         try {
             let reqData = data;
             let headers = {};
 
             if (data && typeof data === 'object') {
                 // Detect Buffer or Stream values that require multipart encoding.
-                const isMultipart = Object.values(data).some(
+                isMultipart = Object.values(data).some(
                     val => Buffer.isBuffer(val) || (val && typeof (val as any).pipe === 'function')
                 );
 
@@ -67,6 +119,10 @@ export class TelegramClient {
                 }
             }
 
+            await this.invokeHook('onRequestStart', () =>
+                this.hooks?.onRequestStart?.({ method, attempt, isMultipart })
+            );
+
             const response = await this.http.post(method, reqData, { headers });
             const result = response.data;
             if (!result.ok) {
@@ -76,6 +132,16 @@ export class TelegramClient {
                     result.description
                 );
             }
+
+            await this.invokeHook('onRequestSuccess', () =>
+                this.hooks?.onRequestSuccess?.({
+                    method,
+                    attempt,
+                    isMultipart,
+                    durationMs: Date.now() - start,
+                })
+            );
+
             return result.result;
         } catch (error: any) {
             if (
@@ -83,34 +149,83 @@ export class TelegramClient {
                 error instanceof NetworkError ||
                 error instanceof RateLimitError
             ) {
+                await this.invokeHook('onRequestError', () =>
+                    this.hooks?.onRequestError?.({
+                        method,
+                        attempt,
+                        isMultipart,
+                        durationMs: Date.now() - start,
+                        error,
+                    })
+                );
                 throw error;
             }
 
             // Handle Rate Limiting (429 Too Many Requests) with auto-retry.
             if (error.response && error.response.status === 429 && retries > 0) {
                 const retryAfter = error.response.data?.parameters?.retry_after || 1;
+                await this.invokeHook('onRateLimitRetry', () =>
+                    this.hooks?.onRateLimitRetry?.({
+                        method,
+                        attempt,
+                        isMultipart,
+                        durationMs: Date.now() - start,
+                        error,
+                        statusCode: 429,
+                        retryAfter,
+                        remainingRetries: retries,
+                    })
+                );
                 console.warn(`[Rate Limit] Telegram quota exceeded. Retrying in ${retryAfter}s...`);
                 await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-                return this.callApi(method, data, retries - 1);
+                return this.callApi(method, data, retries - 1, attempt + 1);
             }
 
             if (error.response && error.response.data) {
                 const apiError = error.response.data;
+                const typedError =
+                    error.response.status === 429
+                        ? new RateLimitError(apiError.parameters?.retry_after || 1)
+                        : new TelegramApiError(
+                              `Telegram request failed: [${apiError.error_code}] ${apiError.description}`,
+                              apiError.error_code,
+                              apiError.description
+                          );
+
+                await this.invokeHook('onRequestError', () =>
+                    this.hooks?.onRequestError?.({
+                        method,
+                        attempt,
+                        isMultipart,
+                        durationMs: Date.now() - start,
+                        error: typedError,
+                        statusCode: error.response.status,
+                    })
+                );
+
                 if (error.response.status === 429) {
-                    throw new RateLimitError(apiError.parameters?.retry_after || 1);
+                    throw typedError;
                 }
 
-                throw new TelegramApiError(
-                    `Telegram request failed: [${apiError.error_code}] ${apiError.description}`,
-                    apiError.error_code,
-                    apiError.description
-                );
+                throw typedError;
             }
 
-            throw new NetworkError(
+            const networkError = new NetworkError(
                 `Network Error: ${error.message}`,
                 error instanceof Error ? error : undefined
             );
+
+            await this.invokeHook('onRequestError', () =>
+                this.hooks?.onRequestError?.({
+                    method,
+                    attempt,
+                    isMultipart,
+                    durationMs: Date.now() - start,
+                    error: networkError,
+                })
+            );
+
+            throw networkError;
         }
     }
 

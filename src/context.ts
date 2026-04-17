@@ -14,7 +14,15 @@ import {
     ExtraPromoteMember,
     ExtraInviteLink,
     ReplyParameters,
-    PollOption,
+    InputPollOption,
+    InputChecklist,
+    InputChecklistTask,
+    LinkPreviewOptions,
+    GiftInfo,
+    Gifts,
+    OwnedGifts,
+    StarAmount,
+    StarTransactions,
 } from './types';
 import * as crypto from 'crypto';
 
@@ -23,6 +31,7 @@ import * as crypto from 'crypto';
  * It encapsulates the current Update and provides shortcuts to Telegram API methods.
  */
 export class Context {
+    private static readonly NO_VALUE = Symbol('context:no-value');
     public readonly update: Update;
     public readonly client: TelegramClient;
     public session?: any; // Injected by session() middleware
@@ -57,6 +66,12 @@ export class Context {
      */
     public match?: RegExpMatchArray | null;
 
+    private _cachedMessage: Message | typeof Context.NO_VALUE = Context.NO_VALUE;
+    private _cachedChat: Chat | typeof Context.NO_VALUE = Context.NO_VALUE;
+    private _cachedFrom: User | typeof Context.NO_VALUE = Context.NO_VALUE;
+    private _cachedBusinessConnectionId: string | typeof Context.NO_VALUE = Context.NO_VALUE;
+    private _cachedUpdateType: string | typeof Context.NO_VALUE = Context.NO_VALUE;
+
     constructor(update: Update, client: TelegramClient) {
         this.update = update;
         this.client = client;
@@ -66,53 +81,93 @@ export class Context {
      * Getter for the Message object (if available in this update)
      */
     get message() {
-        return (
-            this.update.message ||
-            this.update.edited_message ||
-            this.update.channel_post ||
-            this.update.edited_channel_post ||
-            this.update.business_message ||
-            this.update.edited_business_message
-        );
+        if (this._cachedMessage === Context.NO_VALUE) {
+            this._cachedMessage =
+                this.update.message ||
+                this.update.edited_message ||
+                this.update.channel_post ||
+                this.update.edited_channel_post ||
+                this.update.business_message ||
+                this.update.edited_business_message ||
+                Context.NO_VALUE;
+        }
+
+        return this._cachedMessage === Context.NO_VALUE ? undefined : this._cachedMessage;
     }
 
     /**
      * Getter for the specific chat where this update happened
      */
     get chat() {
-        return (
-            this.message?.chat ||
-            this.update.callback_query?.message?.chat ||
-            this.update.my_chat_member?.chat ||
-            this.update.chat_member?.chat ||
-            this.update.chat_join_request?.chat ||
-            this.update.chat_boost?.chat ||
-            this.update.removed_chat_boost?.chat
-        );
+        if (this._cachedChat === Context.NO_VALUE) {
+            this._cachedChat =
+                this.message?.chat ||
+                this.update.callback_query?.message?.chat ||
+                this.update.my_chat_member?.chat ||
+                this.update.chat_member?.chat ||
+                this.update.chat_join_request?.chat ||
+                this.update.chat_boost?.chat ||
+                this.update.removed_chat_boost?.chat ||
+                this.update.deleted_business_messages?.chat ||
+                this.update.message_reaction?.chat ||
+                this.update.message_reaction_count?.chat ||
+                Context.NO_VALUE;
+        }
+
+        return this._cachedChat === Context.NO_VALUE ? undefined : this._cachedChat;
     }
 
     /**
      * Getter for the user who triggered this update
      */
     get from() {
-        return (
-            this.message?.from ||
-            this.update.callback_query?.from ||
-            this.update.inline_query?.from ||
-            this.update.chosen_inline_result?.from ||
-            this.update.my_chat_member?.from ||
-            this.update.chat_member?.from ||
-            this.update.chat_join_request?.from ||
-            this.update.shipping_query?.from ||
-            this.update.pre_checkout_query?.from
-        );
+        if (this._cachedFrom === Context.NO_VALUE) {
+            this._cachedFrom =
+                this.message?.from ||
+                this.update.callback_query?.from ||
+                this.update.inline_query?.from ||
+                this.update.chosen_inline_result?.from ||
+                this.update.my_chat_member?.from ||
+                this.update.chat_member?.from ||
+                this.update.chat_join_request?.from ||
+                this.update.shipping_query?.from ||
+                this.update.pre_checkout_query?.from ||
+                this.update.business_connection?.user ||
+                this.update.message_reaction?.user ||
+                this.update.purchased_paid_media?.from ||
+                Context.NO_VALUE;
+        }
+
+        return this._cachedFrom === Context.NO_VALUE ? undefined : this._cachedFrom;
     }
 
     /**
      * Getter for Business Connection ID (Native Business Mode API)
      */
     get businessConnectionId() {
-        return this.update.business_connection?.id || (this.message as any)?.business_connection_id;
+        if (this._cachedBusinessConnectionId === Context.NO_VALUE) {
+            this._cachedBusinessConnectionId =
+                this.update.business_connection?.id ||
+                this.update.deleted_business_messages?.business_connection_id ||
+                this.message?.business_connection_id ||
+                Context.NO_VALUE;
+        }
+
+        return this._cachedBusinessConnectionId === Context.NO_VALUE
+            ? undefined
+            : this._cachedBusinessConnectionId;
+    }
+
+    /**
+     * Cached primary update type, excluding update_id.
+     */
+    get updateType() {
+        if (this._cachedUpdateType === Context.NO_VALUE) {
+            const updateType = Object.keys(this.update).find(key => key !== 'update_id');
+            this._cachedUpdateType = updateType || Context.NO_VALUE;
+        }
+
+        return this._cachedUpdateType === Context.NO_VALUE ? 'event' : this._cachedUpdateType;
     }
 
     private getEditTarget() {
@@ -310,14 +365,19 @@ export class Context {
     /**
      * Interactive Shortcut: Poll / Quiz
      */
-    async replyWithPoll(question: string, options: Array<{ text: string }>, extra?: ExtraPoll) {
+    async replyWithPoll(question: string, options: InputPollOption[], extra?: ExtraPoll) {
         if (!this.chat) throw new Error('Cannot send poll: Chat ID is not available');
+        const pollExtra =
+            extra?.correct_option_id !== undefined && !extra.correct_option_ids
+                ? { ...extra, correct_option_ids: [extra.correct_option_id] }
+                : extra;
+
         return this.client.callApi('sendPoll', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             question,
             options,
-            ...extra,
+            ...pollExtra,
         });
     }
 
@@ -331,6 +391,19 @@ export class Context {
             business_connection_id: this.businessConnectionId,
             latitude,
             longitude,
+            ...extra,
+        });
+    }
+
+    /**
+     * Interactive Shortcut: Game
+     */
+    async replyWithGame(gameShortName: string, extra?: ExtraReplyMessage) {
+        if (!this.chat) throw new Error('Cannot send game: Chat ID is not available');
+        return this.client.callApi('sendGame', {
+            chat_id: this.chat.id,
+            business_connection_id: this.businessConnectionId,
+            game_short_name: gameShortName,
             ...extra,
         });
     }
@@ -411,6 +484,55 @@ export class Context {
     }
 
     /**
+     * Edit message media.
+     */
+    async editMessageMedia(media: any, extra?: { reply_markup?: any }) {
+        const target = this.getEditTarget();
+        return this.client.callApi('editMessageMedia', {
+            business_connection_id: this.businessConnectionId,
+            ...target,
+            media,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit live location.
+     */
+    async editMessageLiveLocation(
+        latitude: number,
+        longitude: number,
+        extra?: {
+            horizontal_accuracy?: number;
+            heading?: number;
+            proximity_alert_radius?: number;
+            reply_markup?: any;
+            live_period?: number;
+        }
+    ) {
+        const target = this.getEditTarget();
+        return this.client.callApi('editMessageLiveLocation', {
+            business_connection_id: this.businessConnectionId,
+            ...target,
+            latitude,
+            longitude,
+            ...extra,
+        });
+    }
+
+    /**
+     * Stop a live location message.
+     */
+    async stopMessageLiveLocation(extra?: { reply_markup?: any }) {
+        const target = this.getEditTarget();
+        return this.client.callApi('stopMessageLiveLocation', {
+            business_connection_id: this.businessConnectionId,
+            ...target,
+            ...extra,
+        });
+    }
+
+    /**
      * Delete Message
      */
     async deleteMessage(messageId?: number) {
@@ -439,6 +561,7 @@ export class Context {
         if (!this.chat) throw new Error('Cannot send invoice: Chat ID is not available');
         return this.client.callApi('sendInvoice', {
             chat_id: this.chat.id,
+            business_connection_id: this.businessConnectionId,
             title,
             description,
             payload,
@@ -868,7 +991,7 @@ export class Context {
     /**
      * Get the list of gifts that can be sent by the bot.
      */
-    async getAvailableGifts(): Promise<any> {
+    async getAvailableGifts(): Promise<Gifts> {
         return this.client.callApi('getAvailableGifts');
     }
 
@@ -878,9 +1001,30 @@ export class Context {
     async sendGift(
         userId: number,
         giftId: string,
-        extra?: { text?: string; text_parse_mode?: string; text_entities?: any[] }
+        extra?: {
+            pay_for_upgrade?: boolean;
+            text?: string;
+            text_parse_mode?: string;
+            text_entities?: any[];
+        }
     ) {
         return this.client.callApi('sendGift', { user_id: userId, gift_id: giftId, ...extra });
+    }
+
+    /**
+     * Send a gift to a channel or chat target.
+     */
+    async sendGiftToChat(
+        chatId: number | string,
+        giftId: string,
+        extra?: {
+            pay_for_upgrade?: boolean;
+            text?: string;
+            text_parse_mode?: string;
+            text_entities?: any[];
+        }
+    ): Promise<boolean> {
+        return this.client.callApi('sendGift', { chat_id: chatId, gift_id: giftId, ...extra });
     }
 
     /**
@@ -888,9 +1032,15 @@ export class Context {
      */
     async getUserGifts(extra?: {
         user_id?: number;
+        exclude_unlimited?: boolean;
+        exclude_limited_upgradable?: boolean;
+        exclude_limited_non_upgradable?: boolean;
+        exclude_from_blockchain?: boolean;
+        exclude_unique?: boolean;
+        sort_by_price?: boolean;
         offset?: string;
         limit?: number;
-    }): Promise<any> {
+    }): Promise<OwnedGifts> {
         return this.client.callApi('getUserGifts', extra);
     }
 
@@ -922,8 +1072,15 @@ export class Context {
     /**
      * Get the number of Telegram Stars owned by the bot.
      */
-    async getStarBalance(): Promise<any> {
-        return this.client.callApi('getStarBalance');
+    async getMyStarBalance(): Promise<StarAmount> {
+        return this.client.callApi('getMyStarBalance');
+    }
+
+    /**
+     * @deprecated Use getMyStarBalance() instead.
+     */
+    async getStarBalance(): Promise<StarAmount> {
+        return this.getMyStarBalance();
     }
 
     /**
@@ -939,8 +1096,84 @@ export class Context {
     /**
      * Get a list of Telegram Star transactions for this bot.
      */
-    async getStarTransactions(extra?: { offset?: number; limit?: number }): Promise<any> {
+    async getStarTransactions(extra?: {
+        offset?: number;
+        limit?: number;
+    }): Promise<StarTransactions> {
         return this.client.callApi('getStarTransactions', extra);
+    }
+
+    /**
+     * Get gifts owned by a managed business account.
+     */
+    async getBusinessAccountGifts(
+        businessConnectionId: string,
+        extra?: {
+            exclude_unsaved?: boolean;
+            exclude_saved?: boolean;
+            exclude_unlimited?: boolean;
+            exclude_limited_upgradable?: boolean;
+            exclude_limited_non_upgradable?: boolean;
+            exclude_unique?: boolean;
+            exclude_from_blockchain?: boolean;
+            sort_by_price?: boolean;
+            offset?: string;
+            limit?: number;
+        }
+    ): Promise<OwnedGifts> {
+        return this.client.callApi('getBusinessAccountGifts', {
+            business_connection_id: businessConnectionId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Get Telegram Stars balance of a managed business account.
+     */
+    async getBusinessAccountStarBalance(businessConnectionId: string): Promise<StarAmount> {
+        return this.client.callApi('getBusinessAccountStarBalance', {
+            business_connection_id: businessConnectionId,
+        });
+    }
+
+    /**
+     * Transfer Stars from a managed business account to the bot balance.
+     */
+    async transferBusinessAccountStars(
+        businessConnectionId: string,
+        starCount: number
+    ): Promise<boolean> {
+        return this.client.callApi('transferBusinessAccountStars', {
+            business_connection_id: businessConnectionId,
+            star_count: starCount,
+        });
+    }
+
+    /**
+     * Approve a suggested post in a direct messages chat.
+     */
+    async approveSuggestedPost(
+        messageId: number,
+        extra?: { send_date?: number }
+    ): Promise<boolean> {
+        if (!this.chat) throw new Error('Cannot approve suggested post: Chat ID is not available');
+        return this.client.callApi('approveSuggestedPost', {
+            chat_id: this.chat.id,
+            message_id: messageId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Decline a suggested post in a direct messages chat.
+     */
+    async declineSuggestedPost(messageId: number, extra?: { comment?: string }): Promise<boolean> {
+        if (!this.chat) throw new Error('Cannot decline suggested post: Chat ID is not available');
+        return this.client.callApi('declineSuggestedPost', {
+            chat_id: this.chat.id,
+            message_id: messageId,
+            ...extra,
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1114,17 +1347,36 @@ export class Context {
     /**
      * Send a checklist message (Bot API 9.6).
      */
+    async replyWithChecklist(checklist: InputChecklist, extra?: ExtraReplyMessage): Promise<any>;
     async replyWithChecklist(
         title: string,
-        tasks: { text: string; text_parse_mode?: string }[],
+        tasks: InputChecklistTask[],
         extra?: ExtraReplyMessage
+    ): Promise<any>;
+    async replyWithChecklist(
+        checklistOrTitle: InputChecklist | string,
+        tasksOrExtra?: InputChecklistTask[] | ExtraReplyMessage,
+        maybeExtra?: ExtraReplyMessage
     ) {
         if (!this.chat) throw new Error('Cannot send checklist: Chat ID is not available');
+
+        const checklist: InputChecklist =
+            typeof checklistOrTitle === 'string'
+                ? {
+                      title: checklistOrTitle,
+                      tasks: (tasksOrExtra as InputChecklistTask[]) ?? [],
+                  }
+                : checklistOrTitle;
+
+        const extra =
+            typeof checklistOrTitle === 'string'
+                ? maybeExtra
+                : (tasksOrExtra as ExtraReplyMessage | undefined);
+
         return this.client.callApi('sendChecklist', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
-            title,
-            tasks,
+            checklist,
             ...extra,
         });
     }

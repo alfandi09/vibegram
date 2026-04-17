@@ -3,6 +3,10 @@ import { Middleware } from './composer';
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u001F\u007F-\u009F]+/g;
 const DEFAULT_MAX_CONTENT_LENGTH = 120;
+const DEFAULT_REDACT_PATTERNS = [
+    /\b\d{6,}:[A-Za-z0-9_-]{20,}\b/g,
+    /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+];
 
 export interface LoggerOptions {
     /**
@@ -16,10 +20,38 @@ export interface LoggerOptions {
     redactContent?: boolean;
     /** Maximum number of characters retained from user-controlled content. */
     maxContentLength?: number;
+    /** Additional patterns to redact from user-controlled content before logging. */
+    redactPatterns?: RegExp[];
 }
 
-function sanitizeLogValue(value: string, maxLength: number): string {
-    const sanitized = value.replace(CONTROL_CHARS_REGEX, ' ').replace(/\s+/g, ' ').trim();
+function assertLoggerOptions(options?: LoggerOptions): RegExp[] {
+    if (options?.maxContentLength !== undefined) {
+        if (!Number.isInteger(options.maxContentLength) || options.maxContentLength <= 0) {
+            throw new TypeError('Logger option "maxContentLength" must be a positive integer.');
+        }
+    }
+
+    if (options?.redactPatterns !== undefined && !Array.isArray(options.redactPatterns)) {
+        throw new TypeError('Logger option "redactPatterns" must be an array of RegExp values.');
+    }
+
+    const customPatterns = options?.redactPatterns ?? [];
+    for (const pattern of customPatterns) {
+        if (!(pattern instanceof RegExp)) {
+            throw new TypeError('Logger option "redactPatterns" must contain only RegExp values.');
+        }
+    }
+
+    return [...DEFAULT_REDACT_PATTERNS, ...customPatterns];
+}
+
+function sanitizeLogValue(value: string, maxLength: number, redactPatterns: RegExp[]): string {
+    let sanitized = value.replace(CONTROL_CHARS_REGEX, ' ').replace(/\s+/g, ' ').trim();
+
+    for (const pattern of redactPatterns) {
+        sanitized = sanitized.replace(pattern, '[REDACTED]');
+    }
+
     if (sanitized.length <= maxLength) {
         return sanitized;
     }
@@ -32,6 +64,8 @@ function sanitizeLogValue(value: string, maxLength: number): string {
  * Records the update type, sender identity, message content, and processing latency.
  */
 export function logger(options?: LoggerOptions): Middleware<any> {
+    const redactPatterns = assertLoggerOptions(options);
+
     return async (ctx: Context, next: () => Promise<void>) => {
         const start = Date.now();
         const maxContentLength = options?.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
@@ -48,7 +82,7 @@ export function logger(options?: LoggerOptions): Middleware<any> {
             : new Date().toISOString().replace('T', ' ').substring(0, 19); // "2026-04-06 01:25:30"
 
         // Extract the primary update type key (e.g. "message", "callback_query").
-        const updateType = Object.keys(ctx.update).filter(k => k !== 'update_id')[0] || 'event';
+        const updateType = ctx.updateType;
 
         // Resolve the sender's display identity.
         let identity = 'Anonymous';
@@ -56,7 +90,8 @@ export function logger(options?: LoggerOptions): Middleware<any> {
             const rawIdentity = ctx.from.username
                 ? `@${ctx.from.username}`
                 : ctx.from.first_name || String(ctx.from.id);
-            identity = sanitizeLogValue(rawIdentity, maxContentLength) || 'Anonymous';
+            identity =
+                sanitizeLogValue(rawIdentity, maxContentLength, redactPatterns) || 'Anonymous';
         }
 
         // Extract a human-readable content summary from the update.
@@ -66,11 +101,11 @@ export function logger(options?: LoggerOptions): Middleware<any> {
         if (msg?.text) {
             content = options?.redactContent
                 ? '[Redacted Message]'
-                : `"${sanitizeLogValue(msg.text, maxContentLength)}"`;
+                : `"${sanitizeLogValue(msg.text, maxContentLength, redactPatterns)}"`;
         } else if (ctx.update.callback_query?.data) {
             content = options?.redactContent
                 ? '[Button: REDACTED]'
-                : `[Button: ${sanitizeLogValue(ctx.update.callback_query.data, maxContentLength)}]`;
+                : `[Button: ${sanitizeLogValue(ctx.update.callback_query.data, maxContentLength, redactPatterns)}]`;
         } else if (msg?.photo) content = `[Photo]`;
         else if (msg?.document) content = `[Document]`;
         else if (msg?.contact) content = `[Contact]`;

@@ -29,7 +29,8 @@ export class Stage<C extends Context = Context> {
      */
     middleware(): Middleware<C> {
         return async (ctx, next) => {
-            if (!ctx.session) throw new Error('Stage middleware requires session() to be registered before it.');
+            if (!ctx.session)
+                throw new Error('Stage middleware requires session() to be registered before it.');
 
             // Inject scene control helpers into the context.
             ctx.scene = {
@@ -42,7 +43,7 @@ export class Stage<C extends Context = Context> {
                 leave: () => {
                     delete ctx.session.__scene_id;
                     delete ctx.session.__scene_state;
-                }
+                },
             };
 
             const currentSceneId = ctx.session.__scene_id;
@@ -59,8 +60,10 @@ export class Stage<C extends Context = Context> {
                         await next();
                     });
 
-                    // If the Scene handled the update internally, stop propagation.
+                    // Stop propagation either way: the Scene already handled the
+                    // update or explicitly delegated to the global chain above.
                     if (handledLocally) return;
+                    return;
                 }
             }
 

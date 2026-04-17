@@ -100,4 +100,16 @@ describe('WebAppUtils.validate()', () => {
         const result = WebAppUtils.validate(TOKEN, initData);
         expect(result.user).toEqual(user);
     });
+
+    it('throws when token, initData, or maxAgeSeconds are invalid', () => {
+        const initData = generateInitData({ user: 'data' }, TOKEN);
+
+        expect(() => WebAppUtils.validate('', initData)).toThrow('Bot token is required');
+        expect(() => WebAppUtils.validate(TOKEN, '')).toThrow(
+            'initData must be a non-empty query string'
+        );
+        expect(() => WebAppUtils.validate(TOKEN, initData, { maxAgeSeconds: 0 })).toThrow(
+            'maxAgeSeconds must be a positive integer'
+        );
+    });
 });

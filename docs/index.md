@@ -4,7 +4,7 @@ layout: home
 hero:
     name: 'VibeGram'
     text: 'Telegram Bot Framework'
-    tagline: 'Modern, production-ready framework for building Telegram bots in TypeScript. Full Bot API v9.6 coverage · 20 built-in modules · 5 framework adapters.'
+    tagline: 'Modern, production-ready framework for building Telegram bots in TypeScript. Broad Bot API v9.6 support · 20 built-in modules · 5 framework adapters.'
     image:
         src: /logo.png
         alt: VibeGram Logo
@@ -21,8 +21,8 @@ hero:
 
 features:
     - icon: 🚀
-      title: Full Bot API v9.6 Coverage
-      details: 60+ Context methods spanning messages, media, admin, forums, Star gifts, stickers, verification, and more — with full TypeScript types.
+      title: Broad Bot API v9.6 Support
+      details: 60+ Context methods spanning messages, media, admin, forums, business flows, checklists, stickers, and more — with strong TypeScript coverage for major API objects.
     - icon: ⚡
       title: Async Middleware Pipeline
       details: Koa.js-style onion-model routing with cached middleware compilation. Compose chains, filters, and plugins with zero overhead.

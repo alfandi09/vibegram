@@ -1,6 +1,6 @@
 {
     "name": "vibegram",
-    "version": "1.0.0-rc.2",
+    "version": "1.0.0",
     "description": "Modern, production-ready Telegram Bot Framework for Node.js — Full Bot API v9.6 coverage",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
