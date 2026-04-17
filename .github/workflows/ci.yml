@@ -74,7 +74,7 @@ jobs:
                   test -f dist/types/index.d.ts && echo "Types generated successfully"
 
             - name: Upload dist artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: dist
                   path: dist/
