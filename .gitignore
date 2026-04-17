@@ -2,6 +2,8 @@ node_modules/
 dist/
 generated/
 coverage/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 .env
 .DS_Store
 *.log

@@ -126,6 +126,38 @@ describe('Conversation', () => {
         await new Promise(r => setTimeout(r, 40));
         expect(conv.isActive(ctx)).toBe(false);
     });
+
+    it('refreshes defaultTimeout when the user stays active', async () => {
+        const conv = new Conversation({ defaultTimeout: 80 });
+        const answers: string[] = [];
+
+        conv.define('two-step', async (_ctx, c) => {
+            answers.push(await c.waitForText());
+            answers.push(await c.waitForText());
+        });
+
+        const { ctx: initCtx } = createContext(makeMessageUpdate('start'));
+        await conv.enter('two-step', initCtx);
+        await new Promise(r => setTimeout(r, 0));
+
+        await new Promise(r => setTimeout(r, 20));
+        const { ctx: firstReplyCtx } = createContext(makeMessageUpdate('first'));
+        await conv.middleware()(firstReplyCtx, async () => {
+            throw new Error('next() should not run for an active conversation');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        await new Promise(r => setTimeout(r, 40));
+        expect(conv.isActive(initCtx)).toBe(true);
+
+        const { ctx: secondReplyCtx } = createContext(makeMessageUpdate('second'));
+        await conv.middleware()(secondReplyCtx, async () => {
+            throw new Error('next() should not run for an active conversation');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(answers).toEqual(['first', 'second']);
+    });
 });
 
 // ---------------------------------------------------------------------------

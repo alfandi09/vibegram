@@ -12,6 +12,10 @@ export type Middleware<C extends Context = Context> = (
 export class Composer<C extends Context> {
     private middlewares: Middleware<C>[] = [];
 
+    private static cloneTriggerRegex(regex: RegExp): RegExp {
+        return new RegExp(regex.source, regex.flags);
+    }
+
     /**
      * Register a general middleware.
      */
@@ -91,7 +95,7 @@ export class Composer<C extends Context> {
                         return Composer.compose(fns)(ctx, next);
                     }
                 } else if (t instanceof RegExp) {
-                    const match = t.exec(text);
+                    const match = Composer.cloneTriggerRegex(t).exec(text);
                     if (match) {
                         ctx.match = match; // Inject full RegExpMatchArray with capture groups.
                         return Composer.compose(fns)(ctx, next);
@@ -122,7 +126,7 @@ export class Composer<C extends Context> {
                         return Composer.compose(fns)(ctx, next);
                     }
                 } else if (t instanceof RegExp) {
-                    const match = t.exec(data);
+                    const match = Composer.cloneTriggerRegex(t).exec(data);
                     if (match) {
                         ctx.match = match; // Inject capture groups for pattern-based button routing.
                         return Composer.compose(fns)(ctx, next);

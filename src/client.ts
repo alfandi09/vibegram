@@ -7,6 +7,145 @@ import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 
+type UploadValue = Buffer | NodeJS.ReadableStream;
+
+interface MultipartAttachment {
+    name: string;
+    value: UploadValue;
+}
+
+function isUploadValue(value: unknown): value is UploadValue {
+    return (
+        Buffer.isBuffer(value) ||
+        (typeof value === 'object' &&
+            value !== null &&
+            typeof (value as NodeJS.ReadableStream).pipe === 'function')
+    );
+}
+
+function hasUploadValue(value: unknown, visited: WeakSet<object> = new WeakSet()): boolean {
+    if (isUploadValue(value)) return true;
+    if (typeof value !== 'object' || value === null) return false;
+    if (visited.has(value)) return false;
+
+    visited.add(value);
+
+    if (Array.isArray(value)) {
+        return value.some(item => hasUploadValue(item, visited));
+    }
+
+    return Object.values(value).some(item => hasUploadValue(item, visited));
+}
+
+function makeAttachmentName(path: Array<string | number>, usedNames: Set<string>): string {
+    const baseName =
+        path
+            .map(segment => String(segment).replace(/[^a-zA-Z0-9_]+/g, '_'))
+            .filter(Boolean)
+            .join('_') || 'file';
+
+    let candidate = baseName;
+    let suffix = 1;
+    while (usedNames.has(candidate)) {
+        candidate = `${baseName}_${suffix}`;
+        suffix++;
+    }
+
+    usedNames.add(candidate);
+    return candidate;
+}
+
+function serializeMultipartValue(
+    value: unknown,
+    path: Array<string | number>,
+    attachments: MultipartAttachment[],
+    usedNames: Set<string>,
+    visited: WeakSet<object> = new WeakSet()
+): unknown {
+    if (isUploadValue(value)) {
+        const attachmentName = makeAttachmentName(path, usedNames);
+        attachments.push({ name: attachmentName, value });
+        return `attach://${attachmentName}`;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item, index) =>
+            serializeMultipartValue(item, [...path, index], attachments, usedNames, visited)
+        );
+    }
+
+    if (typeof value !== 'object' || value === null) {
+        return value;
+    }
+
+    if (visited.has(value)) {
+        throw new TypeError('Telegram API payload contains a circular reference.');
+    }
+
+    visited.add(value);
+
+    const serialized: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+        if (nestedValue !== undefined) {
+            serialized[key] = serializeMultipartValue(
+                nestedValue,
+                [...path, key],
+                attachments,
+                usedNames,
+                visited
+            );
+        }
+    }
+
+    visited.delete(value);
+    return serialized;
+}
+
+function prepareRequestPayload(data: unknown): {
+    reqData: unknown;
+    headers: Record<string, string>;
+    isMultipart: boolean;
+} {
+    if (typeof data !== 'object' || data === null || !hasUploadValue(data)) {
+        return {
+            reqData: data,
+            headers: {},
+            isMultipart: false,
+        };
+    }
+
+    const form = new FormData();
+    const attachments: MultipartAttachment[] = [];
+    const usedNames = new Set<string>();
+
+    for (const [key, value] of Object.entries(data)) {
+        if (value === undefined) continue;
+
+        if (isUploadValue(value)) {
+            form.append(key, value);
+            continue;
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            const serialized = serializeMultipartValue(value, [key], attachments, usedNames);
+            form.append(key, JSON.stringify(serialized));
+            continue;
+        }
+
+        form.append(key, value);
+    }
+
+    for (const attachment of attachments) {
+        form.append(attachment.name, attachment.value);
+    }
+
+    return {
+        reqData: form,
+        headers: form.getHeaders(),
+        isMultipart: true,
+    };
+}
+
 export interface TelegramClientRequestEvent {
     method: string;
     attempt: number;
@@ -86,39 +225,9 @@ export class TelegramClient {
         attempt: number = 1
     ): Promise<any> {
         const start = Date.now();
-        let isMultipart = false;
+        const { reqData, headers, isMultipart } = prepareRequestPayload(data);
 
         try {
-            let reqData = data;
-            let headers = {};
-
-            if (data && typeof data === 'object') {
-                // Detect Buffer or Stream values that require multipart encoding.
-                isMultipart = Object.values(data).some(
-                    val => Buffer.isBuffer(val) || (val && typeof (val as any).pipe === 'function')
-                );
-
-                if (isMultipart) {
-                    const form = new FormData();
-                    for (const key of Object.keys(data)) {
-                        if (data[key] !== undefined) {
-                            let value = data[key];
-                            // Serialize plain objects to JSON to prevent implicit "[object Object]" casting.
-                            if (
-                                typeof value === 'object' &&
-                                !Buffer.isBuffer(value) &&
-                                !(value && typeof (value as any).pipe === 'function')
-                            ) {
-                                value = JSON.stringify(value);
-                            }
-                            form.append(key, value);
-                        }
-                    }
-                    reqData = form;
-                    headers = form.getHeaders();
-                }
-            }
-
             await this.invokeHook('onRequestStart', () =>
                 this.hooks?.onRequestStart?.({ method, attempt, isMultipart })
             );

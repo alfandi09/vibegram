@@ -26,6 +26,10 @@ import {
 } from './types';
 import * as crypto from 'crypto';
 
+function createScopedClient(client: TelegramClient): TelegramClient {
+    return Object.create(client) as TelegramClient;
+}
+
 /**
  * Context object is passed to all middlewares and handlers.
  * It encapsulates the current Update and provides shortcuts to Telegram API methods.
@@ -74,7 +78,9 @@ export class Context {
 
     constructor(update: Update, client: TelegramClient) {
         this.update = update;
-        this.client = client;
+        // Each update gets its own request-scoped client facade so middleware can
+        // safely decorate ctx.client without leaking state into concurrent updates.
+        this.client = createScopedClient(client);
     }
 
     /**

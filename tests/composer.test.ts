@@ -169,6 +169,22 @@ describe('Composer.hears()', () => {
         expect(handler).toHaveBeenCalledTimes(2);
     });
 
+    it('reuses global regex triggers safely across multiple updates', async () => {
+        const composer = new Composer<Context>();
+        const handler = vi.fn();
+        const trigger = /^order (\d+)$/g;
+        composer.hears(trigger, handler);
+
+        const { ctx: firstCtx } = createContext(makeMessageUpdate('order 42'));
+        const { ctx: secondCtx } = createContext(makeMessageUpdate('order 99'));
+
+        await runComposer(composer, firstCtx);
+        await runComposer(composer, secondCtx);
+
+        expect(handler).toHaveBeenCalledTimes(2);
+        expect(secondCtx.match?.[1]).toBe('99');
+    });
+
     it('skips update when no text is present', async () => {
         const composer = new Composer<Context>();
         const handler = vi.fn();
@@ -205,6 +221,22 @@ describe('Composer.action()', () => {
         await runComposer(composer, ctx);
 
         expect(capturedCtx!.match![1]).toBe('99');
+    });
+
+    it('reuses sticky regex action triggers safely across multiple updates', async () => {
+        const composer = new Composer<Context>();
+        const handler = vi.fn();
+        const trigger = /^item_(\d+)$/y;
+        composer.action(trigger, handler);
+
+        const { ctx: firstCtx } = createContext(makeCallbackQueryUpdate('item_1'));
+        const { ctx: secondCtx } = createContext(makeCallbackQueryUpdate('item_2'));
+
+        await runComposer(composer, firstCtx);
+        await runComposer(composer, secondCtx);
+
+        expect(handler).toHaveBeenCalledTimes(2);
+        expect(secondCtx.match?.[1]).toBe('2');
     });
 
     it('does NOT trigger on non-callback_query update', async () => {

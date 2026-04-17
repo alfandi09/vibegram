@@ -233,6 +233,29 @@ export class Conversation {
         this.defaultTimeout = options.defaultTimeout ?? 5 * 60 * 1000; // 5 minutes default
     }
 
+    private createCleanupTimer(chatKey: string): ReturnType<typeof setTimeout> {
+        const cleanupTimer = setTimeout(() => {
+            if (this.active.has(chatKey)) {
+                this.active.get(chatKey)?.conv._cancel();
+                this.active.delete(chatKey);
+            }
+        }, this.defaultTimeout);
+
+        cleanupTimer.unref?.();
+        return cleanupTimer;
+    }
+
+    private refreshCleanupTimer(chatKey: string): void {
+        const entry = this.active.get(chatKey);
+        if (!entry) return;
+
+        if (entry.cleanupTimer) {
+            clearTimeout(entry.cleanupTimer);
+        }
+
+        entry.cleanupTimer = this.createCleanupTimer(chatKey);
+    }
+
     /**
      * Define a named conversation flow.
      */
@@ -266,17 +289,9 @@ export class Conversation {
             entry.waitTimer = waitTimer;
         });
 
+        this.active.set(chatKey, { conv });
         // Auto-cleanup: cancel and remove the conversation if it idles beyond the timeout.
-        const cleanupTimer = setTimeout(() => {
-            if (this.active.has(chatKey)) {
-                this.active.get(chatKey)?.conv._cancel();
-                this.active.delete(chatKey);
-            }
-        }, this.defaultTimeout);
-        // unref() allows Node.js to exit cleanly without waiting for this timer.
-        cleanupTimer.unref();
-
-        this.active.set(chatKey, { conv, cleanupTimer });
+        this.refreshCleanupTimer(chatKey);
 
         // Run the handler asynchronously — it will suspend at each conv.waitFor*() call.
         handler(ctx, conv)
@@ -293,9 +308,11 @@ export class Conversation {
             })
             .finally(() => {
                 const entry = this.active.get(chatKey);
-                clearTimeout(cleanupTimer);
                 if (entry?.waitTimer) {
                     clearTimeout(entry.waitTimer);
+                }
+                if (entry?.cleanupTimer) {
+                    clearTimeout(entry.cleanupTimer);
                 }
                 this.active.delete(chatKey);
             });
@@ -334,6 +351,8 @@ export class Conversation {
             const entry = this.active.get(chatKey);
 
             if (entry) {
+                // User activity should extend the inactivity timeout window.
+                this.refreshCleanupTimer(chatKey);
                 // Deliver the update to the waiting conversation
                 const consumed = await entry.conv._deliver(ctx, entry.waitOptions);
                 if (consumed) return; // Don't pass to other handlers

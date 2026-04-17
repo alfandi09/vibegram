@@ -114,4 +114,66 @@ describe('TelegramClient', () => {
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
         expect(hooks.onRequestError).toHaveBeenCalledTimes(1);
     });
+
+    it('serializes nested uploads using attach syntax for media groups', async () => {
+        const client = new TelegramClient('test-token');
+        const postSpy = vi.fn().mockResolvedValue({
+            data: { ok: true, result: [] },
+        });
+        (client as any).http = { post: postSpy };
+
+        await client.callApi('sendMediaGroup', {
+            chat_id: 99,
+            media: [
+                {
+                    type: 'photo',
+                    media: Buffer.from('photo-a'),
+                    caption: 'First',
+                },
+                {
+                    type: 'video',
+                    media: Buffer.from('video-b'),
+                    thumbnail: Buffer.from('thumb-b'),
+                },
+            ],
+        });
+
+        const [, form, config] = postSpy.mock.calls[0];
+        const payload = form.getBuffer().toString('utf8');
+
+        expect(config.headers).toEqual(expect.objectContaining({ 'content-type': expect.any(String) }));
+        expect(payload).toContain('"media":"attach://media_0_media"');
+        expect(payload).toContain('"media":"attach://media_1_media"');
+        expect(payload).toContain('"thumbnail":"attach://media_1_thumbnail"');
+        expect(payload).toContain('name="media_0_media"');
+        expect(payload).toContain('name="media_1_media"');
+        expect(payload).toContain('name="media_1_thumbnail"');
+    });
+
+    it('serializes nested sticker uploads using attach syntax for InputSticker payloads', async () => {
+        const client = new TelegramClient('test-token');
+        const postSpy = vi.fn().mockResolvedValue({
+            data: { ok: true, result: true },
+        });
+        (client as any).http = { post: postSpy };
+
+        await client.callApi('createNewStickerSet', {
+            user_id: 42,
+            name: 'animals_by_testbot',
+            title: 'Animals',
+            stickers: [
+                {
+                    sticker: Buffer.from('sticker-a'),
+                    format: 'static',
+                    emoji_list: ['😀'],
+                },
+            ],
+        });
+
+        const [, form] = postSpy.mock.calls[0];
+        const payload = form.getBuffer().toString('utf8');
+
+        expect(payload).toContain('"sticker":"attach://stickers_0_sticker"');
+        expect(payload).toContain('name="stickers_0_sticker"');
+    });
 });
