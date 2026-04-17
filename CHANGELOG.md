@@ -5,6 +5,19 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.0.1] - 2026-04-17
+
+### Fixed
+
+- Multipart upload serialization now follows Telegram's official `attach://` pattern for nested file payloads such as media groups and sticker inputs.
+- Per-update client isolation now prevents middleware API wrappers from leaking across concurrent updates.
+- Conversation default timeout now behaves as an inactivity timeout instead of expiring active flows from their original start time.
+- RegExp-based `hears()` and `action()` handlers now avoid `lastIndex` leakage when consumers use `g` or `y` flags.
+
+### Changed
+
+- Repository presentation was polished for GitHub and VitePress landing pages, including clearer maintainer-document references and cleanup of malformed text artifacts.
+
 ## [1.0.0] - 2026-04-17
 
 ### Added
