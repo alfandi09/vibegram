@@ -866,7 +866,7 @@ export interface SwitchInlineQueryChosenChat {
     allow_channel_chats?: boolean;
 }
 
-export interface CallbackGame {}
+export type CallbackGame = Record<string, never>;
 
 export interface InlineKeyboardMarkup {
     inline_keyboard: InlineKeyboardButton[][];
@@ -1047,13 +1047,13 @@ export interface ForumTopicEdited {
     is_name_implicit?: true;
 }
 
-export interface ForumTopicClosed {}
+export type ForumTopicClosed = Record<string, never>;
 
-export interface ForumTopicReopened {}
+export type ForumTopicReopened = Record<string, never>;
 
-export interface GeneralForumTopicHidden {}
+export type GeneralForumTopicHidden = Record<string, never>;
 
-export interface GeneralForumTopicUnhidden {}
+export type GeneralForumTopicUnhidden = Record<string, never>;
 
 export interface SharedUser {
     user_id: number;
@@ -1080,7 +1080,7 @@ export interface VideoChatScheduled {
     start_date: number;
 }
 
-export interface VideoChatStarted {}
+export type VideoChatStarted = Record<string, never>;
 
 export interface VideoChatEnded {
     duration: number;
