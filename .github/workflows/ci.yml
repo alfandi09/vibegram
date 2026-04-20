@@ -3,6 +3,7 @@ name: CI
 on:
     push:
         branches: [main, develop]
+        tags: ['v*']
     pull_request:
         branches: [main]
 
@@ -84,7 +85,10 @@ jobs:
         name: Publish to npm
         runs-on: ubuntu-latest
         needs: [test, build]
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        concurrency:
+            group: npm-publish
+            cancel-in-progress: false
 
         steps:
             - uses: actions/checkout@v4
@@ -99,25 +103,63 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Check if version changed
+            - name: Verify tag matches package version
+              id: tag_check
+              run: |
+                  PACKAGE_VERSION=$(node -p "require('./package.json').version")
+                  TAG_VERSION="${GITHUB_REF_NAME#v}"
+                  echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+                  echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+                  if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+                    echo "Package version ($PACKAGE_VERSION) does not match tag version ($TAG_VERSION)."
+                    exit 1
+                  fi
+
+            - name: Debug publish context
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  PACKAGE_NAME=$(node -p "require('./package.json').name")
+                  LOCAL_VERSION=$(node -p "require('./package.json').version")
+                  echo "registry=$(npm config get registry)"
+                  echo "package=$PACKAGE_NAME"
+                  echo "local_version=$LOCAL_VERSION"
+                  echo "tag_version=${GITHUB_REF_NAME#v}"
+                  npm whoami
+                  npm view vibegram versions --json
+                  npm dist-tag ls vibegram
+
+            - name: Check if version is already published
               id: version_check
               run: |
                   LOCAL_VERSION=$(node -p "require('./package.json').version")
-                  REMOTE_VERSION=$(npm view vibegram version 2>/dev/null || echo "0.0.0")
+                  PUBLISHED=$(node -e "const { execSync } = require('node:child_process'); try { const raw = execSync('npm view vibegram versions --json', { encoding: 'utf8' }); const versions = JSON.parse(raw); const published = Array.isArray(versions) && versions.includes(process.argv[1]); process.stdout.write(published ? 'true' : 'false'); } catch { process.stdout.write('false'); }" "$LOCAL_VERSION")
                   echo "local=$LOCAL_VERSION" >> $GITHUB_OUTPUT
-                  echo "remote=$REMOTE_VERSION" >> $GITHUB_OUTPUT
-                  if [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
-                    echo "changed=true" >> $GITHUB_OUTPUT
-                  else
+                  echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
+                  if [ "$PUBLISHED" = "true" ]; then
                     echo "changed=false" >> $GITHUB_OUTPUT
+                  else
+                    echo "changed=true" >> $GITHUB_OUTPUT
                   fi
 
             - name: Build for publish
               if: steps.version_check.outputs.changed == 'true'
               run: npm run build
 
-            - name: Publish
+            - name: Re-check publishability
+              id: publish_guard
               if: steps.version_check.outputs.changed == 'true'
+              run: |
+                  LOCAL_VERSION=$(node -p "require('./package.json').version")
+                  if npm view vibegram versions --json | node -e "const fs = require('node:fs'); const input = fs.readFileSync(0, 'utf8'); const versions = JSON.parse(input); process.exit(Array.isArray(versions) && versions.includes(process.argv[1]) ? 0 : 1)" "$LOCAL_VERSION"; then
+                    echo "Version $LOCAL_VERSION is already published. Skipping."
+                    echo "allowed=false" >> $GITHUB_OUTPUT
+                  else
+                    echo "allowed=true" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Publish
+              if: steps.version_check.outputs.changed == 'true' && steps.publish_guard.outputs.allowed == 'true'
               run: npm publish --access public
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
