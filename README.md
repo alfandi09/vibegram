@@ -133,29 +133,6 @@ import { rateLimit } from 'vibegram';
 bot.use(rateLimit());
 ```
 
-### Plugin API
-
-```typescript
-import { Bot, definePlugin, loggerPlugin, sessionPlugin } from 'vibegram';
-
-const bot = new Bot('YOUR_BOT_TOKEN');
-
-const metricsPlugin = definePlugin({
-    name: 'metrics',
-    install(ctx) {
-        ctx.bot.use(async (ctx, next) => {
-            const start = Date.now();
-            await next();
-            console.log(`Handled ${ctx.updateType} in ${Date.now() - start}ms`);
-        });
-    },
-});
-
-bot.plugin(loggerPlugin());
-bot.plugin(sessionPlugin({ initial: () => ({ visits: 0 }) }));
-bot.plugin(metricsPlugin());
-```
-
 ### Scene Manager
 
 ```typescript
@@ -255,7 +232,6 @@ Generated API HTML is written to `generated/api/`.
 Maintainer references:
 
 - `docs/core/observability.md`
-- `docs/advanced/plugins.md`
 - `meta/README.md`
 - `meta/RELEASE_CHECKLIST.md`
 

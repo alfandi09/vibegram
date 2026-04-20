@@ -3,7 +3,7 @@ import { Composer, Middleware } from './composer';
 import { Context } from './context';
 import { Update, User } from './types';
 import { WebAppUtils } from './webapp';
-import { PluginRegistry, PluginRegistration, RegisteredPluginMetadata } from './plugin';
+import { BotPlugin } from './plugin';
 import { InvalidTokenError } from './errors';
 
 export type UpdateType =
@@ -93,7 +93,6 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     private _activeUpdates: number = 0;
     private _pollingTask: Promise<void> | null = null;
     private _updatesDrainedResolve?: () => void;
-    private readonly _plugins: PluginRegistry<C>;
 
     constructor(
         token: string,
@@ -102,7 +101,6 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         super();
         if (!token) throw new Error('Telegram Bot token is required.');
         this.client = new TelegramClient(token, { hooks: this.options?.observability?.client });
-        this._plugins = new PluginRegistry<C>(this);
     }
 
     private async invokeHook(name: string, hook?: () => void | Promise<void>): Promise<void> {
@@ -164,8 +162,6 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             throw new InvalidTokenError();
         }
 
-        await this.initializePlugins();
-
         console.log(`[VibeGram] @${me.username} (${me.id}) started. Polling for updates...`);
         options?.onStart?.(me);
         await this.invokeHook('onLaunch', () =>
@@ -186,7 +182,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Waits for any in-flight updates to finish before resolving.
      */
     async stop(reason?: string): Promise<void> {
-        if (!this.isPolling && !this._plugins.isSetupComplete()) return;
+        if (!this.isPolling) return;
 
         if (reason) console.log(`[VibeGram] Shutdown initiated: ${reason}`);
         this.isPolling = false;
@@ -202,8 +198,6 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             });
         }
 
-        await this.teardownPlugins();
-
         console.log('[VibeGram] Bot stopped gracefully.');
         await this.invokeHook('onStop', () =>
             this.options?.observability?.hooks?.onStop?.({ reason })
@@ -213,30 +207,10 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     /**
      * Install a plugin onto this bot instance.
      */
-    plugin(plugin: PluginRegistration<C>): this {
-        this._plugins.register(plugin);
+    plugin(plugin: BotPlugin<C>): this {
+        plugin.install(this);
         this._composedMiddleware = null; // Invalidate cached middleware chain.
         return this;
-    }
-
-    hasPlugin(name: string): boolean {
-        return this._plugins.has(name);
-    }
-
-    getPlugin(name: string): RegisteredPluginMetadata | undefined {
-        return this._plugins.get(name);
-    }
-
-    listPlugins(): RegisteredPluginMetadata[] {
-        return this._plugins.list();
-    }
-
-    async initializePlugins(): Promise<void> {
-        await this._plugins.setupAll();
-    }
-
-    async teardownPlugins(): Promise<void> {
-        await this._plugins.teardownAll();
     }
 
     private async pollingLoop(): Promise<void> {

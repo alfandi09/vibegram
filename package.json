@@ -1,6 +1,6 @@
 {
     "name": "vibegram",
-    "version": "1.1.2",
+    "version": "1.0.1",
     "description": "Modern, production-ready Telegram Bot Framework for Node.js — Full Bot API v9.6 coverage",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -20,7 +20,7 @@
     "sideEffects": false,
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/alfandi09/vibegram.git"
+        "url": "https://github.com/alfandi09/vibegram.git"
     },
     "bugs": {
         "url": "https://github.com/alfandi09/vibegram/issues"
