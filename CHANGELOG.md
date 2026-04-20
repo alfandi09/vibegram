@@ -5,6 +5,26 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.1.0] - 2026-04-20
+
+### Added
+
+- Introduced a registry-backed plugin runtime with `definePlugin()`, plugin metadata, dependency ordering, and bot-level plugin inspection helpers.
+- Added plugin lifecycle support through `setup()` and `teardown()`, plus explicit `initializePlugins()` and `teardownPlugins()` bot methods.
+- Added a shared plugin service registry with `provide()`, `require()`, and `has()` access from `PluginContext`.
+- Added first-party plugin wrappers for logger, rate limiting, i18n, and session middleware.
+- Added maintainer-facing technical design documentation for the plugin API rollout.
+
+### Changed
+
+- The plugin documentation and README examples now recommend definition-based plugins as the primary authoring model.
+- `rateLimitPlugin()` now manages its cleaner through plugin lifecycle hooks and exposes its resolved store as a shared service.
+- `sessionPlugin()` now exposes the same resolved store instance used by the installed session middleware.
+
+### Tests
+
+- Expanded regression coverage for plugin registration, dependency checks, shared services, lifecycle ordering, and first-party plugin wrappers.
+
 ## [1.0.1] - 2026-04-17
 
 ### Fixed
