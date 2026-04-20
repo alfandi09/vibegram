@@ -5,6 +5,13 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.1.2] - 2026-04-20
+
+### Changed
+
+- Switched npm publishing to a tag-driven GitHub Actions flow instead of publishing on every push to `main`.
+- Added stronger publish guards in CI so tag/version mismatches and already-published versions are detected before `npm publish` runs.
+
 ## [1.1.1] - 2026-04-20
 
 ### Fixed
