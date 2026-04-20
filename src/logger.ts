@@ -1,5 +1,6 @@
 import { Context } from './context';
 import { Middleware } from './composer';
+import { definePlugin } from './plugin';
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u001F\u007F-\u009F]+/g;
 const DEFAULT_MAX_CONTENT_LENGTH = 120;
@@ -70,21 +71,14 @@ export function logger(options?: LoggerOptions): Middleware<any> {
         const start = Date.now();
         const maxContentLength = options?.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
 
-        // Let the downstream middleware chain execute first.
         await next();
 
-        // Measure total processing latency.
         const ms = Date.now() - start;
-
-        // Format the timestamp.
         const time = options?.timeFormatter
             ? options.timeFormatter()
-            : new Date().toISOString().replace('T', ' ').substring(0, 19); // "2026-04-06 01:25:30"
-
-        // Extract the primary update type key (e.g. "message", "callback_query").
+            : new Date().toISOString().replace('T', ' ').substring(0, 19);
         const updateType = ctx.updateType;
 
-        // Resolve the sender's display identity.
         let identity = 'Anonymous';
         if (ctx.from) {
             const rawIdentity = ctx.from.username
@@ -94,7 +88,6 @@ export function logger(options?: LoggerOptions): Middleware<any> {
                 sanitizeLogValue(rawIdentity, maxContentLength, redactPatterns) || 'Anonymous';
         }
 
-        // Extract a human-readable content summary from the update.
         let content = '';
         const msg = ctx.message as any;
 
@@ -112,8 +105,7 @@ export function logger(options?: LoggerOptions): Middleware<any> {
         else if (msg?.location) content = `[Location]`;
         else content = `[External Event: ${updateType}]`;
 
-        // Assemble and emit the log line.
-        const logMsg = `[${time}] [${updateType.toUpperCase()}] ${identity}  ➔  ${content} (${ms}ms)`;
+        const logMsg = `[${time}] [${updateType.toUpperCase()}] ${identity} -> ${content} (${ms}ms)`;
 
         if (options?.printer) {
             options.printer(logMsg);
@@ -122,3 +114,14 @@ export function logger(options?: LoggerOptions): Middleware<any> {
         }
     };
 }
+
+/**
+ * Plugin wrapper for `logger()`.
+ * Installs request logging through the plugin API.
+ */
+export const loggerPlugin = definePlugin<Context, LoggerOptions>({
+    name: 'logger',
+    install(ctx) {
+        ctx.bot.use(logger(ctx.options));
+    },
+});

@@ -1,5 +1,6 @@
 import { Context } from './context';
 import { Middleware } from './composer';
+import { definePlugin } from './plugin';
 
 /**
  * Internationalization (I18n) middleware.
@@ -27,7 +28,7 @@ export class I18n {
      */
     t(lang: string, key: string, placeholders?: Record<string, string>): string {
         const dictionary = this.locales[lang] || this.locales[this.defaultLang] || {};
-        let text = dictionary[key] || key; // Fallback to the raw key if no translation is found.
+        let text = dictionary[key] || key;
 
         if (placeholders) {
             for (const p in placeholders) {
@@ -42,15 +43,40 @@ export class I18n {
      */
     middleware(): Middleware<Context> {
         return async (ctx, next) => {
-            // Detect the user's language from Telegram metadata, falling back to the default.
             const lang = ctx.from?.language_code?.substring(0, 2) || this.defaultLang;
 
             ctx.i18n = {
                 locale: lang,
-                t: (key: string, placeholders?: Record<string, string>) => this.t(lang, key, placeholders)
+                t: (key: string, placeholders?: Record<string, string>) =>
+                    this.t(lang, key, placeholders),
             };
 
             return next();
         };
     }
 }
+
+export interface I18nPluginOptions {
+    instance?: I18n;
+    defaultLang?: string;
+    locales?: Record<string, Record<string, string>>;
+}
+
+/**
+ * Plugin wrapper for `I18n`.
+ * Optionally creates an instance, loads locales, exposes it as a service,
+ * and installs the middleware.
+ */
+export const i18nPlugin = definePlugin<Context, I18nPluginOptions>({
+    name: 'i18n',
+    install(ctx) {
+        const i18n = ctx.options.instance ?? new I18n(ctx.options.defaultLang);
+
+        for (const [lang, dictionary] of Object.entries(ctx.options.locales ?? {})) {
+            i18n.loadLocale(lang, dictionary);
+        }
+
+        ctx.provide('i18n', i18n);
+        ctx.bot.use(i18n.middleware());
+    },
+});
