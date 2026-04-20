@@ -39,7 +39,10 @@ export interface RegisteredPluginMetadata {
     kind: 'legacy' | 'definition';
 }
 
-export interface PluginContext<C extends Context = Context, O extends object = {}> {
+export interface PluginContext<
+    C extends Context = Context,
+    O extends object = Record<string, never>
+> {
     bot: Bot<C>;
     composer: Composer<C>;
     options: Readonly<O>;
@@ -50,7 +53,10 @@ export interface PluginContext<C extends Context = Context, O extends object = {
     has(key: string): boolean;
 }
 
-export interface PluginDefinition<C extends Context = Context, O extends object = {}> {
+export interface PluginDefinition<
+    C extends Context = Context,
+    O extends object = Record<string, never>
+> {
     name: string;
     version?: string;
     defaults?: Partial<O>;
@@ -60,7 +66,10 @@ export interface PluginDefinition<C extends Context = Context, O extends object 
     teardown?(context: PluginContext<C, O>): void | Promise<void>;
 }
 
-export interface PluginInstance<C extends Context = Context, O extends object = {}> {
+export interface PluginInstance<
+    C extends Context = Context,
+    O extends object = Record<string, never>
+> {
     definition: PluginDefinition<C, O>;
     options?: Partial<O>;
 }
@@ -137,7 +146,10 @@ export function createPlugin<O = any, C extends Context = Context>(
     });
 }
 
-export function definePlugin<C extends Context = Context, O extends object = {}>(
+export function definePlugin<
+    C extends Context = Context,
+    O extends object = Record<string, never>
+>(
     definition: PluginDefinition<C, O>
 ): (options?: Partial<O>) => PluginInstance<C, O> {
     return (options?: Partial<O>) => ({
