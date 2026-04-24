@@ -23,6 +23,7 @@ export interface User {
     can_connect_to_business?: boolean;
     has_main_web_app?: boolean;
     has_topics_enabled?: boolean;
+    allows_users_to_create_topics?: boolean;
 }
 
 export interface Birthdate {
@@ -104,6 +105,12 @@ export interface Chat {
     can_send_paid_media?: boolean;
 }
 
+/** Full chat metadata returned by getChat. Chat remains permissive for backward compatibility. */
+export interface ChatFullInfo extends Chat {
+    max_reaction_count?: number;
+    first_profile_audio?: Audio;
+}
+
 export interface MessageEntity {
     type:
         | 'mention'
@@ -175,6 +182,29 @@ export interface MessageOrigin {
     author_signature?: string;
     chat?: Chat;
     message_id?: number;
+}
+
+export interface MessageOriginUser extends MessageOrigin {
+    type: 'user';
+    sender_user: User;
+}
+
+export interface MessageOriginHiddenUser extends MessageOrigin {
+    type: 'hidden_user';
+    sender_user_name: string;
+}
+
+export interface MessageOriginChat extends MessageOrigin {
+    type: 'chat';
+    sender_chat: Chat;
+    author_signature?: string;
+}
+
+export interface MessageOriginChannel extends MessageOrigin {
+    type: 'channel';
+    chat: Chat;
+    message_id: number;
+    author_signature?: string;
 }
 
 export interface TextQuote {
@@ -263,6 +293,16 @@ export interface Video {
     file_name?: string;
     mime_type?: string;
     file_size?: number;
+    qualities?: VideoQuality[];
+}
+
+export interface VideoQuality {
+    file_id: string;
+    file_unique_id: string;
+    width: number;
+    height: number;
+    duration: number;
+    file_size?: number;
 }
 
 export interface Voice {
@@ -303,6 +343,14 @@ export interface Sticker {
     file_size?: number;
 }
 
+export interface StickerSet {
+    name: string;
+    title: string;
+    sticker_type: 'regular' | 'mask' | 'custom_emoji';
+    stickers: Sticker[];
+    thumbnail?: PhotoSize;
+}
+
 export interface VideoNote {
     file_id: string;
     file_unique_id: string;
@@ -317,6 +365,16 @@ export interface File {
     file_unique_id?: string;
     file_size?: number;
     file_path?: string;
+}
+
+export interface UserProfilePhotos {
+    total_count: number;
+    photos: PhotoSize[][];
+}
+
+export interface UserProfileAudios {
+    total_count: number;
+    audios: Audio[];
 }
 
 export interface MaskPosition {
@@ -382,6 +440,7 @@ export interface PollAnswer {
     voter_chat?: Chat;
     user?: User;
     option_ids: number[];
+    option_persistent_ids?: string[];
 }
 
 export interface ChecklistTask {
@@ -678,6 +737,13 @@ export interface PollOptionDeleted {
     option_text_entities?: MessageEntity[];
 }
 
+export type ChatOwnerLeft = Record<string, never>;
+
+export interface ChatOwnerChanged {
+    old_owner: User;
+    new_owner: User;
+}
+
 export interface StarAmount {
     amount: number;
     nanostar_amount?: number;
@@ -802,6 +868,22 @@ export interface LabeledPrice {
     amount: number;
 }
 
+export interface InlineQueryResult {
+    type: string;
+    id: string;
+    [key: string]: unknown;
+}
+
+export interface SentWebAppMessage {
+    inline_message_id?: string;
+}
+
+export interface GameHighScore {
+    position: number;
+    user: User;
+    score: number;
+}
+
 export interface Invoice {
     title: string;
     description: string;
@@ -904,6 +986,68 @@ export interface ChatInviteLink {
     subscription_price?: number;
 }
 
+export interface WebhookInfo {
+    url: string;
+    has_custom_certificate: boolean;
+    pending_update_count: number;
+    ip_address?: string;
+    last_error_date?: number;
+    last_error_message?: string;
+    last_synchronization_error_date?: number;
+    max_connections?: number;
+    allowed_updates?: string[];
+}
+
+export interface BotCommand {
+    command: string;
+    description: string;
+}
+
+export interface BotCommandScope {
+    type:
+        | 'default'
+        | 'all_private_chats'
+        | 'all_group_chats'
+        | 'all_chat_administrators'
+        | 'chat'
+        | 'chat_administrators'
+        | 'chat_member';
+    chat_id?: number | string;
+    user_id?: number;
+}
+
+export interface BotCommandOptions {
+    scope?: BotCommandScope;
+    language_code?: string;
+}
+
+export interface BotName {
+    name: string;
+}
+
+export interface BotDescription {
+    description: string;
+}
+
+export interface BotShortDescription {
+    short_description: string;
+}
+
+export interface MenuButton {
+    type: 'commands' | 'web_app' | 'default' | string;
+    text?: string;
+    web_app?: { url: string };
+}
+
+export interface SetWebhookOptions {
+    certificate?: InputFile;
+    ip_address?: string;
+    max_connections?: number;
+    allowed_updates?: string[];
+    drop_pending_updates?: boolean;
+    secret_token?: string;
+}
+
 export interface ChatMember {
     status: 'creator' | 'administrator' | 'member' | 'restricted' | 'left' | 'kicked';
     user: User;
@@ -939,6 +1083,26 @@ export interface ChatMember {
     can_send_other_messages?: boolean;
     can_add_web_page_previews?: boolean;
     tag?: string;
+}
+
+export interface ChatAdministratorRights {
+    is_anonymous: boolean;
+    can_manage_chat: boolean;
+    can_delete_messages: boolean;
+    can_manage_video_chats: boolean;
+    can_restrict_members: boolean;
+    can_promote_members: boolean;
+    can_change_info: boolean;
+    can_invite_users: boolean;
+    can_post_stories: boolean;
+    can_edit_stories: boolean;
+    can_delete_stories: boolean;
+    can_post_messages?: boolean;
+    can_edit_messages?: boolean;
+    can_pin_messages?: boolean;
+    can_manage_topics?: boolean;
+    can_manage_direct_messages?: boolean;
+    can_manage_tags?: boolean;
 }
 
 export interface ChatMemberUpdated {
@@ -1185,6 +1349,11 @@ export interface MaybeInaccessibleMessage {
     is_inaccessible?: boolean;
 }
 
+export interface InaccessibleMessage extends MaybeInaccessibleMessage {
+    date: 0;
+    is_inaccessible: true;
+}
+
 export interface Message {
     message_id: number;
     message_thread_id?: number;
@@ -1197,11 +1366,17 @@ export interface Message {
     business_connection_id?: string;
     chat: Chat;
     forward_origin?: MessageOrigin;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_from?: User;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_from_chat?: Chat;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_from_message_id?: number;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_signature?: string;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_sender_name?: string;
+    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
     forward_date?: number;
     is_topic_message?: boolean;
     is_automatic_forward?: boolean;
@@ -1291,6 +1466,8 @@ export interface Message {
     paid_message_price_changed?: PaidMessagePriceChanged;
     poll_option_added?: PollOptionAdded;
     poll_option_deleted?: PollOptionDeleted;
+    chat_owner_left?: ChatOwnerLeft;
+    chat_owner_changed?: ChatOwnerChanged;
     gift?: GiftInfo;
     unique_gift?: UniqueGiftInfo;
     gift_upgrade_sent?: GiftInfo;
@@ -1383,6 +1560,113 @@ export type ReplyMarkup =
     | ReplyKeyboardMarkup
     | ReplyKeyboardRemove
     | ForceReply;
+
+export type InputFile = string | Buffer | NodeJS.ReadableStream;
+
+export interface InputProfilePhotoStatic {
+    type: 'static';
+    photo: InputFile;
+}
+
+export interface InputProfilePhotoAnimated {
+    type: 'animated';
+    animation: InputFile;
+    main_frame_timestamp?: number;
+}
+
+export type InputProfilePhoto = InputProfilePhotoStatic | InputProfilePhotoAnimated;
+
+export interface PreparedKeyboardButton {
+    text: string;
+    request_user?: KeyboardButtonRequestUser;
+    request_chat?: KeyboardButtonRequestChat;
+    request_managed_bot?: KeyboardButtonRequestManagedBot;
+}
+
+export interface InputSticker {
+    sticker: InputFile;
+    emoji_list: string[];
+    format: 'static' | 'animated' | 'video';
+    mask_position?: MaskPosition;
+    keywords?: string[];
+}
+
+export interface PassportElementError {
+    source: string;
+    type: string;
+    message: string;
+    [key: string]: unknown;
+}
+
+export interface InputMediaBase {
+    type: string;
+    media: InputFile;
+    caption?: string;
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    show_caption_above_media?: boolean;
+    has_spoiler?: boolean;
+}
+
+export interface InputMediaPhoto extends InputMediaBase {
+    type: 'photo';
+}
+
+export interface InputMediaVideo extends InputMediaBase {
+    type: 'video';
+    thumbnail?: InputFile;
+    cover?: InputFile;
+    start_timestamp?: number;
+    width?: number;
+    height?: number;
+    duration?: number;
+    supports_streaming?: boolean;
+}
+
+export interface InputMediaAnimation extends InputMediaBase {
+    type: 'animation';
+    thumbnail?: InputFile;
+    width?: number;
+    height?: number;
+    duration?: number;
+}
+
+export interface InputMediaDocument extends InputMediaBase {
+    type: 'document';
+    thumbnail?: InputFile;
+    disable_content_type_detection?: boolean;
+}
+
+export interface InputMediaAudio extends InputMediaBase {
+    type: 'audio';
+    thumbnail?: InputFile;
+    duration?: number;
+    performer?: string;
+    title?: string;
+}
+
+export type InputMedia =
+    | InputMediaPhoto
+    | InputMediaVideo
+    | InputMediaAnimation
+    | InputMediaDocument
+    | InputMediaAudio;
+
+export interface ExtraVideoNote {
+    business_connection_id?: string;
+    message_thread_id?: number;
+    direct_messages_topic_id?: number;
+    duration?: number;
+    length?: number;
+    thumbnail?: InputFile;
+    disable_notification?: boolean;
+    protect_content?: boolean;
+    allow_paid_broadcast?: boolean;
+    message_effect_id?: string;
+    reply_parameters?: ReplyParameters;
+    suggested_post_parameters?: SuggestedPostParameters;
+    reply_markup?: ReplyMarkup;
+}
 
 export interface ReplyKeyboardMarkup {
     keyboard: KeyboardButton[][];
@@ -1510,6 +1794,8 @@ export interface ExtraPoll {
     description_entities?: MessageEntity[];
     shuffle_options?: boolean;
     allow_adding_options?: boolean;
+    hide_results_until_closes?: boolean;
+    /** @deprecated Use hide_results_until_closes instead. */
     hide_results_until_closed?: boolean;
     open_period?: number;
     close_date?: number;

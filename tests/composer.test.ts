@@ -15,7 +15,9 @@ import {
 // ---------------------------------------------------------------------------
 async function runComposer(composer: Composer<Context>, ctx: Context): Promise<void> {
     let outerCalled = false;
-    await composer.middleware()(ctx, async () => { outerCalled = true; });
+    await composer.middleware()(ctx, async () => {
+        outerCalled = true;
+    });
     return;
 }
 
@@ -37,7 +39,9 @@ describe('Composer.command()', () => {
     it('injects ctx.command with name and args', async () => {
         const composer = new Composer<Context>();
         let capturedCtx: Context | null = null;
-        composer.command('echo', (ctx) => { capturedCtx = ctx; });
+        composer.command('echo', ctx => {
+            capturedCtx = ctx;
+        });
 
         const { ctx } = createContext(makeCommandUpdate('echo', ['hello', 'world']));
         await runComposer(composer, ctx);
@@ -92,6 +96,24 @@ describe('Composer.command()', () => {
         expect(handler).toHaveBeenCalledTimes(3);
     });
 
+    it('supports start/help/settings command aliases', async () => {
+        const composer = new Composer<Context>();
+        const startHandler = vi.fn();
+        const helpHandler = vi.fn();
+        const settingsHandler = vi.fn();
+        composer.start(startHandler);
+        composer.help(helpHandler);
+        composer.settings(settingsHandler);
+
+        await runComposer(composer, createContext(makeCommandUpdate('start')).ctx);
+        await runComposer(composer, createContext(makeCommandUpdate('help')).ctx);
+        await runComposer(composer, createContext(makeCommandUpdate('settings')).ctx);
+
+        expect(startHandler).toHaveBeenCalledOnce();
+        expect(helpHandler).toHaveBeenCalledOnce();
+        expect(settingsHandler).toHaveBeenCalledOnce();
+    });
+
     it('does NOT trigger when message has no text', async () => {
         const composer = new Composer<Context>();
         const handler = vi.fn();
@@ -133,7 +155,9 @@ describe('Composer.hears()', () => {
     it('triggers on RegExp match and injects ctx.match', async () => {
         const composer = new Composer<Context>();
         let capturedCtx: Context | null = null;
-        composer.hears(/^order (\d+)$/i, (ctx) => { capturedCtx = ctx; });
+        composer.hears(/^order (\d+)$/i, ctx => {
+            capturedCtx = ctx;
+        });
 
         const { ctx } = createContext(makeMessageUpdate('order 42'));
         await runComposer(composer, ctx);
@@ -146,7 +170,9 @@ describe('Composer.hears()', () => {
     it('sets ctx.match to null for plain string match', async () => {
         const composer = new Composer<Context>();
         let capturedCtx: Context | null = null;
-        composer.hears('ping', (ctx) => { capturedCtx = ctx; });
+        composer.hears('ping', ctx => {
+            capturedCtx = ctx;
+        });
 
         const { ctx } = createContext(makeMessageUpdate('ping'));
         await runComposer(composer, ctx);
@@ -161,7 +187,7 @@ describe('Composer.hears()', () => {
 
         const { ctx1 } = { ctx1: createContext(makeMessageUpdate('hello')).ctx };
         const { ctx2 } = { ctx2: createContext(makeMessageUpdate('Hi there')).ctx };
-        
+
         await runComposer(composer, ctx1);
         // 'Hi there' matches /hi/i
         await runComposer(composer, ctx2);
@@ -215,7 +241,9 @@ describe('Composer.action()', () => {
     it('triggers on RegExp match and injects ctx.match with capture groups', async () => {
         const composer = new Composer<Context>();
         let capturedCtx: Context | null = null;
-        composer.action(/^item_(\d+)$/, (ctx) => { capturedCtx = ctx; });
+        composer.action(/^item_(\d+)$/, ctx => {
+            capturedCtx = ctx;
+        });
 
         const { ctx } = createContext(makeCallbackQueryUpdate('item_99'));
         await runComposer(composer, ctx);
@@ -306,7 +334,7 @@ describe('Composer.on()', () => {
 
         const { ctx1 } = { ctx1: createContext(makeMessageUpdate('hi')).ctx };
         const { ctx2 } = { ctx2: createContext(makeCallbackQueryUpdate('btn')).ctx };
-        
+
         await runComposer(composer, ctx1);
         await runComposer(composer, ctx2);
 
@@ -322,9 +350,17 @@ describe('Composer.use() middleware chain', () => {
         const order: number[] = [];
         const composer = new Composer<Context>();
 
-        composer.use(async (_ctx, next) => { order.push(1); await next(); });
-        composer.use(async (_ctx, next) => { order.push(2); await next(); });
-        composer.use(async (_ctx, _next) => { order.push(3); });
+        composer.use(async (_ctx, next) => {
+            order.push(1);
+            await next();
+        });
+        composer.use(async (_ctx, next) => {
+            order.push(2);
+            await next();
+        });
+        composer.use(async (_ctx, _next) => {
+            order.push(3);
+        });
 
         const { ctx } = createContext(makeMessageUpdate('test'));
         await runComposer(composer, ctx);

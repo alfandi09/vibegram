@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { session, MemorySessionStore } from '../src/session';
-import {
-    makeMessageUpdate,
-    createContext,
-    createNext,
-} from './helpers/mock';
+import { makeMessageUpdate, createContext, createNext } from './helpers/mock';
 
 // ---------------------------------------------------------------------------
 // MemorySessionStore
@@ -104,9 +100,41 @@ describe('session() middleware', () => {
         );
     });
 
+    it('filters dangerous keys when replacing session data', async () => {
+        const store = new MemorySessionStore();
+        const mw = session({ store, initial: () => ({}) });
+        const { ctx } = createContext(makeMessageUpdate('hello'));
+        const payload = JSON.parse(
+            '{"safe":true,"__proto__":{"polluted":true},"nested":{"constructor":{"prototype":{"polluted":true}}},"items":[{"__proto__":{"polluted":true},"ok":1}]}'
+        );
+
+        await mw(ctx, async () => {
+            ctx.session = payload;
+        });
+
+        const saved = store.get('99:42') as any;
+        expect(saved.safe).toBe(true);
+        expect(saved.polluted).toBeUndefined();
+        expect(saved.nested).toEqual({});
+        expect(saved.items).toEqual([{ ok: 1 }]);
+        expect(({} as any).polluted).toBeUndefined();
+    });
+
     it('passes to next() when no key can be generated (no chat/from)', async () => {
         const mw = session();
-        const update = { update_id: 1, poll: { id: 'p1', question: 'q', options: [], is_anonymous: true, type: 'regular', allows_multiple_answers: false, is_closed: false, total_voter_count: 0 } } as any;
+        const update = {
+            update_id: 1,
+            poll: {
+                id: 'p1',
+                question: 'q',
+                options: [],
+                is_anonymous: true,
+                type: 'regular',
+                allows_multiple_answers: false,
+                is_closed: false,
+                total_voter_count: 0,
+            },
+        } as any;
         const { ctx } = createContext(update);
         const { next, called } = createNext();
 

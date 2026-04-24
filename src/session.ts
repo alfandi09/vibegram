@@ -1,6 +1,36 @@
 import { Context } from './context';
 import { Middleware } from './composer';
 
+const DANGEROUS_SESSION_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function cloneSessionValue<T>(value: T, seen: WeakMap<object, unknown> = new WeakMap()): T {
+    if (typeof value !== 'object' || value === null) return value;
+
+    if (seen.has(value)) {
+        return seen.get(value) as T;
+    }
+
+    if (Array.isArray(value)) {
+        const clone: unknown[] = [];
+        seen.set(value, clone);
+        for (const item of value) {
+            clone.push(cloneSessionValue(item, seen));
+        }
+        return clone as T;
+    }
+
+    const clone: Record<string, unknown> = {};
+    seen.set(value, clone);
+
+    for (const [key, nestedValue] of Object.entries(value)) {
+        if (!DANGEROUS_SESSION_KEYS.has(key)) {
+            clone[key] = cloneSessionValue(nestedValue, seen);
+        }
+    }
+
+    return clone as T;
+}
+
 export interface SessionStore {
     get(key: string): Promise<any> | any;
     set(key: string, value: any): Promise<void> | void;
@@ -21,29 +51,29 @@ export class MemorySessionStore implements SessionStore {
         this.maxEntries = maxEntries;
     }
 
-    get(key: string) { 
+    get(key: string) {
         const item = this.store.get(key);
         if (!item) return undefined;
-        
+
         if (Date.now() > item.expiresAt) {
             this.store.delete(key);
             return undefined;
         }
 
-        return item.value; 
+        return item.value;
     }
-    
-    set(key: string, value: any) { 
+
+    set(key: string, value: any) {
         // Evict oldest entries if capacity exceeded
         if (this.store.size >= this.maxEntries && !this.store.has(key)) {
             const firstKey = this.store.keys().next().value;
             if (firstKey !== undefined) this.store.delete(firstKey);
         }
-        this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs }); 
+        this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
     }
-    
-    delete(key: string) { 
-        this.store.delete(key); 
+
+    delete(key: string) {
+        this.store.delete(key);
     }
 }
 
@@ -71,14 +101,16 @@ export interface SessionOptions<S = any> {
 export function session<S = any>(options?: SessionOptions<S>): Middleware<any> {
     const store = options?.store || new MemorySessionStore();
 
-    const getSessionKey = options?.getSessionKey || ((ctx: Context) => {
-        const chat = ctx.chat?.id;
-        const from = ctx.from?.id;
-        if (chat && from) {
-            return `${chat}:${from}`;
-        }
-        return undefined;
-    });
+    const getSessionKey =
+        options?.getSessionKey ||
+        ((ctx: Context) => {
+            const chat = ctx.chat?.id;
+            const from = ctx.from?.id;
+            if (chat && from) {
+                return `${chat}:${from}`;
+            }
+            return undefined;
+        });
 
     return async (ctx, next) => {
         const key = getSessionKey(ctx);
@@ -88,14 +120,14 @@ export function session<S = any>(options?: SessionOptions<S>): Middleware<any> {
 
         // Load existing session or initialize with default state
         let currentSession = (await store.get(key)) || (options?.initial ? options.initial() : {});
-        
+
         Object.defineProperty(ctx, 'session', {
             get: function () {
                 return currentSession;
             },
             set: function (newValue) {
-                currentSession = Object.assign({}, newValue);
-            }
+                currentSession = cloneSessionValue(newValue);
+            },
         });
 
         await next();

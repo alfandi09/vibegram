@@ -39,10 +39,19 @@ export class Stage<C extends Context = Context> {
                 enter: (sceneId: string, initialState?: any) => {
                     ctx.session.__scene_id = sceneId;
                     ctx.session.__scene_state = initialState || {};
+                    ctx.scene!.current = sceneId;
+                    ctx.scene!.state = ctx.session.__scene_state;
+                },
+                reenter: (initialState?: any) => {
+                    if (!ctx.session.__scene_id) return;
+                    ctx.session.__scene_state = initialState || {};
+                    ctx.scene!.state = ctx.session.__scene_state;
                 },
                 leave: () => {
                     delete ctx.session.__scene_id;
                     delete ctx.session.__scene_state;
+                    ctx.scene!.current = undefined;
+                    ctx.scene!.state = {};
                 },
             };
 

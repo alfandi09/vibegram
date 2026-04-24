@@ -40,6 +40,26 @@ describe('Bot', () => {
         expect(res.end).toHaveBeenCalledWith('Bad Request: Invalid update object.');
     });
 
+    it('rejects webhook requests with an invalid secret token', async () => {
+        const bot = new Bot('test-token');
+        const handler = bot.webhookCallback('expected-secret');
+        const handleUpdateSpy = vi.spyOn(bot, 'handleUpdate');
+        const res = { statusCode: 0, end: vi.fn() };
+
+        await handler(
+            {
+                method: 'POST',
+                headers: { 'x-telegram-bot-api-secret-token': 'wrong-secret' },
+                body: makeMessageUpdate('hello'),
+            },
+            res
+        );
+
+        expect(res.statusCode).toBe(403);
+        expect(res.end).toHaveBeenCalledWith('Forbidden');
+        expect(handleUpdateSpy).not.toHaveBeenCalled();
+    });
+
     it('returns 500 when webhook processing throws', async () => {
         const bot = new Bot('test-token');
         const handler = bot.webhookCallback();
@@ -150,5 +170,32 @@ describe('Bot', () => {
         expect(hooks.onLaunch).toHaveBeenCalledTimes(1);
         expect(hooks.onStop).toHaveBeenCalledWith({ reason: 'test-stop' });
         expect(logSpy).toHaveBeenCalledWith('[VibeGram] Bot stopped gracefully.');
+    });
+
+    it('exposes direct Bot API management wrappers', async () => {
+        const bot = new Bot('test-token');
+        bot.client.callApi = vi.fn().mockResolvedValue(true) as any;
+
+        await bot.setMyName('VibeGram');
+        await bot.getMyCommands({ language_code: 'en' });
+        await bot.createInvoiceLink('Title', 'Description', 'payload', 'XTR', [
+            { label: 'Stars', amount: 100 },
+        ]);
+
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(1, 'setMyName', {
+            name: 'VibeGram',
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(2, 'getMyCommands', {
+            language_code: 'en',
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(
+            3,
+            'createInvoiceLink',
+            expect.objectContaining({
+                title: 'Title',
+                currency: 'XTR',
+                prices: [{ label: 'Stars', amount: 100 }],
+            })
+        );
     });
 });

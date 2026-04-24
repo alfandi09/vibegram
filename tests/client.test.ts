@@ -48,6 +48,44 @@ describe('TelegramClient', () => {
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
     });
 
+    it('redacts bot tokens from axios errors before wrapping them', async () => {
+        const token = '123456:secret-token';
+        const client = new TelegramClient(token);
+        const axiosError = Object.assign(new Error(`socket hang up for bot ${token}`), {
+            config: {
+                baseURL: `https://api.telegram.org/bot${token}/`,
+                url: `sendMessage?token=${token}`,
+            },
+            response: {
+                config: {
+                    baseURL: `https://api.telegram.org/bot${token}/`,
+                    url: `getMe?token=${token}`,
+                },
+            },
+        });
+
+        (client as any).http = {
+            post: vi.fn().mockRejectedValue(axiosError),
+        };
+
+        let thrown: unknown;
+        try {
+            await client.callApi('sendMessage');
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(NetworkError);
+        const originalError = (thrown as NetworkError).originalError as any;
+        expect((thrown as NetworkError).message).not.toContain(token);
+        expect(originalError.message).not.toContain(token);
+        expect(originalError.config.baseURL).not.toContain(token);
+        expect(originalError.config.url).not.toContain(token);
+        expect(originalError.response.config.baseURL).not.toContain(token);
+        expect(originalError.response.config.url).not.toContain(token);
+        expect(JSON.stringify(originalError)).not.toContain(token);
+    });
+
     it('applies timeout and size limits when downloading files', async () => {
         const client = new TelegramClient('test-token');
         vi.spyOn(client, 'getFileLink').mockResolvedValue('https://example.com/file');
@@ -141,7 +179,9 @@ describe('TelegramClient', () => {
         const [, form, config] = postSpy.mock.calls[0];
         const payload = form.getBuffer().toString('utf8');
 
-        expect(config.headers).toEqual(expect.objectContaining({ 'content-type': expect.any(String) }));
+        expect(config.headers).toEqual(
+            expect.objectContaining({ 'content-type': expect.any(String) })
+        );
         expect(payload).toContain('"media":"attach://media_0_media"');
         expect(payload).toContain('"media":"attach://media_1_media"');
         expect(payload).toContain('"thumbnail":"attach://media_1_thumbnail"');

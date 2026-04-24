@@ -89,7 +89,18 @@ describe('filters', () => {
     });
 
     it('message content filters cover forwarded, reply, media, and text matching', async () => {
-        const forwardedCtx = createContext(makeMessageUpdate('hello', { forward_date: 1 })).ctx;
+        const forwardedCtx = createContext(
+            makeMessageUpdate('hello', {
+                forward_origin: {
+                    type: 'user',
+                    date: 1,
+                    sender_user: { id: 7, is_bot: false, first_name: 'Ada' },
+                },
+            })
+        ).ctx;
+        const legacyForwardedCtx = createContext(
+            makeMessageUpdate('hello', { forward_date: 1 })
+        ).ctx;
         const replyCtx = createContext(
             makeMessageUpdate('hello', { reply_to_message: { message_id: 90 } })
         ).ctx;
@@ -129,6 +140,7 @@ describe('filters', () => {
         } as any).ctx;
 
         expect(isForwarded(forwardedCtx)).toBe(true);
+        expect(isForwarded(legacyForwardedCtx)).toBe(true);
         expect(isReply(replyCtx)).toBe(true);
         expect(hasText(forwardedCtx)).toBe(true);
         expect(hasPhoto(createContext(makePhotoUpdate()).ctx)).toBe(true);

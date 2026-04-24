@@ -146,6 +146,48 @@ function prepareRequestPayload(data: unknown): {
     };
 }
 
+interface AxiosErrorLike {
+    config?: {
+        baseURL?: unknown;
+        url?: unknown;
+    };
+    response?: {
+        config?: {
+            baseURL?: unknown;
+            url?: unknown;
+        };
+    };
+}
+
+function redactToken(value: unknown, token: string): unknown {
+    if (typeof value !== 'string') return value;
+    if (token.length === 0) return value;
+    return value.split(token).join('[REDACTED]');
+}
+
+function sanitizeAxiosConfig(config: AxiosErrorLike['config'], token: string): void {
+    if (!config) return;
+    config.baseURL = redactToken(config.baseURL, token);
+    config.url = redactToken(config.url, token);
+}
+
+function sanitizeAxiosError(error: unknown, token: string): void {
+    if (typeof error !== 'object' || error === null) return;
+
+    const axiosError = error as AxiosErrorLike;
+    sanitizeAxiosConfig(axiosError.config, token);
+    sanitizeAxiosConfig(axiosError.response?.config, token);
+
+    if (error instanceof Error) {
+        error.message = redactToken(error.message, token) as string;
+    }
+}
+
+function getErrorMessage(error: unknown, token: string): string {
+    const message = error instanceof Error ? error.message : 'Unknown request failure';
+    return redactToken(message, token) as string;
+}
+
 export interface TelegramClientRequestEvent {
     method: string;
     attempt: number;
@@ -193,6 +235,11 @@ export class TelegramClient {
             baseURL: `https://api.telegram.org/bot${this._token}/`,
             timeout: 50000, // 50s accommodates the long-polling window (30-40s) without premature ETIMEDOUT.
             httpsAgent: agent,
+        });
+
+        this.http.interceptors.response.use(undefined, error => {
+            sanitizeAxiosError(error, this._token);
+            return Promise.reject(error);
         });
     }
 
@@ -253,6 +300,8 @@ export class TelegramClient {
 
             return result.result;
         } catch (error: any) {
+            sanitizeAxiosError(error, this._token);
+
             if (
                 error instanceof TelegramApiError ||
                 error instanceof NetworkError ||
@@ -320,7 +369,7 @@ export class TelegramClient {
             }
 
             const networkError = new NetworkError(
-                `Network Error: ${error.message}`,
+                `Network Error: ${getErrorMessage(error, this._token)}`,
                 error instanceof Error ? error : undefined
             );
 

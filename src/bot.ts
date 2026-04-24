@@ -1,10 +1,32 @@
 import { TelegramClient, TelegramClientHooks } from './client';
 import { Composer, Middleware } from './composer';
 import { Context } from './context';
-import { Update, User } from './types';
+import {
+    BotCommand,
+    BotCommandOptions,
+    BotDescription,
+    BotName,
+    BotShortDescription,
+    ChatAdministratorRights,
+    GameHighScore,
+    InlineQueryResult,
+    InputProfilePhoto,
+    LabeledPrice,
+    MenuButton,
+    PassportElementError,
+    PreparedKeyboardButton,
+    SentWebAppMessage,
+    SetWebhookOptions,
+    Update,
+    UserProfileAudios,
+    UserProfilePhotos,
+    User,
+    WebhookInfo,
+} from './types';
 import { WebAppUtils } from './webapp';
 import { BotPlugin } from './plugin';
 import { InvalidTokenError } from './errors';
+import { matchesSecretToken } from './adapters';
 
 export type UpdateType =
     | 'message'
@@ -82,6 +104,25 @@ export interface BotHooks<C extends Context = Context> {
     onUpdateError?: (event: BotUpdateErrorEvent<C>) => void | Promise<void>;
     onPollingError?: (event: BotPollingErrorEvent) => void | Promise<void>;
     onWebhookError?: (event: BotWebhookErrorEvent) => void | Promise<void>;
+}
+
+export interface WebhookRequest {
+    method?: string;
+    headers?: Record<string, unknown>;
+    body?: unknown;
+}
+
+export interface WebhookResponse {
+    statusCode: number;
+    end: (body?: string) => void;
+}
+
+function isUpdate(value: unknown): value is Update {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Update).update_id === 'number'
+    );
 }
 
 export class Bot<C extends Context = Context> extends Composer<C> {
@@ -322,8 +363,10 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Returns a webhook handler compatible with Express.js, Koa, Fastify, and native http.
      * Validates the Telegram secret token header and the update structure before processing.
      */
-    webhookCallback(secretToken?: string) {
-        return async (req: any, res: any) => {
+    webhookCallback(
+        secretToken?: string
+    ): (req: WebhookRequest, res: WebhookResponse) => Promise<void> {
+        return async (req, res) => {
             if (req.method !== 'POST') {
                 res.statusCode = 200;
                 res.end();
@@ -333,7 +376,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             // Validate the Telegram secret token to prevent spoofing.
             if (secretToken) {
                 const headerToken = req.headers?.['x-telegram-bot-api-secret-token'];
-                if (headerToken !== secretToken) {
+                if (!matchesSecretToken(headerToken, secretToken)) {
                     res.statusCode = 403;
                     res.end('Forbidden');
                     return;
@@ -343,14 +386,14 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             const update = req.body;
 
             // Basic structural validation — must be an object with a numeric update_id.
-            if (!update || typeof update !== 'object' || typeof update.update_id !== 'number') {
+            if (!isUpdate(update)) {
                 res.statusCode = 400;
                 res.end('Bad Request: Invalid update object.');
                 return;
             }
 
             try {
-                await this.handleUpdate(update as Update);
+                await this.handleUpdate(update);
                 res.statusCode = 200;
                 res.end('OK');
             } catch (e) {
@@ -374,15 +417,29 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     /**
      * Get the current webhook configuration.
      */
-    async getWebhookInfo(): Promise<any> {
+    async getWebhookInfo(): Promise<WebhookInfo> {
         return this.client.callApi('getWebhookInfo');
     }
 
     /**
      * Register a Webhook URL with Telegram.
      */
-    async setWebhook(url: string, extra?: any): Promise<boolean> {
+    async setWebhook(url: string, extra?: SetWebhookOptions): Promise<boolean> {
         return this.client.callApi('setWebhook', { url, ...extra });
+    }
+
+    /**
+     * Log the bot out from the cloud Bot API server before switching to a local server.
+     */
+    async logOut(): Promise<boolean> {
+        return this.client.callApi('logOut');
+    }
+
+    /**
+     * Close the bot instance before moving it between local Bot API servers.
+     */
+    async close(): Promise<boolean> {
+        return this.client.callApi('close');
     }
 
     /**
@@ -402,14 +459,17 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     /**
      * Save a prepared keyboard button (Bot API 9.6).
      */
-    async savePreparedKeyboardButton(button: any, userId: number): Promise<any> {
+    async savePreparedKeyboardButton(
+        button: PreparedKeyboardButton,
+        userId: number
+    ): Promise<PreparedKeyboardButton> {
         return this.client.callApi('savePreparedKeyboardButton', { button, user_id: userId });
     }
 
     /**
      * Direct access to any Telegram Bot API method via the underlying client.
      */
-    async callApi(method: string, data?: any): Promise<any> {
+    async callApi<T = unknown>(method: string, data?: unknown): Promise<T> {
         return this.client.callApi(method, data);
     }
 
@@ -428,26 +488,236 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     }
 
     /**
+     * Set the bot display name.
+     */
+    async setMyName(name?: string, extra?: { language_code?: string }): Promise<boolean> {
+        return this.client.callApi('setMyName', { name, ...extra });
+    }
+
+    /**
+     * Get the bot display name.
+     */
+    async getMyName(extra?: { language_code?: string }): Promise<BotName> {
+        return this.client.callApi('getMyName', extra);
+    }
+
+    /**
+     * Set the bot description shown in an empty chat.
+     */
+    async setMyDescription(
+        description?: string,
+        extra?: { language_code?: string }
+    ): Promise<boolean> {
+        return this.client.callApi('setMyDescription', { description, ...extra });
+    }
+
+    /**
+     * Get the bot description shown in an empty chat.
+     */
+    async getMyDescription(extra?: { language_code?: string }): Promise<BotDescription> {
+        return this.client.callApi('getMyDescription', extra);
+    }
+
+    /**
+     * Set the bot short description shown on the profile page.
+     */
+    async setMyShortDescription(
+        shortDescription?: string,
+        extra?: { language_code?: string }
+    ): Promise<boolean> {
+        return this.client.callApi('setMyShortDescription', {
+            short_description: shortDescription,
+            ...extra,
+        });
+    }
+
+    /**
+     * Get the bot short description shown on the profile page.
+     */
+    async getMyShortDescription(extra?: { language_code?: string }): Promise<BotShortDescription> {
+        return this.client.callApi('getMyShortDescription', extra);
+    }
+
+    /**
+     * Set the menu button shown in a chat.
+     */
+    async setChatMenuButton(extra?: {
+        chat_id?: number | string;
+        menu_button?: MenuButton;
+    }): Promise<boolean> {
+        return this.client.callApi('setChatMenuButton', extra);
+    }
+
+    /**
+     * Get the menu button shown in a chat.
+     */
+    async getChatMenuButton(extra?: { chat_id?: number | string }): Promise<MenuButton> {
+        return this.client.callApi('getChatMenuButton', extra);
+    }
+
+    /**
+     * Set default administrator rights requested by the bot.
+     */
+    async setMyDefaultAdministratorRights(extra?: {
+        rights?: ChatAdministratorRights;
+        for_channels?: boolean;
+    }): Promise<boolean> {
+        return this.client.callApi('setMyDefaultAdministratorRights', extra);
+    }
+
+    /**
+     * Get default administrator rights requested by the bot.
+     */
+    async getMyDefaultAdministratorRights(extra?: {
+        for_channels?: boolean;
+    }): Promise<ChatAdministratorRights> {
+        return this.client.callApi('getMyDefaultAdministratorRights', extra);
+    }
+
+    /**
+     * Get a user's profile photos.
+     */
+    async getUserProfilePhotos(
+        userId: number,
+        extra?: { offset?: number; limit?: number }
+    ): Promise<UserProfilePhotos> {
+        return this.client.callApi('getUserProfilePhotos', { user_id: userId, ...extra });
+    }
+
+    /**
+     * Set the bot profile photo.
+     */
+    async setMyProfilePhoto(photo: InputProfilePhoto): Promise<boolean> {
+        return this.client.callApi('setMyProfilePhoto', { photo });
+    }
+
+    /**
+     * Remove the bot profile photo.
+     */
+    async removeMyProfilePhoto(): Promise<boolean> {
+        return this.client.callApi('removeMyProfilePhoto');
+    }
+
+    /**
+     * Get a user's profile audio files.
+     */
+    async getUserProfileAudios(
+        userId: number,
+        extra?: { offset?: number; limit?: number }
+    ): Promise<UserProfileAudios> {
+        return this.client.callApi('getUserProfileAudios', { user_id: userId, ...extra });
+    }
+
+    /**
+     * Create an invoice link without sending an invoice message.
+     */
+    async createInvoiceLink(
+        title: string,
+        description: string,
+        payload: string,
+        currency: string,
+        prices: LabeledPrice[],
+        extra?: Record<string, unknown>
+    ): Promise<string> {
+        return this.client.callApi('createInvoiceLink', {
+            title,
+            description,
+            payload,
+            currency,
+            prices,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit a user's Telegram Star subscription.
+     */
+    async editUserStarSubscription(
+        userId: number,
+        telegramPaymentChargeId: string,
+        isCanceled: boolean
+    ): Promise<boolean> {
+        return this.client.callApi('editUserStarSubscription', {
+            user_id: userId,
+            telegram_payment_charge_id: telegramPaymentChargeId,
+            is_canceled: isCanceled,
+        });
+    }
+
+    /**
+     * Answer a Web App query with an inline result.
+     */
+    async answerWebAppQuery(
+        webAppQueryId: string,
+        result: InlineQueryResult
+    ): Promise<SentWebAppMessage> {
+        return this.client.callApi('answerWebAppQuery', {
+            web_app_query_id: webAppQueryId,
+            result,
+        });
+    }
+
+    /**
+     * Save a prepared inline message for a user.
+     */
+    async savePreparedInlineMessage(
+        userId: number,
+        result: InlineQueryResult,
+        extra?: Record<string, unknown>
+    ): Promise<{ id: string; expiration_date?: number }> {
+        return this.client.callApi('savePreparedInlineMessage', {
+            user_id: userId,
+            result,
+            ...extra,
+        });
+    }
+
+    /**
+     * Send Telegram Passport validation errors.
+     */
+    async setPassportDataErrors(userId: number, errors: PassportElementError[]): Promise<boolean> {
+        return this.client.callApi('setPassportDataErrors', { user_id: userId, errors });
+    }
+
+    /**
+     * Set a user's game score.
+     */
+    async setGameScore(
+        userId: number,
+        score: number,
+        extra?: Record<string, unknown>
+    ): Promise<boolean> {
+        return this.client.callApi('setGameScore', { user_id: userId, score, ...extra });
+    }
+
+    /**
+     * Get game high scores.
+     */
+    async getGameHighScores(
+        userId: number,
+        extra?: Record<string, unknown>
+    ): Promise<GameHighScore[]> {
+        return this.client.callApi('getGameHighScores', { user_id: userId, ...extra });
+    }
+
+    /**
      * Set the list of bot commands shown in the Telegram menu.
      */
-    async setMyCommands(
-        commands: { command: string; description: string }[],
-        extra?: any
-    ): Promise<boolean> {
+    async setMyCommands(commands: BotCommand[], extra?: BotCommandOptions): Promise<boolean> {
         return this.client.callApi('setMyCommands', { commands, ...extra });
     }
 
     /**
      * Get the current list of bot commands.
      */
-    async getMyCommands(extra?: any): Promise<any> {
+    async getMyCommands(extra?: BotCommandOptions): Promise<BotCommand[]> {
         return this.client.callApi('getMyCommands', extra);
     }
 
     /**
      * Delete the list of bot commands for a given scope/language.
      */
-    async deleteMyCommands(extra?: any): Promise<boolean> {
+    async deleteMyCommands(extra?: BotCommandOptions): Promise<boolean> {
         return this.client.callApi('deleteMyCommands', extra);
     }
 

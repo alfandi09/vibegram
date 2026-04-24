@@ -66,6 +66,31 @@ describe('Wizard', () => {
         expect(exhaustedCtx.session.__wizard_id).toBeUndefined();
     });
 
+    it('supports back() and goto() navigation helpers', async () => {
+        const step = vi.fn(async (ctx: any) => {
+            ctx.wizard.state.changed = true;
+            ctx.wizard.back();
+        });
+        const wizard = new Wizard('signup', [async () => {}, step]);
+        const { ctx } = createContext(makeMessageUpdate('continue'));
+        ctx.session = { __wizard_id: 'signup', __wizard_cursor: 1, __wizard_state: {} };
+
+        await wizard.middleware()(ctx as any, async () => {
+            throw new Error('active wizard should not call next');
+        });
+
+        expect(ctx.session.__wizard_cursor).toBe(0);
+        expect(ctx.session.__wizard_state).toEqual({ changed: true });
+
+        ctx.session = { __wizard_id: 'signup', __wizard_cursor: 0, __wizard_state: {} };
+        await wizard.middleware()(ctx as any, async () => {
+            throw new Error('active wizard should not call next');
+        });
+        ctx.wizard?.goto(3);
+
+        expect(ctx.session.__wizard_cursor).toBe(3);
+    });
+
     it('falls through when the user is not in the wizard', async () => {
         const wizard = new Wizard('signup', [async () => {}]);
         const { ctx } = createContext(makeMessageUpdate('hello'));

@@ -5,6 +5,29 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.1.0] - 2026-04-25
+
+### Added
+
+- Added broader typed Telegram Bot API coverage for webhook management, bot profile settings, menu buttons, administrator rights, profile photos/audio, invoices, Web App answers, passport errors, games, stickers, invite links, forum tools, multi-message helpers, and modern message/service objects.
+- Added ergonomic runtime helpers for `Composer.start()`, `Composer.help()`, `Composer.settings()`, `ctx.replyQuote()`, topic-aware reply helpers, wizard back/goto controls, and scene re-entry.
+- Added security policy documentation plus English and Indonesian quickstart, migration, and deployment docs.
+
+### Changed
+
+- Improved webhook secret-token validation reuse across adapters and bot callbacks.
+- Updated README, VitePress navigation, contribution guidance, and package description to describe the supported API surface more accurately.
+
+### Fixed
+
+- Redacted Telegram bot tokens from Axios error configs, response configs, and error messages before surfacing client errors.
+- Hardened session assignment against prototype-pollution keys when middleware replaces `ctx.session`.
+- Updated forwarded-message detection to use modern `forward_origin` data while preserving legacy fallbacks.
+
+### Tests
+
+- Added regression coverage for client redaction, session hardening, webhook secret matching, modern forward filters, command aliases, context helpers, scene re-entry, wizard controls, and expanded type coverage.
+
 ## [1.0.1] - 2026-04-17
 
 ### Fixed

@@ -51,6 +51,27 @@ export class Composer<C extends Context> {
     }
 
     /**
+     * Convenience alias for command('start', ...fns).
+     */
+    start(...fns: Middleware<C>[]): this {
+        return this.command('start', ...fns);
+    }
+
+    /**
+     * Convenience alias for command('help', ...fns).
+     */
+    help(...fns: Middleware<C>[]): this {
+        return this.command('help', ...fns);
+    }
+
+    /**
+     * Convenience alias for command('settings', ...fns).
+     */
+    settings(...fns: Middleware<C>[]): this {
+        return this.command('settings', ...fns);
+    }
+
+    /**
      * Register a middleware that triggers only on specific Update types or Message sub-properties.
      * Examples: 'message', 'callback_query', 'photo', 'audio', 'document'.
      */

@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type {
     ChatBackground,
     ChatShared,
+    ChatOwnerChanged,
+    ChatOwnerLeft,
     ForumTopicCreated,
     DirectMessagePriceChanged,
     GiftInfo,
     Giveaway,
     GiveawayCompleted,
+    InputProfilePhoto,
+    MessageOriginChannel,
+    MessageOriginHiddenUser,
+    MessageOriginUser,
     Invoice,
     ManagedBotUpdated,
     Message,
@@ -21,7 +27,9 @@ import type {
     SuggestedPostInfo,
     SuccessfulPayment,
     UsersShared,
+    UserProfileAudios,
     VideoChatEnded,
+    VideoQuality,
 } from '../src/types';
 
 describe('modern Telegram types', () => {
@@ -159,5 +167,74 @@ describe('modern Telegram types', () => {
         expect(message.giveaway_completed?.is_star_giveaway).toBe(true);
         expect(message.chat_background_set?.type).toBe('fill_solid');
         expect(message.video_chat_ended?.duration).toBe(300);
+    });
+
+    it('accepts Bot API 9.x profile, origin, and owner service payloads', () => {
+        const originUser: MessageOriginUser = {
+            type: 'user',
+            date: 123,
+            sender_user: { id: 1, is_bot: false, first_name: 'Ada' },
+        };
+        const originHidden: MessageOriginHiddenUser = {
+            type: 'hidden_user',
+            date: 124,
+            sender_user_name: 'Anonymous',
+        };
+        const originChannel: MessageOriginChannel = {
+            type: 'channel',
+            date: 125,
+            chat: { id: -100, type: 'channel', title: 'News' },
+            message_id: 9,
+        };
+        const ownerLeft: ChatOwnerLeft = {};
+        const ownerChanged: ChatOwnerChanged = {
+            old_owner: { id: 1, is_bot: false, first_name: 'Old' },
+            new_owner: { id: 2, is_bot: false, first_name: 'New' },
+        };
+        const profilePhoto: InputProfilePhoto = {
+            type: 'static',
+            photo: 'file-id',
+        };
+        const quality: VideoQuality = {
+            file_id: 'video-720',
+            file_unique_id: 'unique-720',
+            width: 1280,
+            height: 720,
+            duration: 60,
+        };
+        const profileAudios: UserProfileAudios = {
+            total_count: 1,
+            audios: [
+                {
+                    file_id: 'audio-1',
+                    file_unique_id: 'audio-u1',
+                    duration: 10,
+                },
+            ],
+        };
+        const message: Message = {
+            message_id: 3,
+            date: 126,
+            chat: { id: 100, type: 'private' },
+            forward_origin: originUser,
+            chat_owner_left: ownerLeft,
+            chat_owner_changed: ownerChanged,
+            video: {
+                file_id: 'video-1',
+                file_unique_id: 'video-u1',
+                width: 1920,
+                height: 1080,
+                duration: 60,
+                qualities: [quality],
+            },
+        };
+
+        expect(message.forward_origin?.type).toBe('user');
+        expect(originHidden.sender_user_name).toBe('Anonymous');
+        expect(originChannel.message_id).toBe(9);
+        expect(message.chat_owner_changed?.new_owner.id).toBe(2);
+        expect(profilePhoto.type).toBe('static');
+        expect(message.video?.qualities?.[0].height).toBe(720);
+        expect(profileAudios.total_count).toBe(1);
     });
 });

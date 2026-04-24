@@ -7,26 +7,38 @@ bot.use(session());
 
 // Define a multi-step conversation wizard
 const registrationWizard = new Wizard('register_flow', [
-    async (ctx) => {
-        await ctx.reply('Welcome! Let\'s get started. What is your name?');
+    async ctx => {
+        await ctx.reply("Welcome! Let's get started. What is your name?");
         ctx.wizard?.next();
     },
-    async (ctx) => {
+    async ctx => {
         const name = ctx.message?.text;
+        if (name === 'restart') {
+            await ctx.reply('Starting over. What is your name?');
+            ctx.wizard?.goto(0);
+            return;
+        }
         ctx.wizard!.state.name = name;
         await ctx.reply(`Thank you, ${name}. What city do you live in?`);
         ctx.wizard?.next();
     },
-    async (ctx) => {
+    async ctx => {
+        if (ctx.message?.text === 'back') {
+            await ctx.reply('No problem. What is your name?');
+            ctx.wizard?.back();
+            return;
+        }
         ctx.wizard!.state.city = ctx.message?.text;
-        await ctx.reply(`Registration complete!\nName: ${ctx.wizard!.state.name}\nCity: ${ctx.wizard!.state.city}`);
+        await ctx.reply(
+            `Registration complete!\nName: ${ctx.wizard!.state.name}\nCity: ${ctx.wizard!.state.city}`
+        );
         ctx.wizard?.leave();
-    }
+    },
 ]);
 
 bot.use(registrationWizard.middleware());
 
-bot.command('register', (ctx) => {
+bot.command('register', ctx => {
     registrationWizard.enter(ctx);
 });
 

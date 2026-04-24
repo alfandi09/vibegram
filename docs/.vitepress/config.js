@@ -1,6 +1,7 @@
 export default {
     title: 'VibeGram',
-    description: 'Enterprise-Grade Telegram Bot Framework for Node.js — Bot API v9.6',
+    description:
+        'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API v9.6 support',
     base: '/vibegram/',
 
     head: [
@@ -13,7 +14,7 @@ export default {
             {
                 property: 'og:description',
                 content:
-                    'Modern, production-ready Telegram Bot Framework for Node.js. Full Bot API v9.6 coverage.',
+                    'Modern, production-ready Telegram Bot Framework for Node.js with broad Bot API v9.6 support.',
             },
         ],
     ],
@@ -48,7 +49,9 @@ export default {
                         items: [
                             { text: 'Pengenalan', link: '/id/basics/introduction' },
                             { text: 'Instalasi', link: '/id/basics/installation' },
+                            { text: 'Quickstart', link: '/id/basics/quickstart' },
                             { text: 'Instansi Bot & Polling', link: '/id/basics/instance' },
+                            { text: 'Migrasi', link: '/id/basics/migration' },
                         ],
                     },
                     {
@@ -111,6 +114,7 @@ export default {
                             { text: 'Telegram Stars & Pembayaran', link: '/id/advanced/payments' },
                             { text: 'Pesan Draft (API 9.5)', link: '/id/advanced/draft' },
                             { text: 'Administrasi Grup', link: '/id/advanced/administration' },
+                            { text: 'Deployment', link: '/id/advanced/deployment' },
                         ],
                     },
                     {
@@ -158,7 +162,9 @@ export default {
                 items: [
                     { text: 'Introduction', link: '/basics/introduction' },
                     { text: 'Installation', link: '/basics/installation' },
+                    { text: 'Quickstart', link: '/basics/quickstart' },
                     { text: 'Bot Instance & Polling', link: '/basics/instance' },
+                    { text: 'Migration', link: '/basics/migration' },
                 ],
             },
             {
@@ -221,6 +227,7 @@ export default {
                     { text: 'Telegram Stars & Payments', link: '/advanced/payments' },
                     { text: 'Draft Messages (API 9.5)', link: '/advanced/draft' },
                     { text: 'Group Administration', link: '/advanced/administration' },
+                    { text: 'Deployment', link: '/advanced/deployment' },
                 ],
             },
             {

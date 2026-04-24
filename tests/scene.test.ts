@@ -25,9 +25,14 @@ describe('Scene and Stage', () => {
         ctx.scene?.enter('support', { topic: 'billing' });
         expect(ctx.session.__scene_id).toBe('support');
         expect(ctx.session.__scene_state).toEqual({ topic: 'billing' });
+        expect(ctx.scene?.current).toBe('support');
+        ctx.scene?.reenter({ topic: 'technical' });
+        expect(ctx.session.__scene_state).toEqual({ topic: 'technical' });
+        expect(ctx.scene?.state).toEqual({ topic: 'technical' });
         ctx.scene?.leave();
         expect(ctx.session.__scene_id).toBeUndefined();
         expect(ctx.session.__scene_state).toBeUndefined();
+        expect(ctx.scene?.current).toBeUndefined();
     });
 
     it('routes updates to the active scene and stops global propagation when handled', async () => {

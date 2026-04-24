@@ -59,7 +59,7 @@ function assertAdapterOptions(options?: AdapterOptions): void {
     }
 }
 
-function matchesSecretToken(actual: unknown, expected?: string): boolean {
+export function matchesSecretToken(actual: unknown, expected?: string): boolean {
     if (!expected) return true;
     if (typeof actual !== 'string') return false;
 

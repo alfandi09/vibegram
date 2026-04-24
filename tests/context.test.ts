@@ -188,6 +188,52 @@ describe('Context.reply()', () => {
         );
     });
 
+    it('propagates forum topic thread id by default and allows override', async () => {
+        const { ctx, client } = createContext(
+            makeMessageUpdate('topic', { message_thread_id: 123 })
+        );
+
+        await ctx.reply('same topic');
+        await ctx.replyWithPhoto('photo-id');
+        await ctx.sendChatAction('typing');
+        await ctx.reply('override topic', { message_thread_id: 456 });
+
+        expect(client.callApi).toHaveBeenNthCalledWith(
+            1,
+            'sendMessage',
+            expect.objectContaining({ message_thread_id: 123 })
+        );
+        expect(client.callApi).toHaveBeenNthCalledWith(
+            2,
+            'sendPhoto',
+            expect.objectContaining({ message_thread_id: 123 })
+        );
+        expect(client.callApi).toHaveBeenNthCalledWith(
+            3,
+            'sendChatAction',
+            expect.objectContaining({ message_thread_id: 123 })
+        );
+        expect(client.callApi).toHaveBeenNthCalledWith(
+            4,
+            'sendMessage',
+            expect.objectContaining({ message_thread_id: 456 })
+        );
+    });
+
+    it('replyQuote quotes the current message', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        await ctx.replyQuote('quoted');
+
+        expect(client.callApi).toHaveBeenCalledWith(
+            'sendMessage',
+            expect.objectContaining({
+                text: 'quoted',
+                reply_parameters: { message_id: 100 },
+            })
+        );
+    });
+
     it('replyWithHTML sets parse_mode to HTML', async () => {
         const { ctx, client } = createContext(makeMessageUpdate('hello'));
         await ctx.replyWithHTML('<b>Bold</b>');
@@ -266,6 +312,55 @@ describe('Context.deleteMessage()', () => {
         } as any;
         const { ctx } = createContext(update);
         await expect(ctx.deleteMessage()).rejects.toThrow();
+    });
+});
+
+describe('Context API coverage helpers', () => {
+    it('calls invite, forum, and multi-message helpers with expected payloads', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        await ctx.revokeChatInviteLink('https://t.me/+invite');
+        await ctx.closeGeneralForumTopic();
+        await ctx.deleteMessages([1, 2, 3]);
+        await ctx.forwardMessages(12345, [4, 5]);
+
+        expect(client.callApi).toHaveBeenNthCalledWith(1, 'revokeChatInviteLink', {
+            chat_id: 99,
+            invite_link: 'https://t.me/+invite',
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(2, 'closeGeneralForumTopic', {
+            chat_id: 99,
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(3, 'deleteMessages', {
+            chat_id: 99,
+            message_ids: [1, 2, 3],
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(4, 'forwardMessages', {
+            chat_id: 12345,
+            from_chat_id: 99,
+            message_ids: [4, 5],
+        });
+    });
+
+    it('calls sticker and sender-chat helpers with expected payloads', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        await ctx.banChatSenderChat(-100);
+        await ctx.setChatStickerSet('stickers_by_bot');
+        await ctx.setStickerEmojiList('sticker-id', ['😀']);
+
+        expect(client.callApi).toHaveBeenNthCalledWith(1, 'banChatSenderChat', {
+            chat_id: 99,
+            sender_chat_id: -100,
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(2, 'setChatStickerSet', {
+            chat_id: 99,
+            sticker_set_name: 'stickers_by_bot',
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(3, 'setStickerEmojiList', {
+            sticker: 'sticker-id',
+            emoji_list: ['😀'],
+        });
     });
 });
 

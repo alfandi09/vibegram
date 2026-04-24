@@ -10,6 +10,9 @@
   <img alt="Bot API" src="https://img.shields.io/badge/Bot%20API-v9.6-blue?style=for-the-badge" />
   <img alt="Lightweight" src="https://img.shields.io/badge/Footprint-Lightweight-success?style=for-the-badge" />
   <img alt="Node.js version" src="https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=for-the-badge&logo=node.js&logoColor=white" />
+  <a href="https://www.npmjs.com/package/vibegram"><img alt="npm version" src="https://img.shields.io/npm/v/vibegram?style=for-the-badge" /></a>
+  <a href="https://www.npmjs.com/package/vibegram"><img alt="npm downloads" src="https://img.shields.io/npm/dm/vibegram?style=for-the-badge" /></a>
+  <a href="https://github.com/alfandi09/vibegram/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/alfandi09/vibegram/ci.yml?branch=main&style=for-the-badge" /></a>
 </p>
 
 ---
@@ -31,19 +34,22 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 
 ---
 
-## Why VibeGram?
+## What's Included
 
-| Feature               | VibeGram | grammY | Telegraf |
-| --------------------- | :------: | :----: | :------: |
-| Built-in Pagination   |   Yes    |   No   |    No    |
-| Broadcast Queue       |   Yes    |   No   |    No    |
-| API Response Cache    |   Yes    |   No   |    No    |
-| Job Scheduler         |   Yes    |   No   |    No    |
-| Conversation Engine   |   Yes    |  Yes   |   Yes    |
-| Menu Builder          |   Yes    |  Yes   |    No    |
-| Inline Result Builder |   Yes    |   No   |    No    |
-| TypeScript Native     |   Yes    |  Yes   |   Yes    |
-| Plugin System         |   Yes    |  Yes   | Partial  |
+This table highlights built-in VibeGram capabilities, not a ranking of other bot frameworks.
+
+| Capability            | Included |
+| --------------------- | :------: |
+| Middleware Pipeline   |   Yes    |
+| Pagination Utilities  |   Yes    |
+| Broadcast Queue       |   Yes    |
+| API Response Cache    |   Yes    |
+| Job Scheduler         |   Yes    |
+| Conversation Engine   |   Yes    |
+| Menu Builder          |   Yes    |
+| Inline Result Builder |   Yes    |
+| TypeScript Types      |   Yes    |
+| Plugin System         |   Yes    |
 
 ---
 
@@ -232,14 +238,17 @@ Generated API HTML is written to `generated/api/`.
 Maintainer references:
 
 - `docs/core/observability.md`
-- `meta/README.md`
-- `meta/RELEASE_CHECKLIST.md`
+- `CONTRIBUTING.md`
 
 ---
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+Please report vulnerabilities privately. See [SECURITY.md](SECURITY.md) for supported versions and disclosure guidance.
 
 ---
 
