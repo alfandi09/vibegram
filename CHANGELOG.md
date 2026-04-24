@@ -5,7 +5,7 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
-## [1.1.0] - 2026-04-25
+## [1.2.0] - 2026-04-25
 
 ### Added
 
