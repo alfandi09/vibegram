@@ -10,6 +10,116 @@
             "import": "./dist/esm/index.js",
             "require": "./dist/cjs/index.js",
             "types": "./dist/types/index.d.ts"
+        },
+        "./adapters": {
+            "import": "./dist/esm/adapters.js",
+            "require": "./dist/cjs/adapters.js",
+            "types": "./dist/types/adapters.d.ts"
+        },
+        "./bot": {
+            "import": "./dist/esm/bot.js",
+            "require": "./dist/cjs/bot.js",
+            "types": "./dist/types/bot.d.ts"
+        },
+        "./cache": {
+            "import": "./dist/esm/cache.js",
+            "require": "./dist/cjs/cache.js",
+            "types": "./dist/types/cache.d.ts"
+        },
+        "./client": {
+            "import": "./dist/esm/client.js",
+            "require": "./dist/cjs/client.js",
+            "types": "./dist/types/client.d.ts"
+        },
+        "./composer": {
+            "import": "./dist/esm/composer.js",
+            "require": "./dist/cjs/composer.js",
+            "types": "./dist/types/composer.d.ts"
+        },
+        "./context": {
+            "import": "./dist/esm/context.js",
+            "require": "./dist/cjs/context.js",
+            "types": "./dist/types/context.d.ts"
+        },
+        "./conversation": {
+            "import": "./dist/esm/conversation.js",
+            "require": "./dist/cjs/conversation.js",
+            "types": "./dist/types/conversation.d.ts"
+        },
+        "./errors": {
+            "import": "./dist/esm/errors.js",
+            "require": "./dist/cjs/errors.js",
+            "types": "./dist/types/errors.d.ts"
+        },
+        "./filters": {
+            "import": "./dist/esm/filters.js",
+            "require": "./dist/cjs/filters.js",
+            "types": "./dist/types/filters.d.ts"
+        },
+        "./i18n": {
+            "import": "./dist/esm/i18n.js",
+            "require": "./dist/cjs/i18n.js",
+            "types": "./dist/types/i18n.d.ts"
+        },
+        "./inline": {
+            "import": "./dist/esm/inline.js",
+            "require": "./dist/cjs/inline.js",
+            "types": "./dist/types/inline.d.ts"
+        },
+        "./logger": {
+            "import": "./dist/esm/logger.js",
+            "require": "./dist/cjs/logger.js",
+            "types": "./dist/types/logger.d.ts"
+        },
+        "./markup": {
+            "import": "./dist/esm/markup.js",
+            "require": "./dist/cjs/markup.js",
+            "types": "./dist/types/markup.d.ts"
+        },
+        "./menu": {
+            "import": "./dist/esm/menu.js",
+            "require": "./dist/cjs/menu.js",
+            "types": "./dist/types/menu.d.ts"
+        },
+        "./plugin": {
+            "import": "./dist/esm/plugin.js",
+            "require": "./dist/cjs/plugin.js",
+            "types": "./dist/types/plugin.d.ts"
+        },
+        "./queue": {
+            "import": "./dist/esm/queue.js",
+            "require": "./dist/cjs/queue.js",
+            "types": "./dist/types/queue.d.ts"
+        },
+        "./ratelimit": {
+            "import": "./dist/esm/ratelimit.js",
+            "require": "./dist/cjs/ratelimit.js",
+            "types": "./dist/types/ratelimit.d.ts"
+        },
+        "./scene": {
+            "import": "./dist/esm/scene.js",
+            "require": "./dist/cjs/scene.js",
+            "types": "./dist/types/scene.d.ts"
+        },
+        "./session": {
+            "import": "./dist/esm/session.js",
+            "require": "./dist/cjs/session.js",
+            "types": "./dist/types/session.d.ts"
+        },
+        "./types": {
+            "import": "./dist/esm/types.js",
+            "require": "./dist/cjs/types.js",
+            "types": "./dist/types/types.d.ts"
+        },
+        "./webapp": {
+            "import": "./dist/esm/webapp.js",
+            "require": "./dist/cjs/webapp.js",
+            "types": "./dist/types/webapp.d.ts"
+        },
+        "./wizard": {
+            "import": "./dist/esm/wizard.js",
+            "require": "./dist/cjs/wizard.js",
+            "types": "./dist/types/wizard.d.ts"
         }
     },
     "files": [

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Bot } from '../src/bot';
-import { makeMessageUpdate } from './helpers/mock';
+import { UpdateTimeoutError } from '../src/errors';
+import { makeCallbackQueryUpdate, makeMessageUpdate, makePhotoUpdate } from './helpers/mock';
 
 describe('Bot', () => {
     afterEach(() => {
@@ -26,6 +27,88 @@ describe('Bot', () => {
         await bot.handleUpdate(makeMessageUpdate('two'));
 
         expect(calls).toEqual(['first', 'first', 'second']);
+    });
+
+    it('routes bot.on() message shortcuts and arrays', async () => {
+        const bot = new Bot('test-token');
+        const photoHandler = vi.fn(async (_ctx, next) => next());
+        const mixedHandler = vi.fn();
+
+        bot.on('photo', photoHandler);
+        bot.on(['message', 'callback_query'], mixedHandler);
+
+        await bot.handleUpdate(makePhotoUpdate());
+        await bot.handleUpdate(makeCallbackQueryUpdate('pick'));
+
+        expect(photoHandler).toHaveBeenCalledTimes(1);
+        expect(mixedHandler).toHaveBeenCalledTimes(2);
+    });
+
+    it('invalidates cached middleware when bot.on() is registered after first update', async () => {
+        const bot = new Bot('test-token');
+        const handler = vi.fn();
+
+        await bot.handleUpdate(makeMessageUpdate('before'));
+
+        bot.on('message', handler);
+        await bot.handleUpdate(makeMessageUpdate('after'));
+
+        expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('supports start/help/settings shortcuts on Bot instances', async () => {
+        const bot = new Bot('test-token');
+        const startHandler = vi.fn();
+        const helpHandler = vi.fn();
+        const settingsHandler = vi.fn();
+
+        bot.start(startHandler);
+        bot.help(helpHandler);
+        bot.settings(settingsHandler);
+
+        await bot.handleUpdate(makeMessageUpdate('/start'));
+        await bot.handleUpdate(makeMessageUpdate('/help'));
+        await bot.handleUpdate(makeMessageUpdate('/settings'));
+
+        expect(startHandler).toHaveBeenCalledTimes(1);
+        expect(helpHandler).toHaveBeenCalledTimes(1);
+        expect(settingsHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits update timeout errors through hooks and catch()', async () => {
+        vi.useFakeTimers();
+        try {
+            const hooks = {
+                onUpdateError: vi.fn(),
+                onUpdateSuccess: vi.fn(),
+            };
+            const bot = new Bot('test-token', {
+                updateTimeout: 10,
+                observability: { hooks },
+            });
+            const catchHandler = vi.fn();
+
+            bot.catch(catchHandler);
+            bot.use(() => new Promise<void>(() => {}));
+
+            const updatePromise = bot.handleUpdate(makeMessageUpdate('slow'));
+            await vi.advanceTimersByTimeAsync(10);
+            await updatePromise;
+
+            expect(hooks.onUpdateSuccess).not.toHaveBeenCalled();
+            expect(hooks.onUpdateError).toHaveBeenCalledTimes(1);
+            expect(hooks.onUpdateError.mock.calls[0][0].error).toBeInstanceOf(UpdateTimeoutError);
+            expect(catchHandler.mock.calls[0][0]).toBeInstanceOf(UpdateTimeoutError);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('validates updateTimeout values', () => {
+        expect(() => new Bot('test-token', { updateTimeout: Number.POSITIVE_INFINITY })).toThrow(
+            'updateTimeout'
+        );
+        expect(() => new Bot('test-token', { updateTimeout: -1 })).toThrow('updateTimeout');
     });
 
     it('returns 400 once for invalid webhook payloads', async () => {

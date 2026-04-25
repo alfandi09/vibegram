@@ -25,7 +25,7 @@ import {
 } from './types';
 import { WebAppUtils } from './webapp';
 import { BotPlugin } from './plugin';
-import { InvalidTokenError } from './errors';
+import { InvalidTokenError, UpdateTimeoutError } from './errors';
 import { matchesSecretToken } from './adapters';
 
 export type UpdateType =
@@ -55,6 +55,11 @@ export type UpdateType =
     | 'managed_bot';
 
 export interface BotOptions<C extends Context = Context> {
+    /**
+     * Maximum time in milliseconds allowed for processing one update.
+     * Set to 0 or leave undefined to disable middleware timeout protection.
+     */
+    updateTimeout?: number;
     polling?: {
         interval?: number;
         limit?: number;
@@ -125,6 +130,19 @@ function isUpdate(value: unknown): value is Update {
     );
 }
 
+/**
+ * Main bot class for polling, webhooks, middleware routing, and direct Bot API calls.
+ *
+ * @example
+ * ```typescript
+ * const bot = new Bot(process.env.BOT_TOKEN!, { updateTimeout: 5000 });
+ *
+ * bot.start(ctx => ctx.reply('Welcome!'));
+ * bot.on('photo', ctx => ctx.reply('Nice photo.'));
+ *
+ * await bot.launch();
+ * ```
+ */
 export class Bot<C extends Context = Context> extends Composer<C> {
     private static readonly NOOP_NEXT = async () => {};
     public client: TelegramClient;
@@ -141,6 +159,12 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     ) {
         super();
         if (!token) throw new Error('Telegram Bot token is required.');
+        if (
+            this.options?.updateTimeout !== undefined &&
+            (!Number.isFinite(this.options.updateTimeout) || this.options.updateTimeout < 0)
+        ) {
+            throw new TypeError('updateTimeout must be a non-negative number.');
+        }
         this.client = new TelegramClient(token, { hooks: this.options?.observability?.client });
     }
 
@@ -306,6 +330,35 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         this.errorHandler = handler;
     }
 
+    private async runUpdateMiddleware(ctx: C, update: Update): Promise<void> {
+        if (!this._composedMiddleware) {
+            this._composedMiddleware = this.middleware();
+        }
+
+        const middlewarePromise = Promise.resolve(this._composedMiddleware(ctx, Bot.NOOP_NEXT));
+        const timeoutMs = this.options?.updateTimeout;
+
+        if (!timeoutMs || timeoutMs <= 0) {
+            return middlewarePromise;
+        }
+
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+                reject(new UpdateTimeoutError(update.update_id, timeoutMs));
+            }, timeoutMs);
+            timeoutHandle.unref?.();
+        });
+
+        try {
+            await Promise.race([middlewarePromise, timeoutPromise]);
+        } finally {
+            if (timeoutHandle) {
+                clearTimeout(timeoutHandle);
+            }
+        }
+    }
+
     /**
      * Process a single Update object. Used internally by polling and webhooks.
      * Can also be called directly in custom webhook setups.
@@ -315,17 +368,12 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         const updateType = ctx.updateType;
         const start = Date.now();
 
-        // Use the cached middleware chain — avoids recomposing on every update.
-        if (!this._composedMiddleware) {
-            this._composedMiddleware = this.middleware();
-        }
-
         this._activeUpdates++;
         try {
             await this.invokeHook('onUpdateStart', () =>
                 this.options?.observability?.hooks?.onUpdateStart?.({ ctx, update, updateType })
             );
-            await this._composedMiddleware(ctx, Bot.NOOP_NEXT);
+            await this.runUpdateMiddleware(ctx, update);
             await this.invokeHook('onUpdateSuccess', () =>
                 this.options?.observability?.hooks?.onUpdateSuccess?.({
                     ctx,

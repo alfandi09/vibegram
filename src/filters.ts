@@ -1,10 +1,52 @@
 import { Context } from './context';
-import { Middleware } from './composer';
+import { Composer, Middleware } from './composer';
 
 /**
  * Filter function type — returns true if the update matches the condition.
  */
 export type FilterFn<C extends Context = Context> = (ctx: C) => boolean | Promise<boolean>;
+
+/**
+ * Synchronous predicate that narrows a Context subtype for guarded handlers.
+ */
+export type TypeGuardFn<C extends Context, Narrowed extends C> = (ctx: C) => ctx is Narrowed;
+
+/**
+ * Run middleware only when a filter passes. Type-guard predicates narrow the
+ * context type inside the guarded handlers.
+ *
+ * @example
+ * ```typescript
+ * type TextContext = Context & { message: Message & { text: string } };
+ *
+ * const hasTextMessage = (ctx: Context): ctx is TextContext =>
+ *     typeof ctx.message?.text === 'string';
+ *
+ * bot.on('message', guard(hasTextMessage, ctx => {
+ *     return ctx.reply(ctx.message.text.toUpperCase());
+ * }));
+ * ```
+ */
+export function guard<C extends Context, Narrowed extends C>(
+    filter: TypeGuardFn<C, Narrowed>,
+    ...fns: Middleware<Narrowed>[]
+): Middleware<C>;
+export function guard<C extends Context = Context>(
+    filter: FilterFn<C>,
+    ...fns: Middleware<C>[]
+): Middleware<C>;
+export function guard<C extends Context>(
+    filter: FilterFn<C>,
+    ...fns: Middleware<C>[]
+): Middleware<C> {
+    const composed = fns.length > 0 ? Composer.compose(fns) : undefined;
+
+    return async (ctx, next) => {
+        if (!(await filter(ctx))) return;
+        if (!composed) return next();
+        return composed(ctx, next);
+    };
+}
 
 /**
  * Combine multiple filters with AND logic — all must pass.

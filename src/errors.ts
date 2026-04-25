@@ -1,8 +1,8 @@
 /**
  * VibeGram Error Hierarchy
- * 
+ *
  * All VibeGram errors extend VibeGramError, enabling precise error handling:
- * 
+ *
  * ```typescript
  * bot.catch((err, ctx) => {
  *     if (err instanceof TelegramApiError) {
@@ -16,7 +16,10 @@
 
 /** Base class for all VibeGram-specific errors. */
 export class VibeGramError extends Error {
-    constructor(message: string, public readonly code?: string) {
+    constructor(
+        message: string,
+        public readonly code?: string
+    ) {
         super(message);
         this.name = 'VibeGramError';
         // Maintain proper prototype chain for instanceof checks.
@@ -45,7 +48,10 @@ export class TelegramApiError extends VibeGramError {
  * Wraps the original axios/fetch error for inspection.
  */
 export class NetworkError extends VibeGramError {
-    constructor(message: string, public readonly originalError?: Error) {
+    constructor(
+        message: string,
+        public readonly originalError?: Error
+    ) {
         super(message, 'NETWORK_ERROR');
         this.name = 'NetworkError';
         Object.setPrototypeOf(this, new.target.prototype);
@@ -70,6 +76,23 @@ export class InvalidTokenError extends VibeGramError {
     constructor() {
         super('Bot token is invalid or unauthorized.', 'INVALID_TOKEN');
         this.name = 'InvalidTokenError';
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+
+/**
+ * Thrown when update middleware exceeds the configured BotOptions.updateTimeout.
+ */
+export class UpdateTimeoutError extends VibeGramError {
+    constructor(
+        public readonly updateId: number,
+        public readonly timeoutMs: number
+    ) {
+        super(
+            `Update ${updateId} exceeded middleware timeout of ${timeoutMs}ms.`,
+            'UPDATE_TIMEOUT'
+        );
+        this.name = 'UpdateTimeoutError';
         Object.setPrototypeOf(this, new.target.prototype);
     }
 }

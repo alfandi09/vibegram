@@ -13,6 +13,7 @@
 - Commit koreksi versi: `613c349 chore: bump version to 1.2.0`
 - Phase A patch hygiene: released as `1.2.1` via `bd9ad6c fix: prepare 1.2.1 patch release`.
 - Phase B security/stability: implemented locally without version bump.
+- Phase C developer experience: implemented locally without version bump.
 - `1.1.0` harus dianggap burned. npm menolak publish dengan pesan versi pernah dipublish, walau daftar versi saat itu belum menampilkannya.
 - Versi yang harus dihindari: `1.0.0-rc.1`, `1.0.0-rc.2`, `1.0.0`, `1.0.1`, `1.1.0`, `1.1.1`, `1.1.2`, `1.2.0`, `1.2.1`.
 - Kandidat versi berikut:
@@ -129,24 +130,24 @@
     - File: `src/composer.ts`
     - Tambahkan `guard()` atau overload typed middleware untuk narrow context.
 
-- [ ] Subpath exports.
+- [x] Subpath exports.
     - File: `package.json`
-    - Tambahkan `./markup`, `./filters`, `./errors`, `./types`, dll.
-    - Wajib test import CJS/ESM/types.
+    - `./markup`, `./filters`, `./errors`, `./types`, dan semua modul publik lain ditambahkan.
+    - Export map diverifikasi dengan test konfigurasi, build, pack dry-run, dan smoke import CJS/ESM setelah build.
 
-- [ ] JSDoc examples untuk public API utama.
+- [x] JSDoc examples untuk public API utama.
     - File: `src/context.ts`, `src/bot.ts`
-    - Prioritas: `reply`, `replyWithPhoto`, `editMessageText`, `answerCbQuery`, `banChatMember`, `replyWithPoll`, `sendChatAction`, `setReaction`.
+    - Examples ditambahkan untuk `Bot`, `reply`, `replyWithPhoto`, `editMessageText`, `answerCbQuery`, `banChatMember`, `replyWithPoll`, `sendChatAction`, `setReaction`, dan `guard()`.
 
-- [ ] Perkuat tests untuk `bot.on('text' | media)`.
+- [x] Perkuat tests untuk `bot.on('text' | media)`.
     - File: `src/composer.ts`, `tests/composer.test.ts`
-    - Implementasi saat ini sudah mengecek root update dan message sub-property, tapi PLAN lama meminta test per tipe media.
+    - Test tambahan ditambahkan di `tests/bot.test.ts` untuk media shortcut, array routing, cache invalidation, dan `start/help/settings`.
 
 ### Feature Backlog
 
-- [ ] Middleware timeout.
+- [x] Middleware timeout.
     - File: `src/bot.ts`
-    - Tambahkan `updateTimeout` option dan emit error via observability hook.
+    - `updateTimeout` option ditambahkan dan timeout dipancarkan via `onUpdateError` + `catch()`.
 
 - [ ] Graceful webhook launch mode.
     - File: `src/bot.ts`
@@ -224,11 +225,11 @@
 
 ### Phase C - Developer Experience, target `1.3.0` atau `1.4.0`
 
-1. Subpath exports.
-2. Typed `guard()` middleware.
-3. Middleware timeout.
-4. Extra tests untuk `bot.on()` shortcuts.
-5. JSDoc examples untuk API utama.
+1. [x] Subpath exports.
+2. [x] Typed `guard()` middleware.
+3. [x] Middleware timeout.
+4. [x] Extra tests untuk `bot.on()` shortcuts.
+5. [x] JSDoc examples untuk API utama.
 
 ### Phase D - API Coverage, target minor release
 

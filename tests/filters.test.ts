@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     and,
+    guard,
     or,
     not,
     isPrivate,
@@ -36,8 +37,51 @@ import {
     makeMessageUpdate,
     makePhotoUpdate,
 } from './helpers/mock';
+import { Context } from '../src/context';
+import { Message } from '../src/types';
 
 describe('filters', () => {
+    it('guard() runs guarded middleware only when the predicate passes', async () => {
+        const guarded = vi.fn();
+        const middleware = guard(ctx => typeof ctx.message?.text === 'string', guarded);
+
+        const textCtx = createContext(makeMessageUpdate('hello')).ctx;
+        const photoCtx = createContext(makePhotoUpdate()).ctx;
+
+        await middleware(textCtx, vi.fn());
+        await middleware(photoCtx, vi.fn());
+
+        expect(guarded).toHaveBeenCalledTimes(1);
+        expect(guarded).toHaveBeenCalledWith(textCtx, expect.any(Function));
+    });
+
+    it('guard() supports type predicates for narrowed handlers', async () => {
+        type TextMessageContext = Context & { message: Message & { text: string } };
+        const hasTextMessage = (ctx: Context): ctx is TextMessageContext =>
+            typeof ctx.message?.text === 'string';
+
+        let capturedText = '';
+        const middleware = guard(hasTextMessage, ctx => {
+            capturedText = ctx.message.text.toUpperCase();
+        });
+
+        await middleware(createContext(makeMessageUpdate('hello')).ctx, vi.fn());
+
+        expect(capturedText).toBe('HELLO');
+    });
+
+    it('guard() without nested middleware behaves like a blocking filter', async () => {
+        const middleware = guard(ctx => typeof ctx.message?.text === 'string');
+        const textNext = createNext();
+        const photoNext = createNext();
+
+        await middleware(createContext(makeMessageUpdate('hello')).ctx, textNext.next);
+        await middleware(createContext(makePhotoUpdate()).ctx, photoNext.next);
+
+        expect(textNext.called()).toBe(true);
+        expect(photoNext.called()).toBe(false);
+    });
+
     it('and() runs next only when every filter passes', async () => {
         const middleware = and(
             () => true,

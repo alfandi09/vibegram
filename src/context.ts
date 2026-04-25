@@ -217,7 +217,12 @@ export class Context {
     }
 
     /**
-     * Shortcut to reply to the current chat
+     * Shortcut to reply to the current chat.
+     *
+     * @example
+     * ```typescript
+     * bot.command('start', ctx => ctx.reply('Welcome to Vibegram!'));
+     * ```
      */
     async reply(text: string, extra?: ExtraReplyMessage) {
         if (!this.chat) {
@@ -289,7 +294,14 @@ export class Context {
     }
 
     /**
-     * Media Shortcut: Photo
+     * Reply with a photo in the current chat.
+     *
+     * @example
+     * ```typescript
+     * bot.command('poster', ctx => ctx.replyWithPhoto('https://example.com/poster.jpg', {
+     *     caption: 'Launch poster',
+     * }));
+     * ```
      */
     async replyWithPhoto(photo: InputFile, extra?: ExtraMedia) {
         if (!this.chat) throw new Error('Cannot send photo: Chat ID is not available');
@@ -415,7 +427,15 @@ export class Context {
     }
 
     /**
-     * Interactive Shortcut: Poll / Quiz
+     * Reply with a poll or quiz in the current chat.
+     *
+     * @example
+     * ```typescript
+     * bot.command('vote', ctx => ctx.replyWithPoll('Ship it?', [
+     *     { text: 'Yes' },
+     *     { text: 'Needs review' },
+     * ]));
+     * ```
      */
     async replyWithPoll(question: string, options: InputPollOption[], extra?: ExtraPoll) {
         if (!this.chat) throw new Error('Cannot send poll: Chat ID is not available');
@@ -516,7 +536,12 @@ export class Context {
     }
 
     /**
-     * Edit Message Text directly
+     * Edit the current message or callback query message text.
+     *
+     * @example
+     * ```typescript
+     * bot.action('refresh', ctx => ctx.editMessageText('Updated status'));
+     * ```
      */
     async editMessageText(text: string, extra?: ExtraEditMessage) {
         const target = this.getEditTarget();
@@ -668,7 +693,12 @@ export class Context {
     }
 
     /**
-     * Answer a Callback Query (to stop the loading indicator on the inline button)
+     * Answer a callback query to stop the inline button loading indicator.
+     *
+     * @example
+     * ```typescript
+     * bot.action('save', ctx => ctx.answerCbQuery('Saved'));
+     * ```
      */
     async answerCbQuery(text?: string, showAlert?: boolean, extra?: any) {
         if (!this.update.callback_query) {
@@ -696,8 +726,16 @@ export class Context {
     }
 
     /**
-     * Set Chat Action indicator (e.g., Typing, Recording, Uploading)
+     * Set chat action indicator, such as typing or uploading a photo.
      * Options: 'typing' | 'upload_photo' | 'record_video' | 'record_voice' | 'upload_document' | 'choose_sticker' | 'find_location' | 'record_video_note' | 'upload_video_note'
+     *
+     * @example
+     * ```typescript
+     * bot.command('report', async ctx => {
+     *     await ctx.sendChatAction('typing');
+     *     return ctx.reply('Preparing report...');
+     * });
+     * ```
      */
     async sendChatAction(action: string, messageThreadId?: number) {
         if (!this.chat) throw new Error('Cannot send chat action: Chat ID is not available');
@@ -710,7 +748,12 @@ export class Context {
     }
 
     /**
-     * Set Message Reaction
+     * Set a reaction on the current message.
+     *
+     * @example
+     * ```typescript
+     * bot.on('message', ctx => ctx.setReaction('👍'));
+     * ```
      */
     async setReaction(reaction: string | any[], isBig?: boolean) {
         if (!this.chat || !this.message?.message_id)
@@ -837,7 +880,12 @@ export class Context {
     }
 
     /**
-     * Group Admin: Ban a user from the chat permanently or temporarily
+     * Ban a user from the current group permanently or temporarily.
+     *
+     * @example
+     * ```typescript
+     * bot.command('ban', ctx => ctx.banChatMember(Number(ctx.command?.args[0])));
+     * ```
      */
     async banChatMember(userId: number, extra?: ExtraBanMember) {
         if (!this.chat) throw new Error('Cannot ban member: Chat ID is not available');
