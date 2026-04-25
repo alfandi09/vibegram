@@ -13,15 +13,32 @@ export interface RateLimitOptions {
      * Defaults to 1 req/sec for private chats and 20 req/min for groups.
      */
     limit?: number;
-    /** Custom key generator for per-user tracking. Default: `${chatId}_${fromId}` */
+    /** Custom key generator for per-user tracking. Return undefined to use strictMode/pass-through behavior. */
     keyGenerator?: (ctx: Context) => string | undefined;
     /** Callback invoked when a request exceeds the rate limit. */
     onLimitExceeded?: (ctx: Context, next: () => Promise<void>) => void | Promise<void>;
+    /**
+     * When true, updates without a resolvable key are blocked instead of passed through.
+     * Defaults to false.
+     */
+    strictMode?: boolean;
 }
 
 interface RateLimitRecord {
     count: number;
     resetTime: number;
+}
+
+function defaultKeyGenerator(ctx: Context): string | undefined {
+    const chatId = ctx.chat?.id;
+    const fromId = ctx.from?.id;
+
+    if (chatId !== undefined && fromId !== undefined) return `${chatId}_${fromId}`;
+    if (chatId !== undefined) return `chat:${chatId}`;
+    if (fromId !== undefined) return `user:${fromId}`;
+    if (ctx.update.update_id !== undefined) return `update:${ctx.update.update_id}`;
+
+    return undefined;
 }
 
 /**
@@ -44,17 +61,21 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
     cleaner.unref();
 
     return async (ctx: Context, next: () => Promise<void>) => {
-        // 1. Build a unique key from chat ID + user ID.
-        const keyGen = options?.keyGenerator || ((c: Context) => {
-            const chatId = c.chat?.id;
-            const fromId = c.from?.id;
-            if (!chatId || !fromId) return undefined;
-            return `${chatId}_${fromId}`;
-        });
+        // 1. Build a stable key from the best identity available on the update.
+        const keyGen = options?.keyGenerator || defaultKeyGenerator;
 
         const key = keyGen(ctx);
-        // If no key is resolvable (e.g., anonymous inline events), pass through.
-        if (!key) return next();
+        if (!key) {
+            if (options?.strictMode) {
+                if (options.onLimitExceeded) {
+                    return options.onLimitExceeded(ctx, next);
+                }
+                console.warn('[Rate Limiter] Blocking unidentified update.');
+                return;
+            }
+
+            return next();
+        }
 
         // 2. Dynamically calibrate limits based on chat type.
         const isGroup = ctx.chat?.type === 'group' || ctx.chat?.type === 'supergroup';
@@ -72,7 +93,7 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
         if (!record || now > record.resetTime) {
             record = {
                 count: 1,
-                resetTime: now + windowMsDuration
+                resetTime: now + windowMsDuration,
             };
             memoryStore.set(key, record);
             return next();
@@ -93,4 +114,3 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
         return next();
     };
 }
-

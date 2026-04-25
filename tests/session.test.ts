@@ -40,6 +40,23 @@ describe('MemorySessionStore', () => {
         store.delete('key');
         expect(store.get('key')).toBeUndefined();
     });
+
+    it('periodically removes expired entries', () => {
+        vi.useFakeTimers();
+        const store = new MemorySessionStore(5, 100, 10);
+
+        try {
+            store.set('expired', { ok: true });
+            expect((store as any).store.size).toBe(1);
+
+            vi.advanceTimersByTime(10);
+
+            expect((store as any).store.size).toBe(0);
+        } finally {
+            store.close();
+            vi.useRealTimers();
+        }
+    });
 });
 
 // ---------------------------------------------------------------------------

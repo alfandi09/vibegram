@@ -6,6 +6,7 @@ import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
+const DEFAULT_MAX_JSON_PAYLOAD_BYTES = 50 * 1024 * 1024;
 
 type UploadValue = Buffer | NodeJS.ReadableStream;
 
@@ -23,6 +24,13 @@ function isUploadValue(value: unknown): value is UploadValue {
     );
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
 function hasUploadValue(value: unknown, visited: WeakSet<object> = new WeakSet()): boolean {
     if (isUploadValue(value)) return true;
     if (typeof value !== 'object' || value === null) return false;
@@ -35,6 +43,74 @@ function hasUploadValue(value: unknown, visited: WeakSet<object> = new WeakSet()
     }
 
     return Object.values(value).some(item => hasUploadValue(item, visited));
+}
+
+function validatePayloadValue(
+    value: unknown,
+    path: string,
+    visited: WeakSet<object> = new WeakSet()
+): void {
+    if (
+        value === undefined ||
+        value === null ||
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+    ) {
+        return;
+    }
+
+    if (isUploadValue(value)) return;
+
+    if (typeof value === 'bigint' || typeof value === 'function' || typeof value === 'symbol') {
+        throw new TypeError(`Telegram API payload contains unsupported value at ${path}.`);
+    }
+
+    if (typeof value !== 'object') return;
+
+    if (visited.has(value)) {
+        throw new TypeError('Telegram API payload contains a circular reference.');
+    }
+
+    visited.add(value);
+
+    if (Array.isArray(value)) {
+        value.forEach((item, index) => validatePayloadValue(item, `${path}[${index}]`, visited));
+        visited.delete(value);
+        return;
+    }
+
+    if (!isPlainObject(value)) {
+        throw new TypeError(
+            `Telegram API payload must contain only plain objects; ${path} is not plain.`
+        );
+    }
+
+    for (const [key, nestedValue] of Object.entries(value)) {
+        validatePayloadValue(nestedValue, `${path}.${key}`, visited);
+    }
+
+    visited.delete(value);
+}
+
+function validateRequestPayload(data: unknown, maxJsonPayloadBytes: number): void {
+    if (data === undefined) return;
+
+    if (!isPlainObject(data)) {
+        throw new TypeError('Telegram API payload must be a plain object when provided.');
+    }
+
+    validatePayloadValue(data, 'data');
+
+    if (hasUploadValue(data)) return;
+
+    const json = JSON.stringify(data);
+    const byteLength = Buffer.byteLength(json, 'utf8');
+    if (byteLength > maxJsonPayloadBytes) {
+        throw new RangeError(
+            `Telegram API JSON payload exceeds maximum size of ${maxJsonPayloadBytes} bytes.`
+        );
+    }
 }
 
 function makeAttachmentName(path: Array<string | number>, usedNames: Set<string>): string {
@@ -218,16 +294,29 @@ export interface TelegramClientHooks {
 
 export interface TelegramClientOptions {
     hooks?: TelegramClientHooks;
+    /**
+     * Maximum JSON payload size in bytes for non-multipart requests.
+     * Multipart uploads are streamed/form-encoded and are not measured with this limit.
+     * Defaults to 50MB.
+     */
+    maxJsonPayloadBytes?: number;
 }
 
 export class TelegramClient {
     private http: AxiosInstance;
     private readonly _token: string;
     private readonly hooks?: TelegramClientHooks;
+    private readonly maxJsonPayloadBytes: number;
 
     constructor(token: string, options?: TelegramClientOptions) {
         this._token = token;
         this.hooks = options?.hooks;
+        this.maxJsonPayloadBytes = options?.maxJsonPayloadBytes ?? DEFAULT_MAX_JSON_PAYLOAD_BYTES;
+
+        if (!Number.isFinite(this.maxJsonPayloadBytes) || this.maxJsonPayloadBytes <= 0) {
+            throw new TypeError('maxJsonPayloadBytes must be a positive number.');
+        }
+
         // Keep-Alive agent prevents repeated TCP/TLS handshakes in high-traffic environments.
         const agent = new https.Agent({ keepAlive: true, maxSockets: 100 });
 
@@ -272,6 +361,7 @@ export class TelegramClient {
         attempt: number = 1
     ): Promise<any> {
         const start = Date.now();
+        validateRequestPayload(data, this.maxJsonPayloadBytes);
         const { reqData, headers, isMultipart } = prepareRequestPayload(data);
 
         try {

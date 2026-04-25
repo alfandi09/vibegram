@@ -41,14 +41,27 @@ export class MemorySessionStore implements SessionStore {
     private store = new Map<string, { value: any; expiresAt: number }>();
     private ttlMs: number;
     private maxEntries: number;
+    private cleanupTimer?: ReturnType<typeof setInterval>;
 
     /**
      * @param ttlMs Time-to-live in milliseconds. Defaults to 24 hours.
      * @param maxEntries Maximum number of sessions to store. Oldest entries are evicted when exceeded. Defaults to 10000.
+     * @param cleanupIntervalMs Periodic cleanup interval in milliseconds. Set to 0 to disable. Defaults to 60000.
      */
-    constructor(ttlMs: number = 86400000, maxEntries: number = 10000) {
+    constructor(
+        ttlMs: number = 86400000,
+        maxEntries: number = 10000,
+        cleanupIntervalMs: number = 60000
+    ) {
         this.ttlMs = ttlMs;
         this.maxEntries = maxEntries;
+
+        if (cleanupIntervalMs > 0) {
+            this.cleanupTimer = setInterval(() => {
+                this.cleanupExpired();
+            }, cleanupIntervalMs);
+            this.cleanupTimer.unref?.();
+        }
     }
 
     get(key: string) {
@@ -74,6 +87,24 @@ export class MemorySessionStore implements SessionStore {
 
     delete(key: string) {
         this.store.delete(key);
+    }
+
+    cleanupExpired(now: number = Date.now()): number {
+        let removed = 0;
+        for (const [key, item] of this.store.entries()) {
+            if (now > item.expiresAt) {
+                this.store.delete(key);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    close(): void {
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+            this.cleanupTimer = undefined;
+        }
     }
 }
 

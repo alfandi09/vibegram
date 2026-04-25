@@ -8,14 +8,15 @@
 
 ## Release Snapshot
 
-- npm latest: `1.2.0`
+- npm latest: `1.2.1`
 - Commit fitur utama: `e5f5ebe feat: expand Bot API coverage and harden runtime safety`
 - Commit koreksi versi: `613c349 chore: bump version to 1.2.0`
-- Phase A patch hygiene: prepared for `1.2.1`.
+- Phase A patch hygiene: released as `1.2.1` via `bd9ad6c fix: prepare 1.2.1 patch release`.
+- Phase B security/stability: implemented locally without version bump.
 - `1.1.0` harus dianggap burned. npm menolak publish dengan pesan versi pernah dipublish, walau daftar versi saat itu belum menampilkannya.
-- Versi yang harus dihindari: `1.0.0-rc.1`, `1.0.0-rc.2`, `1.0.0`, `1.0.1`, `1.1.0`, `1.1.1`, `1.1.2`, `1.2.0`.
+- Versi yang harus dihindari: `1.0.0-rc.1`, `1.0.0-rc.2`, `1.0.0`, `1.0.1`, `1.1.0`, `1.1.1`, `1.1.2`, `1.2.0`, `1.2.1`.
 - Kandidat versi berikut:
-    - `1.2.1` untuk bug/security/doc-only patch.
+    - `1.2.2` untuk bug/security/doc-only patch.
     - `1.3.0` untuk fitur backward-compatible.
     - `2.0.0` untuk breaking changes seperti menghapus field deprecated atau mengganti HTTP layer.
 
@@ -61,23 +62,25 @@
 
 ### Security and Stability
 
-- [ ] `rateLimit()` fallback untuk update tanpa `from` atau tanpa `chat`.
+- [x] `rateLimit()` fallback untuk update tanpa `from` atau tanpa `chat`.
     - File: `src/ratelimit.ts`
-    - Masalah saat ini: default key masih `chatId_fromId`; jika salah satu tidak ada, update lewat tanpa limit.
-    - Rekomendasi: fallback key bertingkat `chat`, `from`, `update_id`, plus opsi `strictMode`.
+    - Default key sekarang fallback bertingkat `chat+from`, `chat`, `from`, lalu `update_id`.
+    - Opsi `strictMode` ditambahkan untuk memblok update tanpa key.
 
-- [ ] Validasi payload `TelegramClient.callApi()`.
+- [x] Validasi payload `TelegramClient.callApi()`.
     - File: `src/client.ts`
-    - Tambahkan size limit JSON payload, validasi plain object, dan error yang jelas.
-    - Rekomendasi default: max JSON payload configurable.
+    - Root payload wajib plain object jika disediakan.
+    - JSON payload non-multipart dibatasi lewat `maxJsonPayloadBytes`, default 50MB.
+    - Multipart upload tetap form-encoded dan tidak dihitung sebagai JSON payload.
 
-- [ ] `ConversationManager.cancelAll()`.
+- [x] `ConversationManager.cancelAll()`.
     - File: `src/conversation.ts`
     - Berguna untuk graceful shutdown custom persistence.
 
-- [ ] Periodic cleanup untuk `MemorySessionStore`.
+- [x] Periodic cleanup untuk `MemorySessionStore`.
     - File: `src/session.ts`
-    - Saat ini expired sessions dibersihkan saat akses/lazy path; belum ada interval cleanup khusus.
+    - `cleanupExpired()` dan `close()` ditambahkan.
+    - Constructor punya `cleanupIntervalMs`, default 60 detik dan bisa dimatikan dengan `0`.
 
 ### Type Correctness
 
@@ -213,11 +216,11 @@
 
 ### Phase B - Security/Stability, target `1.3.0` jika ada opsi baru
 
-1. Rate limit fallback + optional strict mode.
-2. `callApi()` payload validation + configurable max payload size.
-3. `ConversationManager.cancelAll()`.
-4. Periodic cleanup `MemorySessionStore`.
-5. Tests untuk happy path, edge cases, dan failure path.
+1. [x] Rate limit fallback + optional strict mode.
+2. [x] `callApi()` payload validation + configurable max payload size.
+3. [x] `ConversationManager.cancelAll()`.
+4. [x] Periodic cleanup `MemorySessionStore`.
+5. [x] Tests untuk happy path, edge cases, dan failure path.
 
 ### Phase C - Developer Experience, target `1.3.0` atau `1.4.0`
 

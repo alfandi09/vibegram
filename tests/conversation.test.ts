@@ -108,6 +108,38 @@ describe('Conversation', () => {
         r2?.();
     });
 
+    it('cancelAll() cancels all active conversations', async () => {
+        const conv = new Conversation();
+
+        conv.define('ask', async (_ctx, c) => {
+            await c.waitForText();
+        });
+
+        const { ctx: ctx1 } = createContext(makeMessageUpdate('start'));
+        const { ctx: ctx2 } = createContext({
+            update_id: 100,
+            message: {
+                message_id: 201,
+                date: 0,
+                text: 'start',
+                from: { id: 56, is_bot: false, first_name: 'B' },
+                chat: { id: 56, type: 'private' },
+            },
+        } as any);
+
+        await conv.enter('ask', ctx1);
+        await conv.enter('ask', ctx2);
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(conv.activeCount).toBe(2);
+
+        conv.cancelAll();
+
+        expect(conv.activeCount).toBe(0);
+        expect(conv.isActive(ctx1)).toBe(false);
+        expect(conv.isActive(ctx2)).toBe(false);
+    });
+
     it('auto-cleanup removes conversation after defaultTimeout', async () => {
         const conv = new Conversation({ defaultTimeout: 30 }); // 30ms timeout
         let waitResolve: any;

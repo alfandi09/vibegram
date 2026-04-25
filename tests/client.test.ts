@@ -48,6 +48,41 @@ describe('TelegramClient', () => {
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
     });
 
+    it('rejects non-plain root payloads before sending', async () => {
+        const client = new TelegramClient('test-token');
+        const post = vi.fn();
+        (client as any).http = { post };
+
+        await expect(client.callApi('sendMessage', new URLSearchParams())).rejects.toThrow(
+            'plain object'
+        );
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it('rejects oversized JSON payloads before sending', async () => {
+        const client = new TelegramClient('test-token', { maxJsonPayloadBytes: 20 });
+        const post = vi.fn();
+        (client as any).http = { post };
+
+        await expect(client.callApi('sendMessage', { text: 'x'.repeat(100) })).rejects.toThrow(
+            'exceeds maximum size'
+        );
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it('does not apply JSON size limits to multipart uploads', async () => {
+        const client = new TelegramClient('test-token', { maxJsonPayloadBytes: 1 });
+        const post = vi.fn().mockResolvedValue({
+            data: { ok: true, result: true },
+        });
+        (client as any).http = { post };
+
+        await expect(
+            client.callApi('sendPhoto', { chat_id: 99, photo: Buffer.from('large-upload') })
+        ).resolves.toBe(true);
+        expect(post).toHaveBeenCalledOnce();
+    });
+
     it('redacts bot tokens from axios errors before wrapping them', async () => {
         const token = '123456:secret-token';
         const client = new TelegramClient(token);

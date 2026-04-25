@@ -336,6 +336,16 @@ export class Conversation {
     }
 
     /**
+     * Cancel every active conversation and clear their timers.
+     * Useful from graceful shutdown handlers before closing external resources.
+     */
+    cancelAll(): void {
+        for (const key of Array.from(this.active.keys())) {
+            this.leave(key);
+        }
+    }
+
+    /**
      * Check if a chat has an active conversation.
      */
     isActive(ctx: Context): boolean {
