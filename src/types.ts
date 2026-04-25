@@ -929,8 +929,13 @@ export interface InlineKeyboardButton {
     switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat;
     callback_game?: CallbackGame;
     pay?: boolean;
+    copy_text?: CopyTextButton;
     icon_custom_emoji_id?: string;
     style?: string;
+}
+
+export interface CopyTextButton {
+    text: string;
 }
 
 export interface LoginUrl {

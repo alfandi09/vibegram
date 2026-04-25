@@ -5,6 +5,26 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [1.2.1] - 2026-04-25
+
+### Added
+
+- Added GitHub issue templates for bug reports and feature requests.
+
+### Changed
+
+- Updated agent release guidance to mark `1.1.0` as a burned version and document `1.2.0` as the current published baseline.
+- Normalized the repository URL metadata to npm's canonical `git+https` format.
+- Updated the next-update plan to reflect Phase A completion and validation status.
+
+### Fixed
+
+- Added the missing `copy_text` field to `InlineKeyboardButton` so `Markup.button.copy()` matches the exported TypeScript types.
+
+### Tests
+
+- Added type coverage for copy-text inline keyboard buttons.
+
 ## [1.2.0] - 2026-04-25
 
 ### Added

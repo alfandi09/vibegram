@@ -4,6 +4,7 @@ import type {
     ChatShared,
     ChatOwnerChanged,
     ChatOwnerLeft,
+    InlineKeyboardButton,
     ForumTopicCreated,
     DirectMessagePriceChanged,
     GiftInfo,
@@ -236,5 +237,14 @@ describe('modern Telegram types', () => {
         expect(profilePhoto.type).toBe('static');
         expect(message.video?.qualities?.[0].height).toBe(720);
         expect(profileAudios.total_count).toBe(1);
+    });
+
+    it('accepts copy-text inline keyboard buttons', () => {
+        const button: InlineKeyboardButton = {
+            text: 'Copy code',
+            copy_text: { text: 'ABC-123' },
+        };
+
+        expect(button.copy_text?.text).toBe('ABC-123');
     });
 });
