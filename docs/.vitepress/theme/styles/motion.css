@@ -1,8 +1,14 @@
 @media (prefers-reduced-motion: no-preference) {
     .VPNavBarMenuLink,
+    .VPNavScreenMenuLink,
+    .VPLocalNav .menu,
+    .VPLocalNavOutlineDropdown button,
     .VPButton,
     .VPFeature,
     .VPSidebarItem .link,
+    .VPSidebarItem.level-0 > .item,
+    .DocSearch-Button,
+    .VPLocalSearchBox .result,
     .vg-home-quicklinks a {
         transition:
             border-color 160ms ease,

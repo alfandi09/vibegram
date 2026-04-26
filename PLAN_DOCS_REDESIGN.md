@@ -403,7 +403,7 @@ npm run typecheck
 
 ## Phase 5 - Navigation dan Search UX
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -411,31 +411,49 @@ Tujuan:
 
 Checklist:
 
-- [ ] Header desktop:
-    - [ ] Logo/brand
-    - [ ] Guide link
-    - [ ] API link
-    - [ ] Changelog/GitHub
-    - [ ] Language switch
-    - [ ] Theme switch
-    - [ ] Search trigger
-- [ ] Sidebar desktop:
-    - [ ] Group heading
-    - [ ] Active route
-    - [ ] Collapsible groups
-    - [ ] Scroll behavior
-- [ ] Mobile:
-    - [ ] Sheet nav
-    - [ ] Search accessible
-    - [ ] Theme/language controls
-- [ ] Search:
-    - [ ] Local search tetap jalan.
-    - [ ] UI trigger command-style.
+- [x] Header desktop:
+    - [x] Logo/brand
+    - [x] Guide link
+    - [x] API link
+    - [x] Changelog/GitHub
+    - [x] Language switch
+    - [x] Theme switch
+    - [x] Search trigger
+- [x] Sidebar desktop:
+    - [x] Group heading
+    - [x] Active route
+    - [x] Collapsible groups
+    - [x] Scroll behavior
+- [x] Mobile:
+    - [x] Sheet nav
+    - [x] Search accessible
+    - [x] Theme/language controls
+- [x] Search:
+    - [x] Local search tetap jalan.
+    - [x] UI trigger command-style.
+
+Output:
+
+- `docs/.vitepress/theme/styles/shell.css`
+    - Header desktop, command-style search trigger, language/theme/GitHub controls, sidebar groups, active route, local mobile nav, mobile nav screen, dan local search overlay dipoles sebagai satu sistem visual.
+    - Mobile navigation tetap memakai behavior bawaan VitePress agar SSR, focus management, i18n, theme toggle, dan GitHub/social links tidak putus.
+    - Search overlay memakai selector global `.VPLocalSearchBox` karena VitePress me-render local search sebagai overlay root, bukan sebagai anak `#local-search`.
+- `docs/.vitepress/theme/styles/motion.css`
+    - Transition ditambahkan untuk nav links, sidebar item, search trigger, local nav controls, dan search results dengan tetap menghormati `prefers-reduced-motion`.
+
+QA:
+
+- Browser desktop 1440px `basics/installation`: header/search/sidebar tidak overflow global dan search trigger tampil command-style.
+- Local search desktop: query `webhook` membuka hasil dari halaman deployment, bot instance, security, dan adapters.
+- Browser mobile 390px `id/basics/installation`: header, local nav, mobile search, dan page content tidak overflow global.
+- Mobile nav: hamburger membuka nav route, language switch, theme switch, dan GitHub link; language list tidak lagi terpotong.
+- Mobile local search: query `webhook` membuka hasil ID dan shell search memenuhi viewport tanpa horizontal overflow.
 
 Validation:
 
 ```bash
 npm run docs:build
+npm run typecheck
 ```
 
 ---
