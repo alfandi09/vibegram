@@ -68,6 +68,26 @@ const update = await c.wait({ timeout: 60_000 });
 const foto = update.message?.photo;
 ```
 
+### `c.waitForAny(opts?)`
+
+Tunggu teks, tombol inline, atau media umum dalam satu langkah:
+
+```typescript
+const input = await c.waitForAny({
+    validationError: 'Kirim teks, tekan tombol, atau lampirkan media.',
+});
+
+if (input.type === 'text') {
+    await ctx.reply(`Teks: ${input.text}`);
+} else if (input.type === 'callback') {
+    await ctx.reply(`Tombol: ${input.data}`);
+} else if (input.mediaType === 'photo') {
+    await ctx.reply(`Jumlah varian foto: ${input.media.length}`);
+} else {
+    await ctx.reply(`Tipe media: ${input.mediaType}`);
+}
+```
+
 ### `c.waitForCallbackQuery(data?)`
 
 Tunggu klik tombol inline:
@@ -77,8 +97,8 @@ import { Markup } from 'vibegram';
 
 await ctx.reply('Pilih satu:', {
     reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('Ya ✅', 'ya'), Markup.button.callback('Tidak ❌', 'tidak')]
-    ])
+        [Markup.button.callback('Ya ✅', 'ya'), Markup.button.callback('Tidak ❌', 'tidak')],
+    ]),
 });
 
 const cbCtx = await c.waitForCallbackQuery(['ya', 'tidak']);
@@ -106,14 +126,14 @@ conv.define('beli', async (ctx, c) => {
 
     // Langkah 3: Konfirmasi
     await ctx.reply(
-        `Konfirmasi pesanan:\n` +
-        `Produk: ${produk}\nJumlah: ${jumlah}\n\n` +
-        `Lanjutkan?`,
+        `Konfirmasi pesanan:\n` + `Produk: ${produk}\nJumlah: ${jumlah}\n\n` + `Lanjutkan?`,
         {
             reply_markup: Markup.inlineKeyboard([
-                [Markup.button.callback('✅ Ya, pesan!', 'konfirm'),
-                 Markup.button.callback('❌ Batal', 'batal')]
-            ])
+                [
+                    Markup.button.callback('✅ Ya, pesan!', 'konfirm'),
+                    Markup.button.callback('❌ Batal', 'batal'),
+                ],
+            ]),
         }
     );
 

@@ -1,6 +1,16 @@
 import { Context } from './context';
 import { Middleware } from './composer';
 import { ConversationTimeoutError } from './errors';
+import type {
+    Animation,
+    Audio,
+    Document,
+    PhotoSize,
+    Sticker,
+    Video,
+    VideoNote,
+    Voice,
+} from './types';
 
 /**
  * Wait options for conversation steps.
@@ -22,6 +32,173 @@ export class ConversationTimeout extends ConversationTimeoutError {
         super(chatId);
         this.name = 'ConversationTimeout';
     }
+}
+
+export interface ConversationWaitForAnyText {
+    type: 'text';
+    text: string;
+    ctx: Context;
+}
+
+export interface ConversationWaitForAnyCallback {
+    type: 'callback';
+    data: string;
+    ctx: Context;
+}
+
+export type ConversationMediaKind =
+    | 'photo'
+    | 'video'
+    | 'document'
+    | 'audio'
+    | 'voice'
+    | 'video_note'
+    | 'animation'
+    | 'sticker';
+
+export type ConversationWaitForAnyMedia =
+    | {
+          type: 'media';
+          mediaType: 'photo';
+          media: PhotoSize[];
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'video';
+          media: Video;
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'document';
+          media: Document;
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'audio';
+          media: Audio;
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'voice';
+          media: Voice;
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'video_note';
+          media: VideoNote;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'animation';
+          media: Animation;
+          caption?: string;
+          ctx: Context;
+      }
+    | {
+          type: 'media';
+          mediaType: 'sticker';
+          media: Sticker;
+          ctx: Context;
+      };
+
+export type ConversationWaitForAnyResult =
+    | ConversationWaitForAnyText
+    | ConversationWaitForAnyCallback
+    | ConversationWaitForAnyMedia;
+
+function getWaitForAnyResult(ctx: Context): ConversationWaitForAnyResult | undefined {
+    const callbackData = ctx.update.callback_query?.data;
+    if (callbackData) {
+        return { type: 'callback', data: callbackData, ctx };
+    }
+
+    const message = ctx.message;
+    if (!message) return undefined;
+
+    if (message.text) {
+        return { type: 'text', text: message.text, ctx };
+    }
+
+    if (message.photo?.length) {
+        return {
+            type: 'media',
+            mediaType: 'photo',
+            media: message.photo,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.video) {
+        return {
+            type: 'media',
+            mediaType: 'video',
+            media: message.video,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.document) {
+        return {
+            type: 'media',
+            mediaType: 'document',
+            media: message.document,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.audio) {
+        return {
+            type: 'media',
+            mediaType: 'audio',
+            media: message.audio,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.voice) {
+        return {
+            type: 'media',
+            mediaType: 'voice',
+            media: message.voice,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.video_note) {
+        return { type: 'media', mediaType: 'video_note', media: message.video_note, ctx };
+    }
+
+    if (message.animation) {
+        return {
+            type: 'media',
+            mediaType: 'animation',
+            media: message.animation,
+            caption: message.caption,
+            ctx,
+        };
+    }
+
+    if (message.sticker) {
+        return { type: 'media', mediaType: 'sticker', media: message.sticker, ctx };
+    }
+
+    return undefined;
 }
 
 /**
@@ -87,6 +264,30 @@ export class ConversationContext {
             validationError: options?.validationError || 'Please press a button.',
         });
         return ctx.update.callback_query!.data!;
+    }
+
+    /**
+     * Wait for the next supported input and return a discriminated union.
+     * Supports text messages, callback query data, and common media messages.
+     */
+    async waitForAny(options?: WaitOptions): Promise<ConversationWaitForAnyResult> {
+        const ctx = await this.wait({
+            ...options,
+            validate: async ctx => {
+                if (!getWaitForAnyResult(ctx)) return false;
+                if (options?.validate) return options.validate(ctx);
+                return true;
+            },
+            validationError:
+                options?.validationError || 'Please send text, press a button, or send media.',
+        });
+
+        const result = getWaitForAnyResult(ctx);
+        if (!result) {
+            throw new Error('Conversation waitForAny resolved without a supported input.');
+        }
+
+        return result;
     }
 
     /**

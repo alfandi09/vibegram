@@ -172,9 +172,11 @@
     - `AdapterOptions.healthPath` ditambahkan sebagai GET endpoint opsional untuk Express, Fastify, Hono, native HTTP, dan Koa adapters.
     - Health check mengembalikan `200 OK` tanpa validasi secret token, parsing body, atau memanggil `bot.handleUpdate()`.
 
-- [ ] `Conversation.waitForAny()`.
+- [x] `Conversation.waitForAny()`.
     - File: `src/conversation.ts`
-    - Return discriminated union untuk text/callback/media.
+    - `ConversationContext.waitForAny()` ditambahkan dengan return discriminated union untuk `text`, `callback`, dan `media`.
+    - Media union mencakup `photo`, `video`, `document`, `audio`, `voice`, `video_note`, `animation`, dan `sticker`.
+    - Tests mencakup text, callback, media, unsupported update, dan custom validation.
 
 ### Bot API Coverage Backlog
 

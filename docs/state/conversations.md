@@ -18,8 +18,8 @@ conv.define('order', async (ctx, c) => {
 
     await ctx.reply('How many?');
     const qty = await c.waitForText({
-        validate: (ctx) => !isNaN(parseInt(ctx.message?.text || '')),
-        validationError: 'Please enter a valid number.'
+        validate: ctx => !isNaN(parseInt(ctx.message?.text || '')),
+        validationError: 'Please enter a valid number.',
     });
 
     await ctx.reply(`Order confirmed: ${parseInt(qty)}x ${product}`);
@@ -31,14 +31,35 @@ bot.command('order', ctx => conv.enter('order', ctx));
 
 ## Wait Methods
 
-| Method | Returns | Waits for |
-|--------|---------|-----------|
-| `conv.waitForText(opts?)` | `string` | Text message |
-| `conv.waitForPhoto(opts?)` | `PhotoSize[]` | Photo message |
-| `conv.waitForCallbackQuery(opts?)` | `string` | Inline button press |
-| `conv.waitForContact(opts?)` | `Contact` | Shared contact |
-| `conv.waitForLocation(opts?)` | `Location` | Shared location |
-| `conv.wait(opts?)` | `Context` | Any update (raw) |
+| Method                             | Returns             | Waits for                            |
+| ---------------------------------- | ------------------- | ------------------------------------ |
+| `conv.waitForText(opts?)`          | `string`            | Text message                         |
+| `conv.waitForPhoto(opts?)`         | `PhotoSize[]`       | Photo message                        |
+| `conv.waitForCallbackQuery(opts?)` | `string`            | Inline button press                  |
+| `conv.waitForContact(opts?)`       | `Contact`           | Shared contact                       |
+| `conv.waitForLocation(opts?)`      | `Location`          | Shared location                      |
+| `conv.waitForAny(opts?)`           | discriminated union | Text, callback data, or common media |
+| `conv.wait(opts?)`                 | `Context`           | Any update (raw)                     |
+
+## Mixed Input
+
+Use `waitForAny()` when one step accepts several input types:
+
+```typescript
+const input = await c.waitForAny({
+    validationError: 'Send text, press a button, or attach media.',
+});
+
+if (input.type === 'text') {
+    await ctx.reply(`Text: ${input.text}`);
+} else if (input.type === 'callback') {
+    await ctx.reply(`Button: ${input.data}`);
+} else if (input.mediaType === 'photo') {
+    await ctx.reply(`Photo variants: ${input.media.length}`);
+} else {
+    await ctx.reply(`Media type: ${input.mediaType}`);
+}
+```
 
 ## Validation
 
@@ -46,8 +67,8 @@ If validation fails, the user is re-prompted automatically:
 
 ```typescript
 const email = await c.waitForText({
-    validate: (ctx) => /\S+@\S+\.\S+/.test(ctx.message?.text || ''),
-    validationError: 'Please enter a valid email address.'
+    validate: ctx => /\S+@\S+\.\S+/.test(ctx.message?.text || ''),
+    validationError: 'Please enter a valid email address.',
 });
 ```
 
@@ -93,13 +114,13 @@ conv.define('support', async (ctx, c) => {
 
 ## Conversation vs Wizard
 
-| Feature | Wizard | Conversation |
-|---------|--------|-------------|
-| Code style | Array of step functions | Single async function |
-| Branching | Manual cursor jumping | Native if/else |
-| Validation | Manual (don't call next) | Built-in validate/retry |
-| Timeouts | Not built-in | Built-in |
-| Input types | Text only | Text, photo, callback, contact, location |
+| Feature     | Wizard                   | Conversation                             |
+| ----------- | ------------------------ | ---------------------------------------- |
+| Code style  | Array of step functions  | Single async function                    |
+| Branching   | Manual cursor jumping    | Native if/else                           |
+| Validation  | Manual (don't call next) | Built-in validate/retry                  |
+| Timeouts    | Not built-in             | Built-in                                 |
+| Input types | Text only                | Text, photo, callback, contact, location |
 
 ::: tip
 Use **Wizards** for simple linear forms. Use **Conversations** for complex flows with branching, validation, and multiple input types.

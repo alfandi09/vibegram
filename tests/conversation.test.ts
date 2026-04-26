@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Conversation } from '../src/conversation';
-import { makeMessageUpdate, makePhotoUpdate, createContext } from './helpers/mock';
+import { Conversation, ConversationWaitForAnyResult } from '../src/conversation';
+import {
+    makeCallbackQueryUpdate,
+    makeMessageUpdate,
+    makePhotoUpdate,
+    createContext,
+} from './helpers/mock';
 
 // ---------------------------------------------------------------------------
 // Conversation.define / enter / isActive / leave
@@ -303,5 +308,156 @@ describe('Conversation middleware', () => {
         await new Promise(r => setTimeout(r, 0));
 
         expect(gotText).toBe('valid');
+    });
+
+    it('waitForAny() returns a text discriminated union', async () => {
+        const conv = new Conversation();
+        let result: ConversationWaitForAnyResult | undefined;
+
+        conv.define('ask', async (_ctx, c) => {
+            result = await c.waitForAny();
+        });
+
+        const { ctx: initCtx } = createContext(makeMessageUpdate('start'));
+        await conv.enter('ask', initCtx);
+        await new Promise(r => setTimeout(r, 0));
+
+        const { ctx: answerCtx } = createContext(makeMessageUpdate('hello'));
+        await conv.middleware()(answerCtx, async () => {
+            throw new Error('next() should not run for a successful waitForAny delivery');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result?.type).toBe('text');
+        if (result?.type === 'text') {
+            expect(result.text).toBe('hello');
+            expect(result.ctx).toBe(answerCtx);
+        }
+    });
+
+    it('waitForAny() returns a callback discriminated union', async () => {
+        const conv = new Conversation();
+        let result: ConversationWaitForAnyResult | undefined;
+
+        conv.define('ask', async (_ctx, c) => {
+            result = await c.waitForAny();
+        });
+
+        const { ctx: initCtx } = createContext(makeMessageUpdate('start'));
+        await conv.enter('ask', initCtx);
+        await new Promise(r => setTimeout(r, 0));
+
+        const { ctx: callbackCtx } = createContext(makeCallbackQueryUpdate('pick:1'));
+        await conv.middleware()(callbackCtx, async () => {
+            throw new Error('next() should not run for a callback waitForAny delivery');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result?.type).toBe('callback');
+        if (result?.type === 'callback') {
+            expect(result.data).toBe('pick:1');
+            expect(result.ctx).toBe(callbackCtx);
+        }
+    });
+
+    it('waitForAny() returns a media discriminated union', async () => {
+        const conv = new Conversation();
+        let result: ConversationWaitForAnyResult | undefined;
+
+        conv.define('ask', async (_ctx, c) => {
+            result = await c.waitForAny();
+        });
+
+        const { ctx: initCtx } = createContext(makeMessageUpdate('start'));
+        await conv.enter('ask', initCtx);
+        await new Promise(r => setTimeout(r, 0));
+
+        const { ctx: photoCtx } = createContext(
+            makeMessageUpdate('', {
+                text: undefined,
+                caption: 'receipt',
+                photo: [
+                    {
+                        file_id: 'photo1',
+                        file_unique_id: 'u1',
+                        width: 90,
+                        height: 90,
+                    },
+                ],
+            })
+        );
+        await conv.middleware()(photoCtx, async () => {
+            throw new Error('next() should not run for a media waitForAny delivery');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result?.type).toBe('media');
+        if (result?.type === 'media') {
+            expect(result.mediaType).toBe('photo');
+            if (result.mediaType === 'photo') {
+                expect(result.media[0].file_id).toBe('photo1');
+                expect(result.caption).toBe('receipt');
+            }
+            expect(result.ctx).toBe(photoCtx);
+        }
+    });
+
+    it('waitForAny() keeps waiting for unsupported updates and applies custom validation', async () => {
+        const conv = new Conversation();
+        let result: ConversationWaitForAnyResult | undefined;
+
+        conv.define('ask', async (_ctx, c) => {
+            result = await c.waitForAny({
+                validate: ctx => ctx.message?.text !== 'skip',
+                validationError: 'Send text, callback, or media.',
+            });
+        });
+
+        const { ctx: initCtx } = createContext(makeMessageUpdate('start'));
+        await conv.enter('ask', initCtx);
+        await new Promise(r => setTimeout(r, 0));
+
+        const { ctx: unsupportedCtx, client: unsupportedClient } = createContext(
+            makeMessageUpdate('', { dice: { emoji: 'dice', value: 3 }, text: undefined })
+        );
+        await conv.middleware()(unsupportedCtx, async () => {
+            throw new Error('next() should not run for an active waitForAny conversation');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result).toBeUndefined();
+        expect(unsupportedClient.callApi).toHaveBeenCalledWith(
+            'sendMessage',
+            expect.objectContaining({
+                text: 'Send text, callback, or media.',
+            })
+        );
+
+        const { ctx: invalidTextCtx, client: invalidTextClient } = createContext(
+            makeMessageUpdate('skip')
+        );
+        await conv.middleware()(invalidTextCtx, async () => {
+            throw new Error('next() should not run when custom validation rejects input');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result).toBeUndefined();
+        expect(invalidTextClient.callApi).toHaveBeenCalledWith(
+            'sendMessage',
+            expect.objectContaining({
+                text: 'Send text, callback, or media.',
+            })
+        );
+
+        const { ctx: validTextCtx } = createContext(makeMessageUpdate('continue'));
+        await conv.middleware()(validTextCtx, async () => {
+            throw new Error('next() should not run after waitForAny resolves');
+        });
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(result?.type).toBe('text');
+        if (result?.type === 'text') {
+            expect(result.text).toBe('continue');
+        }
     });
 });
