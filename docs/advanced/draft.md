@@ -1,11 +1,16 @@
 # Draft Messages (Bot API 9.5)
 
+<ApiMethodCard title="Draft messages" endpoint="sendMessageDraft" since="Bot API 9.5" returns="Message draft result" method="API">
+  Draft messages pre-fill the user's input field and are useful for guided replies,
+  AI-assisted text, and completion flows.
+</ApiMethodCard>
+
 Draft messages pre-fill the user's input field with text. This is useful for AI text streaming, auto-complete suggestions, and guided input.
 
 ## Usage
 
 ```typescript
-bot.command('draft', async (ctx) => {
+bot.command('draft', async ctx => {
     await ctx.replyWithDraft('Pre-filled text appears in the input box...');
 });
 ```
@@ -13,8 +18,9 @@ bot.command('draft', async (ctx) => {
 ## Use Cases
 
 ### AI Text Streaming
+
 ```typescript
-bot.command('ai', async (ctx) => {
+bot.command('ai', async ctx => {
     const prompt = ctx.command?.args?.join(' ') || '';
     // Stream AI response as draft (user sees it typing)
     for (const chunk of aiStream(prompt)) {
@@ -24,16 +30,17 @@ bot.command('ai', async (ctx) => {
 ```
 
 ### Auto-Complete
+
 ```typescript
-bot.command('template', async (ctx) => {
+bot.command('template', async ctx => {
     await ctx.replyWithDraft('/order product_name quantity address');
 });
 ```
 
 ## API Details
 
-| Method | API | Description |
-|--------|-----|-------------|
+| Method                             | API                | Description              |
+| ---------------------------------- | ------------------ | ------------------------ |
 | `ctx.replyWithDraft(text, extra?)` | `sendMessageDraft` | Pre-fill the input field |
 
 ::: info

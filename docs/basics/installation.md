@@ -1,8 +1,19 @@
 # Installation
 
+<PackageStats />
+
+<InstallTabs />
+
+<CompatibilityTable />
+
+<SecurityNote title="Keep secrets outside the repository" variant="warning">
+Install the package in your application project, then read bot tokens from environment
+variables. Never commit `.env` files or real Telegram tokens.
+</SecurityNote>
+
 ## Requirements
 
-- [Node.js](https://nodejs.org/) v14.0 or later
+- [Node.js](https://nodejs.org/) v18.0 or later
 - npm or yarn package manager
 
 ## Install
@@ -18,12 +29,12 @@ VibeGram is written in TypeScript and ships with built-in type declarations. No 
 ```json
 // tsconfig.json (recommended settings)
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true
-  }
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "strict": true,
+        "esModuleInterop": true
+    }
 }
 ```
 

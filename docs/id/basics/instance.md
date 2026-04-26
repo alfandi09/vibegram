@@ -1,5 +1,16 @@
 # Instansi Bot & Polling
 
+<FeatureGrid title="Pilih mode launch lebih dulu" description="Gunakan polling untuk pengembangan lokal dan webhook native atau adapter untuk deployment produksi.">
+  <FeatureCard title="Polling" description="Long polling sederhana untuk lokal atau worker persistent." href="#mode-polling-pengembangan" cta="Buka polling" />
+  <FeatureCard title="Webhook native" description="VibeGram membuat server HTTP, mendaftarkan webhook, menyediakan health check, dan ikut graceful shutdown." href="#mode-webhook-produksi" cta="Buka webhook" />
+  <FeatureCard title="Adapter framework" description="Mount handler webhook di Express, Fastify, Hono, Koa, atau native HTTP." href="/id/adapters/express" cta="Buka adapter" />
+</FeatureGrid>
+
+<SecurityNote title="Keamanan mode launch" variant="tip">
+Gunakan polling saat pengembangan lokal. Untuk produksi, gunakan webhook HTTPS dengan
+secret token dan endpoint health check.
+</SecurityNote>
+
 ## Membuat Instansi Bot
 
 ```typescript

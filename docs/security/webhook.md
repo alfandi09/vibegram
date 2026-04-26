@@ -1,5 +1,16 @@
 # Webhook Security
 
+<SecurityNote title="Production webhook rule" variant="warning">
+Every production webhook should terminate HTTPS, validate Telegram's secret token, and expose
+a lightweight health route for platform probes.
+</SecurityNote>
+
+<FeatureGrid title="Webhook hardening path" description="Start with the native launch mode, then move to framework adapters when you already own the HTTP server.">
+  <FeatureCard title="Native launch mode" description="Use `bot.launch({ webhook })` when VibeGram should own the HTTP server lifecycle." href="#native-launch-mode" />
+  <FeatureCard title="Adapter health checks" description="Mount the same adapter on webhook and health routes where your framework needs both." href="#adapter-health-checks" />
+  <FeatureCard title="Framework adapters" description="Express, Fastify, Hono, Koa, and native HTTP share the same security shape." href="/adapters/express" />
+</FeatureGrid>
+
 When using webhooks, VibeGram supports Telegram's `secret_token` verification to prevent unauthorized requests.
 
 ## Setup

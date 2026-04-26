@@ -1,5 +1,16 @@
 # Bot Instance & Polling
 
+<FeatureGrid title="Choose the launch mode first" description="Use polling for local development and native or adapter-based webhooks for production deployments.">
+  <FeatureCard title="Polling" description="Simple long polling for local development and persistent worker processes." href="#polling-options" />
+  <FeatureCard title="Native webhook" description="Let VibeGram own the HTTP server, webhook registration, health check, and shutdown." href="#webhook-mode" />
+  <FeatureCard title="Framework adapters" description="Mount the webhook handler inside Express, Fastify, Hono, Koa, or native HTTP." href="/adapters/express" />
+</FeatureGrid>
+
+<SecurityNote title="Launch mode safety" variant="tip">
+Prefer polling while developing locally. For production, use HTTPS webhooks with a secret token
+and a health check endpoint.
+</SecurityNote>
+
 ## Creating a Bot
 
 ```typescript

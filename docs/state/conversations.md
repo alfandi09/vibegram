@@ -1,5 +1,20 @@
 # Conversations
 
+<FeatureGrid title="Use conversations for non-linear flows" description="Conversation handlers stay readable because waits, validation, branching, and timeouts live in normal async code.">
+  <FeatureCard title="Typed wait helpers" description="Wait for text, media, callback queries, contacts, locations, or mixed input." href="#wait-methods" />
+  <FeatureCard title="Validation and retries" description="Re-prompt users when input does not match your validation rules." href="#validation" />
+  <FeatureCard title="Branching logic" description="Use normal if/else, loops, and try/catch for complex support or order flows." href="#branching" />
+</FeatureGrid>
+
+<MethodSignature
+  name="Conversation.waitForAny"
+  signature="const input = await c.waitForAny(options)"
+  returns="Promise&lt;ConversationAnyResult&gt;"
+  :params="[
+    { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validation, and validation error message.' }
+  ]"
+/>
+
 Conversations provide a fluent, `await`-based API for building multi-step dialogues. Unlike Wizards (which use sequential step arrays), Conversations let you write natural async/await code with branching, loops, and validation.
 
 ## Quick Start

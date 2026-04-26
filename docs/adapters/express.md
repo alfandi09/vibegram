@@ -1,5 +1,13 @@
 # Framework Adapters
 
+<FeatureGrid title="Pick an adapter by runtime" description="All adapters share secret token validation, update payload checks, health routes, and consistent HTTP responses.">
+  <FeatureCard title="Express and Koa" description="Use middleware when you already own routing and JSON body parsing." href="#express-js" />
+  <FeatureCard title="Fastify and Hono" description="Use plugin or handler APIs for framework-native webhook routing." href="#fastify" />
+  <FeatureCard title="Native HTTP" description="Avoid framework overhead while keeping body limits and health checks explicit." href="#native-node-js-http" />
+</FeatureGrid>
+
+<CompatibilityTable />
+
 VibeGram ships with first-class webhook adapters for all major Node.js HTTP frameworks. Every adapter automatically validates the `X-Telegram-Bot-Api-Secret-Token` header and the `update_id` field.
 
 ## Express.js

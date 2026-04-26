@@ -1,11 +1,16 @@
 # Pesan Draft (Bot API 9.5)
 
+<ApiMethodCard title="Pesan draft" endpoint="sendMessageDraft" since="Bot API 9.5" returns="Hasil draft message" method="API">
+  Pesan draft mengisi input pengguna dan cocok untuk reply terbimbing, teks berbantuan AI,
+  dan flow completion.
+</ApiMethodCard>
+
 Pesan draft mengisi kolom input pengguna dengan teks tertentu. Berguna untuk auto-complete, saran input terbimbing, dan streaming teks AI.
 
 ## Penggunaan
 
 ```typescript
-bot.command('draft', async (ctx) => {
+bot.command('draft', async ctx => {
     await ctx.replyWithDraft('Teks ini muncul di kolom input Anda...');
 });
 ```
@@ -15,12 +20,12 @@ bot.command('draft', async (ctx) => {
 ### Template Input Terbimbing
 
 ```typescript
-bot.command('pesan', async (ctx) => {
+bot.command('pesan', async ctx => {
     // Pra-isi format perintah
     await ctx.replyWithDraft('/kirim [nama_produk] [jumlah] [alamat]');
 });
 
-bot.command('laporan', async (ctx) => {
+bot.command('laporan', async ctx => {
     await ctx.replyWithDraft('/laporan_bug [judul] [deskripsi] [langkah_reproduksi]');
 });
 ```
@@ -28,7 +33,7 @@ bot.command('laporan', async (ctx) => {
 ### Streaming Teks AI
 
 ```typescript
-bot.command('ai', async (ctx) => {
+bot.command('ai', async ctx => {
     const prompt = ctx.command?.args?.join(' ') || '';
 
     if (!prompt) {
@@ -49,7 +54,7 @@ bot.command('ai', async (ctx) => {
 ### Auto-Complete Form
 
 ```typescript
-bot.command('checkout', async (ctx) => {
+bot.command('checkout', async ctx => {
     // Pra-isi format pemesanan
     await ctx.replyWithDraft('nama: | jumlah: | kota: ');
 });
@@ -57,8 +62,8 @@ bot.command('checkout', async (ctx) => {
 
 ## API
 
-| Metode | API Telegram | Deskripsi |
-|--------|-------------|-----------|
+| Metode                             | API Telegram       | Deskripsi                    |
+| ---------------------------------- | ------------------ | ---------------------------- |
 | `ctx.replyWithDraft(text, extra?)` | `sendMessageDraft` | Pra-isi kolom input pengguna |
 
 ::: info Keamanan ID

@@ -1,5 +1,16 @@
 # Metode Bot
 
+<ApiMethodCard title="API instansi Bot" endpoint="new Bot(token)" since="1.0.0" returns="Bot" method="CLASS">
+  Metode level Bot tersedia di luar satu update dan dipakai untuk kontrol launch,
+  registrasi webhook, panggilan Bot API langsung, menu command, plugin, dan wrapper bisnis.
+</ApiMethodCard>
+
+<FeatureGrid title="Grup metode Bot" description="Mulai dari lifecycle, lalu lanjut ke routing dan wrapper Telegram API langsung.">
+  <FeatureCard title="Lifecycle" description="Mulai polling atau webhook dan hentikan proses secara graceful." href="#metode-instance" cta="Buka lifecycle" />
+  <FeatureCard title="Routing" description="Daftarkan middleware, command, listener, action, dan error handler global." href="#metode-routing" cta="Buka routing" />
+  <FeatureCard title="API bisnis" description="Panggil akun bisnis, hadiah, stories, dan wrapper API langsung." href="#metode-akun-bisnis" cta="Buka bisnis" />
+</FeatureGrid>
+
 Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
 
 ## Metode Instance

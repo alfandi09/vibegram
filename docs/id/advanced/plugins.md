@@ -1,5 +1,11 @@
 # Sistem Plugin
 
+<FeatureGrid title="Komposisi plugin" description="Kemas middleware, command, handler, dan lifecycle hook menjadi unit reusable.">
+  <FeatureCard title="Install plugin" description="Mount plugin class atau function melalui `bot.plugin()`." href="#install-plugin" cta="Buka install" />
+  <FeatureCard title="Fitur reusable" description="Bagikan analytics, auth, logging, atau behavior domain antar bot." href="#membuat-plugin" cta="Buka pembuatan" />
+  <FeatureCard title="Opsi bertipe" description="Jaga konfigurasi plugin tetap eksplisit dan mudah divalidasi." href="#opsi-plugin" cta="Buka opsi" />
+</FeatureGrid>
+
 Sistem plugin VibeGram memungkinkan komposisi fitur secara modular. Plugin mengenkapsulasi middleware, command, dan handler menjadi unit yang bisa digunakan ulang dan diinstal.
 
 ## Memulai Cepat
@@ -57,7 +63,7 @@ const produksiPreset = new Preset('produksi', [
     new LoggerPlugin(),
     new RateLimitPlugin({ limit: 30 }),
     new SessionPlugin(),
-    new CachePlugin({ ttl: 300 })
+    new CachePlugin({ ttl: 300 }),
 ]);
 
 bot.plugin(produksiPreset);
@@ -86,8 +92,8 @@ export class AnalyticsPlugin implements BotPlugin {
                 body: JSON.stringify({
                     jenisUpdate: Object.keys(ctx.update).filter(k => k !== 'update_id'),
                     userId: ctx.from?.id,
-                    durasi
-                })
+                    durasi,
+                }),
             }).catch(() => {});
         });
     }
@@ -99,13 +105,13 @@ bot.plugin(new AnalyticsPlugin('https://analytics.contoh.com/events'));
 
 ## Plugin vs Middleware
 
-| Fitur | Middleware | Plugin |
-|-------|-----------|--------|
-| Cakupan | Satu fungsi | Kumpulan middleware + command |
-| Konfigurasi | Closure/opsi | Konstruktor atau factory |
-| Reusabilitas | Copy/paste | Import dan install |
-| Komposisi | Manual | Preset menggabungkan otomatis |
-| Publikasi | N/A | Bisa dipublikasikan sebagai paket npm |
+| Fitur        | Middleware   | Plugin                                |
+| ------------ | ------------ | ------------------------------------- |
+| Cakupan      | Satu fungsi  | Kumpulan middleware + command         |
+| Konfigurasi  | Closure/opsi | Konstruktor atau factory              |
+| Reusabilitas | Copy/paste   | Import dan install                    |
+| Komposisi    | Manual       | Preset menggabungkan otomatis         |
+| Publikasi    | N/A          | Bisa dipublikasikan sebagai paket npm |
 
 ::: tip
 Plugin yang baik terdiri dari: middleware, handler command yang relevan, dan state inisialisasi. Hindari membuat plugin yang terlalu besar — satu plugin = satu fitur.

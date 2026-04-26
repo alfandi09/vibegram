@@ -1,5 +1,16 @@
 # Deployment
 
+<FeatureGrid title="Pilihan deployment" description="Gunakan polling untuk worker persistent dan webhook saat platform menyediakan URL HTTPS publik.">
+  <FeatureCard title="Worker polling" description="Railway, Render, VPS, atau proses Node.js jangka panjang." href="#polling" cta="Buka polling" />
+  <FeatureCard title="Server webhook" description="Express atau server berbasis adapter dengan endpoint HTTPS publik." href="#webhook-express" cta="Buka webhook" />
+  <FeatureCard title="Keamanan release" description="Jalankan validasi lokal dan jaga secret tetap di luar log maupun source control." href="#checklist" cta="Buka checklist" />
+</FeatureGrid>
+
+<SecurityNote title="Keamanan deployment" variant="warning">
+Jalankan lint, typecheck, test, dan build sebelum deploy produksi. Untuk webhook, wajibkan
+HTTPS dan secret token Telegram.
+</SecurityNote>
+
 VibeGram bisa berjalan dengan polling pada proses Node.js yang persistent atau webhook
 melalui adapter framework.
 

@@ -1,5 +1,16 @@
 # Referensi API — Context (ctx)
 
+<ApiMethodCard title="Shortcut Context" endpoint="ctx per update" since="1.0.0" returns="Context" method="API">
+  Context dibuat untuk setiap update dan membungkus Telegram client scoped, field update,
+  session, helper scene/wizard, dan shortcut reply.
+</ApiMethodCard>
+
+<FeatureGrid title="Permukaan Context" description="Gunakan halaman ini sebagai peta metode per-update yang paling sering dipakai.">
+  <FeatureCard title="Pesan" description="Kirim teks, HTML, Markdown, draft, dan media." href="#metode-pesan-media" cta="Buka pesan" />
+  <FeatureCard title="Interaksi" description="Jawab callback query, inline query, poll, invoice, dan chat action." href="#callback-query" cta="Buka interaksi" />
+  <FeatureCard title="Administrasi" description="Kelola member, permission, invite link, hadiah, dan Stars." href="#administrasi-grup" cta="Buka admin" />
+</FeatureGrid>
+
 Objek `Context` (biasa disebut `ctx`) dibuat untuk setiap update yang diterima bot. Objek ini berisi semua informasi tentang update tersebut dan menyediakan metode shortcut untuk berinteraksi dengan pengguna.
 
 ## Properti

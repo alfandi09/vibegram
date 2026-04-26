@@ -3,6 +3,21 @@
 This guide builds a small production-shaped bot: commands, middleware, session state,
 error handling, and graceful shutdown.
 
+<PackageStats />
+
+<InstallTabs />
+
+<SecurityNote title="Production baseline" variant="tip">
+Use this guide as a minimal production shape: token from environment variables, global
+error handling, rate limiting, session state, and graceful shutdown.
+</SecurityNote>
+
+<FeatureGrid title="What this quickstart covers" description="Move from package install to a running bot without skipping the safety pieces you will need later.">
+  <FeatureCard title="Install and configure" description="Add the package and store bot tokens outside source control." href="/basics/installation" />
+  <FeatureCard title="Compose middleware" description="Use rate limiting and session middleware before handlers." href="/core/middleware" />
+  <FeatureCard title="Launch safely" description="Start polling locally, then move to webhooks for production." href="/basics/instance" />
+</FeatureGrid>
+
 ## Install
 
 ```bash

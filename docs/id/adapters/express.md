@@ -1,5 +1,13 @@
 # Adapter Framework (ID)
 
+<FeatureGrid title="Pilih adapter berdasarkan runtime" description="Semua adapter berbagi validasi secret token, pengecekan payload update, health route, dan respons HTTP yang konsisten.">
+  <FeatureCard title="Express dan Koa" description="Gunakan middleware saat Anda sudah mengelola routing dan JSON body parser." href="#express-js" cta="Buka Express" />
+  <FeatureCard title="Fastify dan Hono" description="Gunakan plugin atau handler API yang sesuai gaya framework." href="#fastify" cta="Buka Fastify" />
+  <FeatureCard title="Native HTTP" description="Hindari overhead framework sambil tetap eksplisit soal body limit dan health check." href="#http-native-node-js" cta="Buka native" />
+</FeatureGrid>
+
+<CompatibilityTable />
+
 VibeGram menyediakan adapter webhook kelas satu untuk semua framework Node.js populer. Semua adapter secara otomatis memvalidasi header `X-Telegram-Bot-Api-Secret-Token` dan field `update_id`.
 
 ## Express.js

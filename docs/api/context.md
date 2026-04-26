@@ -1,5 +1,16 @@
 # Context (ctx)
 
+<ApiMethodCard title="Context shortcuts" endpoint="per-update ctx" since="1.0.0" returns="Context" method="API">
+  Context is created for every update and wraps the scoped Telegram client, parsed update
+  fields, session state, scene/wizard helpers, and reply shortcuts.
+</ApiMethodCard>
+
+<FeatureGrid title="Context surfaces" description="Use this page as a map of the most common per-update methods.">
+  <FeatureCard title="Messaging" description="Reply with text, HTML, Markdown, drafts, and media." href="#messaging-methods" />
+  <FeatureCard title="Interaction" description="Answer callback queries, inline queries, polls, invoices, and chat actions." href="#interactive-methods" />
+  <FeatureCard title="Administration" description="Manage members, permissions, invite links, gifts, and Stars." href="#admin-methods" />
+</FeatureGrid>
+
 The `Context` object is created for every incoming update and provides shortcuts for all Telegram Bot API operations.
 
 ## Properties

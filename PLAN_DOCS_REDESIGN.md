@@ -517,7 +517,7 @@ npm run typecheck
 
 ## Phase 7 - Content Migration
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -525,16 +525,16 @@ Tujuan:
 
 Urutan migrasi:
 
-1. [ ] Home EN/ID.
-2. [ ] Quickstart EN/ID.
-3. [ ] Installation EN/ID.
-4. [ ] Bot instance EN/ID.
-5. [ ] Webhook/security EN/ID.
-6. [ ] Adapters EN/ID.
-7. [ ] Conversations EN/ID.
-8. [ ] API context EN/ID.
-9. [ ] Bot methods EN/ID.
-10. [ ] Advanced pages EN/ID.
+1. [x] Home EN/ID.
+2. [x] Quickstart EN/ID.
+3. [x] Installation EN/ID.
+4. [x] Bot instance EN/ID.
+5. [x] Webhook/security EN/ID.
+6. [x] Adapters EN/ID.
+7. [x] Conversations EN/ID.
+8. [x] API context EN/ID.
+9. [x] Bot methods EN/ID.
+10. [x] Advanced pages EN/ID.
 
 Rules:
 
@@ -543,10 +543,29 @@ Rules:
 - Jika halaman EN diubah substansial, update pasangan ID-nya.
 - Jangan menambah klaim fitur yang belum ada di source code.
 
+Output:
+
+- Home EN/ID tetap memakai `HomePage` dari Phase 3.
+- Quickstart EN/ID memakai `PackageStats`, `InstallTabs`, `SecurityNote`, `FeatureGrid`, dan `FeatureCard` untuk jalur belajar awal.
+- Installation EN/ID memakai `PackageStats`, `InstallTabs`, `CompatibilityTable`, dan security note; requirement EN disinkronkan ke Node.js 18+ sesuai package engines.
+- Bot instance EN/ID, webhook/security EN/ID, adapters EN/ID, conversations EN/ID, API context EN/ID, dan bot methods EN/ID mendapat entry surfaces berbasis komponen baru tanpa menghapus konten teknis lama.
+- Semua halaman advanced EN/ID mendapat komponen orientasi yang sesuai topik: `FeatureGrid`, `ApiMethodCard`, atau `SecurityNote`.
+
+QA:
+
+- Browser desktop 1440px:
+    - `basics/quickstart`, `api/context`, `security/webhook`, dan `advanced/payments` render tanpa horizontal overflow global.
+    - Cards, tabs, API method cards, alerts, and compatibility surfaces tampil dari Markdown.
+- Browser mobile 390px:
+    - `id/basics/quickstart` render `InstallTabs`, cards, dan alert tanpa overflow global.
+    - `id/state/conversations` render `MethodSignature` dan table parameter dengan scroll internal, bukan overflow halaman.
+- Preview tidak meninggalkan file route sementara.
+
 Validation:
 
 ```bash
 npm run docs:build
+npm run typecheck
 ```
 
 ---

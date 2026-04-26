@@ -1,5 +1,16 @@
 # Keamanan Webhook
 
+<SecurityNote title="Aturan webhook produksi" variant="warning">
+Setiap webhook produksi harus memakai HTTPS, memvalidasi secret token Telegram, dan
+menyediakan route health check ringan untuk platform probe.
+</SecurityNote>
+
+<FeatureGrid title="Jalur hardening webhook" description="Mulai dari launch native, lalu gunakan adapter framework jika Anda sudah memiliki server HTTP sendiri.">
+  <FeatureCard title="Launch native" description="Gunakan `bot.launch({ webhook })` saat VibeGram perlu mengelola lifecycle server HTTP." href="#launch-webhook-native" cta="Buka native" />
+  <FeatureCard title="Health check adapter" description="Mount adapter yang sama pada route webhook dan route health jika framework membutuhkan keduanya." href="#health-check-adapter" cta="Buka health" />
+  <FeatureCard title="Adapter framework" description="Express, Fastify, Hono, Koa, dan native HTTP berbagi bentuk keamanan yang sama." href="/id/adapters/express" cta="Buka adapter" />
+</FeatureGrid>
+
 Webhook adalah cara yang lebih efisien dibandingkan polling untuk lingkungan produksi — Telegram mengirim update langsung ke server Anda alih-alih server Anda yang mengambilnya.
 
 ## Cara Kerja Webhook

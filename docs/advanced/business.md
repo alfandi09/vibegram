@@ -1,5 +1,15 @@
 # Business, Gifts, and Stories
 
+<ApiMethodCard title="Business wrappers" endpoint="bot.*Business*" since="1.2.0" returns="Telegram API result" method="BOT">
+  These methods are Bot-level wrappers for connected business accounts, gifts, and story
+  operations that do not belong to one incoming update.
+</ApiMethodCard>
+
+<SecurityNote title="Business account scope" variant="tip">
+Only call business methods when Telegram has provided a valid business connection or owned
+gift/story identifier for the account you are managing.
+</SecurityNote>
+
 VibeGram exposes Telegram business account, gift, and story methods as typed `Bot` wrappers. Use them when your bot manages a connected business account or needs direct access outside a `Context` handler.
 
 ## Business Account

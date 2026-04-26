@@ -1,5 +1,20 @@
 # Conversation
 
+<FeatureGrid title="Gunakan conversation untuk flow non-linear" description="Handler conversation tetap mudah dibaca karena wait, validasi, branching, dan timeout ditulis sebagai kode async biasa.">
+  <FeatureCard title="Wait helper bertipe" description="Tunggu teks, media, callback query, kontak, lokasi, atau input campuran." href="#metode-wait" cta="Buka wait" />
+  <FeatureCard title="Validasi dan retry" description="Minta pengguna mengirim ulang saat input tidak cocok dengan aturan validasi." href="#c-waitfortext-opts" cta="Buka validasi" />
+  <FeatureCard title="Branching normal" description="Gunakan if/else, loop, dan try/catch untuk flow order atau support yang kompleks." href="#contoh-form-pembelian" cta="Buka contoh" />
+</FeatureGrid>
+
+<MethodSignature
+  name="Conversation.waitForAny"
+  signature="const input = await c.waitForAny(options)"
+  returns="Promise&lt;ConversationAnyResult&gt;"
+  :params="[
+    { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validasi, dan pesan error validasi.' }
+  ]"
+/>
+
 Conversation memungkinkan bot menjalankan dialog interaktif secara linear menggunakan sintaks `async/await` — bot bisa "menunggu" respons pengguna tanpa callback yang rumit.
 
 ## Konsep Dasar

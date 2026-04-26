@@ -1,5 +1,16 @@
 # Bot Methods
 
+<ApiMethodCard title="Bot instance API" endpoint="new Bot(token)" since="1.0.0" returns="Bot" method="CLASS">
+  Bot-level methods are available outside a single update and are used for launch control,
+  webhook registration, direct Bot API calls, command menus, plugins, and business wrappers.
+</ApiMethodCard>
+
+<FeatureGrid title="Bot method groups" description="Start with lifecycle methods, then move to routing and direct Telegram API wrappers.">
+  <FeatureCard title="Lifecycle" description="Launch polling or webhook mode and stop gracefully." href="#instance-methods" />
+  <FeatureCard title="Routing" description="Register middleware, commands, listeners, actions, and global error handlers." href="#routing-methods" />
+  <FeatureCard title="Business APIs" description="Call business account, gifts, stories, and direct API wrappers." href="#business-account-methods" />
+</FeatureGrid>
+
 Methods available directly on the `Bot` instance (no Context required).
 
 ## Instance Methods

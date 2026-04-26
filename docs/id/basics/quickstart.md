@@ -3,6 +3,27 @@
 Panduan ini membuat bot kecil dengan command, middleware, session, error handling,
 dan shutdown yang aman.
 
+<PackageStats
+  :stats="[
+    { label: 'Runtime', value: 'Node.js 18+', description: 'Baseline modern' },
+    { label: 'Output', value: 'CJS + ESM', description: 'Dual package' },
+    { label: 'Types', value: 'Strict TS', description: 'Deklarasi tipe tersedia' }
+  ]"
+/>
+
+<InstallTabs title="Install package" copy-label="Salin" copied-label="Tersalin" />
+
+<SecurityNote title="Baseline produksi" variant="tip">
+Gunakan panduan ini sebagai bentuk produksi minimal: token dari environment variable,
+error handler global, rate limit, session, dan shutdown yang aman.
+</SecurityNote>
+
+<FeatureGrid title="Yang dicakup quickstart ini" description="Bergerak dari install package ke bot yang berjalan tanpa melewatkan fondasi keamanan.">
+  <FeatureCard title="Install dan konfigurasi" description="Tambahkan package dan simpan token di luar source control." href="/id/basics/installation" cta="Buka instalasi" />
+  <FeatureCard title="Susun middleware" description="Gunakan rate limit dan session sebelum handler utama." href="/id/core/middleware" cta="Buka middleware" />
+  <FeatureCard title="Launch dengan aman" description="Mulai dari polling lokal, lalu pindah ke webhook untuk produksi." href="/id/basics/instance" cta="Buka launch" />
+</FeatureGrid>
+
 ## Instalasi
 
 ```bash

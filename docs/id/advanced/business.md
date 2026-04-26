@@ -1,5 +1,15 @@
 # Bisnis, Hadiah, dan Stories
 
+<ApiMethodCard title="Wrapper bisnis" endpoint="bot.*Business*" since="1.2.0" returns="Hasil Telegram API" method="BOT">
+  Metode ini adalah wrapper level Bot untuk akun bisnis terhubung, hadiah, dan operasi story
+  yang tidak bergantung pada satu update masuk.
+</ApiMethodCard>
+
+<SecurityNote title="Scope akun bisnis" variant="tip">
+Panggil metode bisnis hanya saat Telegram sudah memberi business connection atau identifier
+gift/story yang valid untuk akun yang dikelola.
+</SecurityNote>
+
 VibeGram menyediakan wrapper typed untuk metode akun bisnis, hadiah, dan stories Telegram. Gunakan wrapper ini saat bot mengelola akun bisnis yang terhubung atau saat butuh akses langsung di luar handler `Context`.
 
 ## Akun Bisnis

@@ -1,5 +1,16 @@
 # Deployment
 
+<FeatureGrid title="Deployment choices" description="Use polling for persistent workers and webhooks when your platform provides a public HTTPS URL.">
+  <FeatureCard title="Polling workers" description="Railway, Render, VPS, or any long-running Node.js process." href="#polling-on-railway-or-render" />
+  <FeatureCard title="Webhook servers" description="Express or any adapter-backed server with a public HTTPS endpoint." href="#webhook-with-express" />
+  <FeatureCard title="Release safety" description="Run local validation and keep secrets out of logs and source control." href="#release-safety" />
+</FeatureGrid>
+
+<SecurityNote title="Deployment safety" variant="warning">
+Run lint, typechecks, tests, and build before production deploys. For webhooks, require HTTPS
+and a Telegram secret token.
+</SecurityNote>
+
 VibeGram supports polling deployments for long-running Node.js processes and webhook
 deployments through framework adapters.
 

@@ -1,5 +1,22 @@
 # Instalasi
 
+<PackageStats
+  :stats="[
+    { label: 'Runtime', value: 'Node.js 18+', description: 'Sesuai engines package' },
+    { label: 'Output', value: 'CJS + ESM', description: 'Aman untuk setup Node modern' },
+    { label: 'Types', value: 'Strict TS', description: 'Deklarasi tipe tersedia' }
+  ]"
+/>
+
+<InstallTabs title="Install package" copy-label="Salin" copied-label="Tersalin" />
+
+<CompatibilityTable />
+
+<SecurityNote title="Jaga secret tetap di luar repository" variant="warning">
+Install package di project aplikasi Anda, lalu baca token bot dari environment variable.
+Jangan commit file `.env` atau token Telegram asli.
+</SecurityNote>
+
 ## Prasyarat
 
 - **Node.js** versi 18.0 atau lebih baru
@@ -39,16 +56,16 @@ Konfigurasi `tsconfig.json` yang direkomendasikan:
 
 ```json
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src/**/*"]
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "strict": true,
+        "esModuleInterop": true,
+        "outDir": "./dist",
+        "rootDir": "./src"
+    },
+    "include": ["src/**/*"]
 }
 ```
 
@@ -82,12 +99,12 @@ import { Bot } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-bot.command('start', async (ctx) => {
+bot.command('start', async ctx => {
     const nama = ctx.from?.first_name || 'kawan';
     await ctx.reply(`👋 Halo ${nama}! Selamat datang di bot saya.`);
 });
 
-bot.hears(/halo|hai/i, async (ctx) => {
+bot.hears(/halo|hai/i, async ctx => {
     await ctx.reply('Halo! Ada yang bisa saya bantu?');
 });
 
