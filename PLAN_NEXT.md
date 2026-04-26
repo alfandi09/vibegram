@@ -86,10 +86,10 @@
 
 ### Type Correctness
 
-- [ ] Split `Chat` vs `ChatFullInfo` secara penuh.
+- [x] Split `Chat` vs `ChatFullInfo` secara penuh.
     - File: `src/types.ts`, `src/context.ts`
-    - Saat ini `ChatFullInfo` sudah ada, tetapi `Chat` masih permissive dan memuat banyak field full info demi backward compatibility.
-    - Rekomendasi: lakukan sebagai deprecation path di 1.x, lalu breaking cleanup di 2.0.
+    - `Chat` sekarang hanya memuat identitas ringkas dari update: `id`, `type`, nama, `is_forum`, dan `is_direct_messages`.
+    - Metadata lengkap `getChat` dipindahkan ke `ChatFullInfo`, termasuk `permissions`, `photo`, `description`, `accepted_gift_types`, `parent_chat`, `rating`, dan field full-info lain.
 
 - [x] Hapus field forward deprecated dari `Message`.
     - File: `src/types.ts`
@@ -244,7 +244,7 @@
 
 1. [x] Remove deprecated forward fields.
 2. [x] Remove `correct_option_id`.
-3. Split `Chat` and `ChatFullInfo` strictly.
+3. [x] Split `Chat` and `ChatFullInfo` strictly.
 4. Replace Axios/FormData with native fetch/FormData only jika benchmark dan compatibility sudah jelas.
 
 ---

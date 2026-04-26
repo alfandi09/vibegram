@@ -9,6 +9,7 @@ import type {
     Update,
     Message,
     Chat,
+    ChatFullInfo,
     User,
     CallbackQuery,
     InlineQuery,
@@ -16,6 +17,10 @@ import type {
     PreCheckoutQuery,
 } from 'vibegram';
 ```
+
+`Chat` berisi identitas ringkas dari update. Metadata lengkap seperti `permissions`,
+`description`, `photo`, dan `accepted_gift_types` tersedia lewat `ChatFullInfo`, misalnya
+dari `ctx.getChat()`.
 
 ## Tipe Keyboard & Markup
 
@@ -37,14 +42,14 @@ Digunakan untuk mengetik parameter tambahan pada metode API:
 
 ```typescript
 import type {
-    ExtraReplyMessage,   // Opsi tambahan untuk sendMessage
-    ExtraMedia,          // Opsi tambahan untuk sendPhoto/Video/dll
-    ExtraEditMessage,    // Opsi tambahan untuk editMessageText
-    ExtraPoll,           // Opsi tambahan untuk sendPoll
-    ExtraBanMember,      // Opsi tambahan untuk banChatMember
+    ExtraReplyMessage, // Opsi tambahan untuk sendMessage
+    ExtraMedia, // Opsi tambahan untuk sendPhoto/Video/dll
+    ExtraEditMessage, // Opsi tambahan untuk editMessageText
+    ExtraPoll, // Opsi tambahan untuk sendPoll
+    ExtraBanMember, // Opsi tambahan untuk banChatMember
     ExtraRestrictMember, // Opsi tambahan untuk restrictChatMember
-    ExtraPromoteMember,  // Opsi tambahan untuk promoteChatMember
-    ExtraInviteLink,     // Opsi tambahan untuk createChatInviteLink
+    ExtraPromoteMember, // Opsi tambahan untuk promoteChatMember
+    ExtraInviteLink, // Opsi tambahan untuk createChatInviteLink
 } from 'vibegram';
 ```
 
@@ -52,10 +57,10 @@ import type {
 
 ```typescript
 import type {
-    ChatPermissions,    // Izin anggota chat
-    ChatMember,         // Status anggota (administrator, member, dll)
-    PhotoSize,          // Metadata dimensi foto
-    File,               // Objek file Telegram
+    ChatPermissions, // Izin anggota chat
+    ChatMember, // Status anggota (administrator, member, dll)
+    PhotoSize, // Metadata dimensi foto
+    File, // Objek file Telegram
 } from 'vibegram';
 ```
 
@@ -105,13 +110,15 @@ interface DataSesi {
 }
 
 // Session bertipe penuh
-bot.use(session<DataSesi>({
-    initial: () => ({
-        hitungan: 0,
-        bahasa: 'id',
-        keranjang: [],
-    }),
-}));
+bot.use(
+    session<DataSesi>({
+        initial: () => ({
+            hitungan: 0,
+            bahasa: 'id',
+            keranjang: [],
+        }),
+    })
+);
 
 // ctx.session.hitungan dikenali sebagai `number`
 // ctx.session.keranjang dikenali sebagai `string[]`

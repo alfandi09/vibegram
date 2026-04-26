@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type {
+    Chat,
     ChatBackground,
+    ChatFullInfo,
     ChatShared,
     ChatOwnerChanged,
     ChatOwnerLeft,
@@ -261,5 +263,44 @@ describe('modern Telegram types', () => {
 
         expect(extra.correct_option_ids).toEqual([0, 2]);
         expect(legacyExtra).toEqual({ correct_option_id: 0 });
+    });
+
+    it('keeps Chat compact while ChatFullInfo carries getChat metadata', () => {
+        const chat: Chat = {
+            id: -100,
+            type: 'supergroup',
+            title: 'Team',
+            username: 'team',
+            is_forum: true,
+        };
+
+        const fullInfo: ChatFullInfo = {
+            ...chat,
+            accent_color_id: 2,
+            max_reaction_count: 11,
+            description: 'Engineering space',
+            permissions: { can_send_messages: true },
+            accepted_gift_types: { unique_gifts: true },
+            parent_chat: { id: -200, type: 'channel', title: 'Updates' },
+            rating: {
+                level: 1,
+                rating: 250,
+                current_level_rating: 100,
+                next_level_rating: 500,
+            },
+            paid_message_star_count: 5,
+        };
+
+        // @ts-expect-error getChat-only metadata belongs on ChatFullInfo, not Chat.
+        const legacyChat: Chat = { id: -100, type: 'supergroup', permissions: {} };
+
+        expect(chat.title).toBe('Team');
+        expect(fullInfo.permissions?.can_send_messages).toBe(true);
+        expect(fullInfo.parent_chat?.type).toBe('channel');
+        expect(legacyChat).toEqual({
+            id: -100,
+            type: 'supergroup',
+            permissions: {},
+        });
     });
 });

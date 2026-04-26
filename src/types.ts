@@ -53,6 +53,13 @@ export interface BusinessOpeningHours {
     opening_hours: BusinessOpeningHoursInterval[];
 }
 
+export interface UserRating {
+    level: number;
+    rating: number;
+    current_level_rating: number;
+    next_level_rating?: number;
+}
+
 export interface AcceptedGiftTypes {
     unlimited_gifts?: boolean;
     limited_gifts?: boolean;
@@ -69,18 +76,29 @@ export interface Chat {
     first_name?: string;
     last_name?: string;
     is_forum?: boolean;
+    is_direct_messages?: boolean;
+}
+
+/** Full chat metadata returned by getChat. */
+export interface ChatFullInfo extends Chat {
+    accent_color_id?: number;
+    max_reaction_count?: number;
     photo?: ChatPhoto;
     active_usernames?: string[];
+    birthdate?: Birthdate;
+    business_intro?: BusinessIntro;
+    business_location?: BusinessLocation;
+    business_opening_hours?: BusinessOpeningHours;
+    personal_chat?: Chat;
+    parent_chat?: Chat;
     available_reactions?: ReactionType[];
-    accent_color_id?: number;
     background_custom_emoji_id?: string;
     profile_accent_color_id?: number;
     profile_background_custom_emoji_id?: string;
     emoji_status_custom_emoji_id?: string;
     emoji_status_expiration_date?: number;
-    has_target_custom_emoji?: boolean;
-    has_hidden_members?: boolean;
-    has_aggressive_anti_spam_enabled?: boolean;
+    bio?: string;
+    has_private_forwards?: boolean;
     has_restricted_voice_and_video_messages?: boolean;
     join_to_send_messages?: boolean;
     join_by_request?: boolean;
@@ -88,27 +106,24 @@ export interface Chat {
     invite_link?: string;
     pinned_message?: Message;
     permissions?: ChatPermissions;
-    slow_mode_delay?: number;
-    message_auto_delete_time?: number;
-    has_protected_content?: boolean;
-    sticker_set_name?: string;
-    can_set_sticker_set?: boolean;
-    linked_chat_id?: number;
-    location?: ChatLocation;
-    business_intro?: BusinessIntro;
-    business_location?: BusinessLocation;
-    business_opening_hours?: BusinessOpeningHours;
-    personal_chat?: Chat;
-    birthdate?: Birthdate;
-    is_direct_messages?: boolean;
     accepted_gift_types?: AcceptedGiftTypes;
     can_send_paid_media?: boolean;
-}
-
-/** Full chat metadata returned by getChat. Chat remains permissive for backward compatibility. */
-export interface ChatFullInfo extends Chat {
-    max_reaction_count?: number;
+    slow_mode_delay?: number;
+    unrestrict_boost_count?: number;
+    message_auto_delete_time?: number;
+    has_aggressive_anti_spam_enabled?: boolean;
+    has_hidden_members?: boolean;
+    has_protected_content?: boolean;
+    has_visible_history?: boolean;
+    sticker_set_name?: string;
+    can_set_sticker_set?: boolean;
+    custom_emoji_sticker_set_name?: string;
+    linked_chat_id?: number;
+    location?: ChatLocation;
+    rating?: UserRating;
     first_profile_audio?: Audio;
+    unique_gift_colors?: UniqueGiftColors;
+    paid_message_star_count?: number;
 }
 
 export interface MessageEntity {
