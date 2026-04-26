@@ -151,10 +151,11 @@
     - File: `src/bot.ts`
     - `updateTimeout` option ditambahkan dan timeout dipancarkan via `onUpdateError` + `catch()`.
 
-- [ ] Graceful webhook launch mode.
+- [x] Graceful webhook launch mode.
     - File: `src/bot.ts`
-    - Tambahkan `bot.launch({ webhook: { url, port, secretToken, path } })`.
-    - Perlu test native HTTP server dan shutdown behavior.
+    - `bot.launch({ webhook: { url, port, secretToken, path } })` ditambahkan untuk native HTTP webhook server.
+    - Webhook launch memakai adapter native, mendukung `healthPath`, path routing, `setWebhook()`, dan shutdown lewat `stop()`.
+    - Test native HTTP server mencakup health check, route mismatch, valid webhook update, `deleteWebhookOnStop`, dan shutdown behavior.
 
 - [x] `ctx.telegram` proxy.
     - File: `src/context.ts`

@@ -1,6 +1,7 @@
 import { TelegramClient, TelegramClientHooks } from './client';
 import { Composer, Middleware } from './composer';
 import { Context } from './context';
+import * as http from 'http';
 import {
     BotCommand,
     BotCommandOptions,
@@ -42,7 +43,7 @@ import {
 import { WebAppUtils } from './webapp';
 import { BotPlugin } from './plugin';
 import { InvalidTokenError, UpdateTimeoutError } from './errors';
-import { matchesSecretToken } from './adapters';
+import { createNativeHandler, matchesSecretToken } from './adapters';
 
 export type UpdateType =
     | 'message'
@@ -87,6 +88,34 @@ export interface BotOptions<C extends Context = Context> {
         client?: TelegramClientHooks;
         hooks?: BotHooks<C>;
     };
+}
+
+export interface BotWebhookLaunchOptions {
+    /** Public HTTPS base URL or endpoint URL used when registering setWebhook. */
+    url: string;
+    /** Local port for the native HTTP webhook server. Use 0 to let Node choose a free port. */
+    port: number;
+    /** Local host/interface to bind. Defaults to Node's listen() default. */
+    host?: string;
+    /** Local webhook route. Defaults to '/webhook'. */
+    path?: string;
+    /** Telegram secret token sent as X-Telegram-Bot-Api-Secret-Token. */
+    secretToken?: string;
+    /** Optional GET route for health checks. */
+    healthPath?: string;
+    /** Maximum raw JSON body size accepted by the native adapter. Defaults to 1 MB. */
+    maxBodySizeBytes?: number;
+    /** Extra options forwarded to Telegram setWebhook(). */
+    webhookOptions?: Omit<SetWebhookOptions, 'secret_token'>;
+    /** Delete Telegram webhook during stop(). Defaults to false to avoid disrupting rolling deploys. */
+    deleteWebhookOnStop?: boolean;
+    /** Drop pending Telegram updates when deleteWebhookOnStop is enabled. Defaults to false. */
+    dropPendingUpdatesOnStop?: boolean;
+}
+
+export interface BotLaunchOptions {
+    onStart?: (botInfo: User) => void;
+    webhook?: BotWebhookLaunchOptions;
 }
 
 export interface BotLaunchEvent {
@@ -146,6 +175,63 @@ function isUpdate(value: unknown): value is Update {
     );
 }
 
+function assertPathOption(name: string, value: string): void {
+    if (typeof value !== 'string' || !value.startsWith('/')) {
+        throw new TypeError(`${name} must be a string that starts with "/".`);
+    }
+}
+
+function assertWebhookLaunchOptions(options: BotWebhookLaunchOptions): void {
+    if (typeof options.url !== 'string' || options.url.trim() === '') {
+        throw new TypeError('webhook.url must be a non-empty string.');
+    }
+
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(options.url);
+    } catch {
+        throw new TypeError('webhook.url must be a valid HTTPS URL.');
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+        throw new TypeError('webhook.url must use HTTPS.');
+    }
+
+    if (!Number.isInteger(options.port) || options.port < 0 || options.port > 65535) {
+        throw new TypeError('webhook.port must be an integer between 0 and 65535.');
+    }
+
+    if (options.host !== undefined && (typeof options.host !== 'string' || options.host === '')) {
+        throw new TypeError('webhook.host must be a non-empty string.');
+    }
+
+    if (options.path !== undefined) {
+        assertPathOption('webhook.path', options.path);
+    }
+
+    if (options.healthPath !== undefined) {
+        assertPathOption('webhook.healthPath', options.healthPath);
+    }
+}
+
+function buildWebhookUrl(publicUrl: string, path: string): string {
+    const url = new URL(publicUrl);
+    url.pathname = path;
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+}
+
+function getRequestPath(url?: string): string | undefined {
+    if (!url) return undefined;
+
+    try {
+        return new URL(url, 'http://localhost').pathname;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * Main bot class for polling, webhooks, middleware routing, and direct Bot API calls.
  *
@@ -167,6 +253,10 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     private _composedMiddleware: Middleware<any> | null = null;
     private _activeUpdates: number = 0;
     private _pollingTask: Promise<void> | null = null;
+    private _webhookServer: http.Server | null = null;
+    private _isWebhookRunning: boolean = false;
+    private _deleteWebhookOnStop: boolean = false;
+    private _dropPendingUpdatesOnStop: boolean = false;
     private _updatesDrainedResolve?: () => void;
 
     constructor(
@@ -224,18 +314,11 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         return this;
     }
 
-    /**
-     * Launch the bot in long-polling mode.
-     * Validates the bot token via getMe() before starting the polling loop.
-     * Automatically registers SIGINT/SIGTERM handlers for graceful shutdown.
-     */
-    async launch(options?: { onStart?: (botInfo: User) => void }): Promise<void> {
-        if (this.isPolling) {
-            console.warn('[VibeGram] Polling is already running.');
-            return;
-        }
+    private get isRunning(): boolean {
+        return this.isPolling || this._isWebhookRunning;
+    }
 
-        // Validate the token and log bot identity before starting.
+    private async getBotInfoOrThrow(): Promise<User> {
         let me: User;
         try {
             me = (await this.client.callApi('getMe')) as User;
@@ -243,13 +326,36 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             throw new InvalidTokenError();
         }
 
-        console.log(`[VibeGram] @${me.username} (${me.id}) started. Polling for updates...`);
-        options?.onStart?.(me);
-        await this.invokeHook('onLaunch', () =>
-            this.options?.observability?.hooks?.onLaunch?.({ botInfo: me })
-        );
+        return me;
+    }
 
-        // Auto-register process signal handlers for clean shutdown.
+    private async emitLaunch(botInfo: User, onStart?: (botInfo: User) => void): Promise<void> {
+        onStart?.(botInfo);
+        await this.invokeHook('onLaunch', () =>
+            this.options?.observability?.hooks?.onLaunch?.({ botInfo })
+        );
+    }
+
+    /**
+     * Launch the bot in long-polling mode by default, or native webhook mode
+     * when options.webhook is provided. Validates the bot token via getMe()
+     * before starting and registers SIGINT/SIGTERM handlers for graceful shutdown.
+     */
+    async launch(options?: BotLaunchOptions): Promise<void> {
+        if (options?.webhook) {
+            await this.launchWebhook(options.webhook, options.onStart);
+            return;
+        }
+
+        if (this.isRunning) {
+            console.warn('[VibeGram] Bot is already running.');
+            return;
+        }
+
+        const me = await this.getBotInfoOrThrow();
+
+        console.log(`[VibeGram] @${me.username} (${me.id}) started. Polling for updates...`);
+        await this.emitLaunch(me, options?.onStart);
         this._registerSignals();
 
         this.isPolling = true;
@@ -258,18 +364,125 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         });
     }
 
+    private async launchWebhook(
+        options: BotWebhookLaunchOptions,
+        onStart?: (botInfo: User) => void
+    ): Promise<void> {
+        if (this.isRunning) {
+            console.warn('[VibeGram] Bot is already running.');
+            return;
+        }
+
+        assertWebhookLaunchOptions(options);
+
+        const me = await this.getBotInfoOrThrow();
+        const path = options.path ?? '/webhook';
+        const webhookUrl = buildWebhookUrl(options.url, path);
+        const nativeHandler = createNativeHandler(this, {
+            secretToken: options.secretToken,
+            healthPath: options.healthPath,
+            maxBodySizeBytes: options.maxBodySizeBytes,
+        });
+
+        const server = http.createServer((req, res) => {
+            const requestPath = getRequestPath(req.url);
+            const isWebhookPath = requestPath === path;
+            const isHealthPath =
+                options.healthPath !== undefined && requestPath === options.healthPath;
+
+            if (!isWebhookPath && !isHealthPath) {
+                res.writeHead(404);
+                res.end('Not Found');
+                return;
+            }
+
+            void nativeHandler(req, res);
+        });
+
+        try {
+            await this.listenWebhookServer(server, options.port, options.host);
+            await this.setWebhook(webhookUrl, {
+                ...options.webhookOptions,
+                secret_token: options.secretToken,
+            });
+        } catch (error) {
+            await this.closeWebhookServer(server);
+            throw error;
+        }
+
+        this._webhookServer = server;
+        this._isWebhookRunning = true;
+        this._deleteWebhookOnStop = options.deleteWebhookOnStop ?? false;
+        this._dropPendingUpdatesOnStop = options.dropPendingUpdatesOnStop ?? false;
+
+        console.log(`[VibeGram] @${me.username} (${me.id}) started. Webhook listening on ${path}.`);
+        await this.emitLaunch(me, onStart);
+        this._registerSignals();
+    }
+
+    private async listenWebhookServer(
+        server: http.Server,
+        port: number,
+        host?: string
+    ): Promise<void> {
+        await new Promise<void>((resolve, reject) => {
+            const onError = (error: Error) => {
+                server.off('listening', onListening);
+                reject(error);
+            };
+            const onListening = () => {
+                server.off('error', onError);
+                resolve();
+            };
+
+            server.once('error', onError);
+            server.once('listening', onListening);
+
+            if (host) {
+                server.listen(port, host);
+            } else {
+                server.listen(port);
+            }
+        });
+    }
+
+    private async closeWebhookServer(server: http.Server): Promise<void> {
+        if (!server.listening) return;
+
+        await new Promise<void>((resolve, reject) => {
+            server.close(error => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                resolve();
+            });
+        });
+    }
+
     /**
      * Gracefully stop the bot.
      * Waits for any in-flight updates to finish before resolving.
      */
     async stop(reason?: string): Promise<void> {
-        if (!this.isPolling) return;
+        if (!this.isRunning) return;
 
         if (reason) console.log(`[VibeGram] Shutdown initiated: ${reason}`);
+        const webhookServer = this._webhookServer;
+        const shouldDeleteWebhook = this._deleteWebhookOnStop;
+        const shouldDropPendingUpdates = this._dropPendingUpdatesOnStop;
+
         this.isPolling = false;
+        this._isWebhookRunning = false;
 
         if (this._pollingTask) {
             await this._pollingTask;
+        }
+
+        if (webhookServer) {
+            await this.closeWebhookServer(webhookServer);
+            this._webhookServer = null;
         }
 
         // Wait for all active update handlers to resolve.
@@ -278,6 +491,13 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                 this._updatesDrainedResolve = resolve;
             });
         }
+
+        if (shouldDeleteWebhook) {
+            await this.deleteWebhook(shouldDropPendingUpdates);
+        }
+
+        this._deleteWebhookOnStop = false;
+        this._dropPendingUpdatesOnStop = false;
 
         console.log('[VibeGram] Bot stopped gracefully.');
         await this.invokeHook('onStop', () =>
@@ -416,7 +636,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         } finally {
             this._activeUpdates--;
             // If stop() is waiting, resolve it when all in-flight updates are done.
-            if (!this.isPolling && this._activeUpdates === 0 && this._updatesDrainedResolve) {
+            if (!this.isRunning && this._activeUpdates === 0 && this._updatesDrainedResolve) {
                 this._updatesDrainedResolve();
                 this._updatesDrainedResolve = undefined;
             }

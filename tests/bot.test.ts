@@ -1,7 +1,51 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import * as http from 'http';
+import type { AddressInfo } from 'net';
 import { Bot } from '../src/bot';
 import { UpdateTimeoutError } from '../src/errors';
 import { makeCallbackQueryUpdate, makeMessageUpdate, makePhotoUpdate } from './helpers/mock';
+
+async function requestLocalServer(
+    port: number,
+    options: {
+        method: string;
+        path: string;
+        headers?: Record<string, string>;
+        body?: string;
+    }
+): Promise<{ statusCode: number; body: string }> {
+    return new Promise((resolve, reject) => {
+        const req = http.request(
+            {
+                host: '127.0.0.1',
+                port,
+                method: options.method,
+                path: options.path,
+                headers: options.headers,
+            },
+            res => {
+                const chunks: Buffer[] = [];
+                res.on('data', chunk => {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                });
+                res.on('end', () => {
+                    resolve({
+                        statusCode: res.statusCode ?? 0,
+                        body: Buffer.concat(chunks).toString('utf8'),
+                    });
+                });
+            }
+        );
+
+        req.on('error', reject);
+
+        if (options.body) {
+            req.write(options.body);
+        }
+
+        req.end();
+    });
+}
 
 describe('Bot', () => {
     afterEach(() => {
@@ -253,6 +297,115 @@ describe('Bot', () => {
         expect(hooks.onLaunch).toHaveBeenCalledTimes(1);
         expect(hooks.onStop).toHaveBeenCalledWith({ reason: 'test-stop' });
         expect(logSpy).toHaveBeenCalledWith('[VibeGram] Bot stopped gracefully.');
+    });
+
+    it('launches a native webhook server and stops it gracefully', async () => {
+        const hooks = {
+            onLaunch: vi.fn(),
+            onStop: vi.fn(),
+        };
+        const bot = new Bot('test-token', { observability: { hooks } });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        vi.spyOn(bot as any, '_registerSignals').mockImplementation(() => {});
+
+        const handledUpdates: string[] = [];
+        bot.use(ctx => {
+            handledUpdates.push(ctx.message?.text ?? '');
+        });
+
+        bot.client.callApi = vi.fn(async (method: string, data?: unknown) => {
+            if (method === 'getMe') {
+                return { id: 1, is_bot: true, first_name: 'Bot', username: 'bot' };
+            }
+            if (method === 'setWebhook') {
+                return true;
+            }
+            if (method === 'deleteWebhook') {
+                return true;
+            }
+            throw new Error(`Unexpected method: ${method}`);
+        }) as any;
+
+        await bot.launch({
+            webhook: {
+                url: 'https://example.com',
+                port: 0,
+                path: '/telegram',
+                secretToken: 'secret',
+                healthPath: '/healthz',
+                deleteWebhookOnStop: true,
+                dropPendingUpdatesOnStop: true,
+            },
+        });
+
+        const server = (bot as any)._webhookServer as http.Server;
+        const address = server.address() as AddressInfo;
+
+        const health = await requestLocalServer(address.port, {
+            method: 'GET',
+            path: '/healthz?ready=1',
+        });
+        expect(health).toEqual({ statusCode: 200, body: 'OK' });
+
+        const wrongPath = await requestLocalServer(address.port, {
+            method: 'POST',
+            path: '/wrong',
+        });
+        expect(wrongPath).toEqual({ statusCode: 404, body: 'Not Found' });
+
+        const update = makeMessageUpdate('webhook update');
+        const webhook = await requestLocalServer(address.port, {
+            method: 'POST',
+            path: '/telegram',
+            headers: {
+                'content-type': 'application/json',
+                'x-telegram-bot-api-secret-token': 'secret',
+            },
+            body: JSON.stringify(update),
+        });
+
+        expect(webhook).toEqual({ statusCode: 200, body: 'OK' });
+        expect(handledUpdates).toEqual(['webhook update']);
+        expect(bot.client.callApi).toHaveBeenCalledWith('setWebhook', {
+            url: 'https://example.com/telegram',
+            secret_token: 'secret',
+        });
+        expect(hooks.onLaunch).toHaveBeenCalledTimes(1);
+
+        await bot.stop('webhook-test');
+
+        expect(server.listening).toBe(false);
+        expect(bot.client.callApi).toHaveBeenCalledWith('deleteWebhook', {
+            drop_pending_updates: true,
+        });
+        expect(hooks.onStop).toHaveBeenCalledWith({ reason: 'webhook-test' });
+        expect(logSpy).toHaveBeenCalledWith('[VibeGram] Bot stopped gracefully.');
+    });
+
+    it('validates webhook launch options', async () => {
+        const bot = new Bot('test-token');
+        bot.client.callApi = vi.fn().mockResolvedValue({
+            id: 1,
+            is_bot: true,
+            first_name: 'Bot',
+            username: 'bot',
+        }) as any;
+
+        await expect(
+            bot.launch({ webhook: { url: 'http://example.com', port: 3000 } })
+        ).rejects.toThrow('HTTPS');
+        await expect(
+            bot.launch({ webhook: { url: 'https://example.com', port: -1 } })
+        ).rejects.toThrow('webhook.port');
+        await expect(
+            bot.launch({
+                webhook: {
+                    url: 'https://example.com',
+                    port: 3000,
+                    path: 'telegram',
+                },
+            })
+        ).rejects.toThrow('webhook.path');
     });
 
     it('exposes direct Bot API management wrappers', async () => {

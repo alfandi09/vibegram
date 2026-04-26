@@ -23,7 +23,8 @@
  * ```
  */
 
-import type { Bot } from './bot';
+import type { WebhookRequest, WebhookResponse } from './bot';
+import type { Update } from './types';
 import * as crypto from 'crypto';
 
 const DEFAULT_MAX_BODY_SIZE_BYTES = 1_000_000;
@@ -31,6 +32,13 @@ const HEALTH_CHECK_RESPONSE_BODY = 'OK';
 
 interface ChainableReply {
     code(statusCode: number): { send(body: string): unknown };
+}
+
+export interface WebhookAdapterBot {
+    handleUpdate(update: Update): Promise<void>;
+    webhookCallback(
+        secretToken?: string
+    ): (req: WebhookRequest, res: WebhookResponse) => Promise<void>;
 }
 
 export interface AdapterOptions {
@@ -142,7 +150,7 @@ function sendHealthCheckResponse(res: {
  * app.use(express.json());
  * app.post('/webhook', createExpressMiddleware(bot, { secretToken: 'abc' }));
  */
-export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
+export function createExpressMiddleware(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const handler = bot.webhookCallback(options?.secretToken);
     return async (req: any, res: any, next: any) => {
@@ -176,7 +184,7 @@ export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
  * @example
  * await fastify.register(createFastifyPlugin(bot), { secretToken: 'abc', path: '/webhook' });
  */
-export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
+export function createFastifyPlugin(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const path = options?.path || '/webhook';
     const healthPath = options?.healthPath;
@@ -224,7 +232,7 @@ export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
  * @example
  * app.post('/webhook', createHonoHandler(bot, { secretToken: 'abc' }));
  */
-export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
+export function createHonoHandler(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
@@ -270,7 +278,7 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
  * import http from 'http';
  * http.createServer(createNativeHandler(bot, { secretToken: 'abc' })).listen(3000);
  */
-export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
+export function createNativeHandler(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
     const healthPath = options?.healthPath;
@@ -358,7 +366,7 @@ export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
  * app.use(koaBodyParser());
  * router.post('/webhook', createKoaMiddleware(bot, { secretToken: 'abc' }));
  */
-export function createKoaMiddleware(bot: Bot, options?: AdapterOptions) {
+export function createKoaMiddleware(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
