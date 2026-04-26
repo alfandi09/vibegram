@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VibeGram">
+    <rect width="64" height="64" rx="18" fill="#60a5fa" />
+    <path
+        fill="#fff"
+        d="M18 20.5 47 10 37.6 50 29.8 35.7 18 20.5Zm8.7 2.1 4.6 5.9 9.7-10.1-14.3 4.2Zm6.5 9.2 3.2 5.9 3.9-16.3-7.1 10.4Z"
+    />
+</svg>

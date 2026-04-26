@@ -1,17 +1,22 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "outDir": "./dist/cjs",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationDir": "./dist/types",
-    "declarationMap": true,
-    "sourceMap": true
-  },
-  "include": ["src/**/*"]
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "ignoreDeprecations": "6.0",
+        "outDir": "./dist/cjs",
+        "rootDir": "./src",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["docs/.vitepress/theme/*"]
+        },
+        "declaration": true,
+        "declarationDir": "./dist/types",
+        "declarationMap": true,
+        "sourceMap": true
+    },
+    "include": ["src/**/*"]
 }

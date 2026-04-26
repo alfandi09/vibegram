@@ -205,7 +205,7 @@ npm run docs:build
 
 ## Phase 2 - Tailwind dan shadcn-vue Setup
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -213,30 +213,46 @@ Tujuan:
 
 Checklist:
 
-- [ ] Cek kompatibilitas shadcn-vue dengan VitePress SSR.
-- [ ] Install dependency docs sebagai dev dependency.
-- [ ] Setup Tailwind untuk folder docs/theme.
-- [ ] Setup shadcn-vue config.
-- [ ] Tentukan alias import yang aman untuk VitePress.
-- [ ] Tambahkan util `cn()` jika diperlukan oleh shadcn-vue.
-- [ ] Tambahkan komponen dasar:
-    - [ ] Button
-    - [ ] Badge
-    - [ ] Card
-    - [ ] Alert
-    - [ ] Tabs
-    - [ ] Sheet
-    - [ ] Command
-    - [ ] ScrollArea
-    - [ ] Tooltip
-    - [ ] Separator
-    - [ ] Accordion
+- [x] Cek kompatibilitas shadcn-vue dengan VitePress SSR.
+- [x] Install dependency docs sebagai dev dependency.
+- [x] Setup Tailwind untuk folder docs/theme.
+- [x] Setup shadcn-vue config.
+- [x] Tentukan alias import yang aman untuk VitePress.
+- [x] Tambahkan util `cn()` jika diperlukan oleh shadcn-vue.
+- [x] Tambahkan komponen dasar:
+    - [x] Button
+    - [x] Badge
+    - [x] Card
+    - [x] Alert
+    - [x] Tabs
+    - [x] Dialog
+    - [x] Sheet
+    - [x] Command
+    - [x] ScrollArea
+    - [x] Tooltip
+    - [x] Separator
+    - [x] Accordion
 
 Catatan:
 
 - Ikuti CLI/docs resmi shadcn-vue saat eksekusi.
 - Jangan menebak API komponen.
 - Preview perubahan dependency sebelum commit.
+
+Output:
+
+- Tailwind CSS v4 diaktifkan lewat plugin Vite khusus VitePress.
+- shadcn-vue dikonfigurasi dengan `components.json`, style `new-york`, base color `slate`, CSS variables, dan icon library `lucide`.
+- Alias `@/*` diarahkan ke `docs/.vitepress/theme/*` agar component imports tetap lokal ke docs.
+- Util `cn()` ditambahkan di `docs/.vitepress/theme/lib/utils.ts`.
+- Komponen dasar shadcn-vue dibuat di `docs/.vitepress/theme/components/ui/`.
+- `@vueuse/core` dipastikan hanya berada di `devDependencies`, bukan runtime `dependencies`.
+- Favicon SVG docs ditambahkan agar dev server dan GitHub Pages tidak meminta asset yang hilang.
+
+Catatan audit:
+
+- `npm audit --omit=dev` bersih untuk dependency runtime package.
+- Audit penuh masih melaporkan moderate advisory di toolchain dev Vite/PostCSS/Vue; tidak di-auto-fix karena berisiko menyentuh dependency besar dan harus dibahas terpisah.
 
 Validation:
 

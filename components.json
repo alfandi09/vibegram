@@ -1,0 +1,20 @@
+{
+    "$schema": "https://shadcn-vue.com/schema.json",
+    "style": "new-york",
+    "tailwind": {
+        "config": "",
+        "css": "docs/.vitepress/theme/style.css",
+        "baseColor": "slate",
+        "cssVariables": true,
+        "prefix": ""
+    },
+    "typescript": true,
+    "iconLibrary": "lucide",
+    "aliases": {
+        "components": "@/components",
+        "ui": "@/components/ui",
+        "utils": "@/lib/utils",
+        "lib": "@/lib",
+        "composables": "@/composables"
+    }
+}
