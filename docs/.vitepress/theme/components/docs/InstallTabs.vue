@@ -73,7 +73,10 @@ const initialValue = computed(
                     type="button"
                     variant="ghost"
                     size="sm"
-                    :aria-label="copyLabel"
+                    data-vg-copy-button
+                    :data-copied="copiedId === command.id ? 'true' : undefined"
+                    :aria-label="copiedId === command.id ? copiedLabel : copyLabel"
+                    aria-live="polite"
                     @click="copyText(command.command, command.id)"
                 >
                     <Check v-if="copiedId === command.id" data-icon="inline-start" />

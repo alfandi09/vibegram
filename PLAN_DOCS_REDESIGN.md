@@ -572,7 +572,7 @@ npm run typecheck
 
 ## Phase 8 - Motion dan Interaction Polish
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -580,19 +580,50 @@ Tujuan:
 
 Checklist:
 
-- [ ] Hover/focus state konsisten.
-- [ ] Mobile sheet smooth.
-- [ ] Search/dialog transition halus.
-- [ ] Copy code feedback.
-- [ ] Active nav transition.
-- [ ] Section reveal ringan jika tidak mengganggu reading.
-- [ ] Respect `prefers-reduced-motion`.
-- [ ] Tidak menyebabkan layout shift.
+- [x] Hover/focus state konsisten.
+- [x] Mobile sheet smooth.
+- [x] Search/dialog transition halus.
+- [x] Copy code feedback.
+- [x] Active nav transition.
+- [x] Section reveal ringan jika tidak mengganggu reading.
+- [x] Respect `prefers-reduced-motion`.
+- [x] Tidak menyebabkan layout shift.
+
+Output:
+
+- `docs/.vitepress/theme/components/MotionController.vue`
+    - Menambahkan reveal ringan berbasis `IntersectionObserver`.
+    - SSR-safe dan route-aware; state reveal di-reset saat route berubah.
+    - Tidak mengaktifkan reveal jika user memakai `prefers-reduced-motion: reduce`.
+- `docs/.vitepress/theme/Layout.vue`
+    - Memasang `MotionController` di shell docs.
+- `docs/.vitepress/theme/styles/motion.css`
+    - Token motion, focus ring, hover/focus transition, active nav transition, mobile nav item entrance, search shell transition, copy confirmation feedback, dan reduced-motion override.
+- `HomePage`, `InstallTabs`, dan `CodePreview`
+    - Copy button sekarang punya `data-vg-copy-button`, `data-copied`, dan `aria-live` untuk feedback visual dan aksesibilitas.
+
+QA:
+
+- Desktop 1440px `basics/quickstart`:
+    - Tidak ada horizontal overflow.
+    - Reveal targets aktif dan hanya elemen viewport yang masuk state `is-visible`.
+    - Copy button custom berubah ke `Copied` dengan warna success token.
+    - Copy button code block bawaan VitePress masuk class `copied` dan memakai token success.
+- Search overlay:
+    - Shell memakai animasi `vg-search-shell-in`.
+    - Backdrop transition memakai `opacity` dan `backdrop-filter`.
+    - Query `webhook` menampilkan hasil, selected result bergeser ringan tanpa overflow.
+- Mobile 390px:
+    - Mobile nav terbuka tanpa horizontal overflow.
+    - Item nav memakai animasi `vg-nav-screen-item`.
+- Reduced motion:
+    - Dengan `prefers-reduced-motion: reduce`, `vg-motion-ready` tidak dipasang dan tidak ada reveal target.
 
 Validation:
 
 ```bash
 npm run docs:build
+npm run typecheck
 ```
 
 ---

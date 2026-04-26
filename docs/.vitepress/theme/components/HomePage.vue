@@ -431,7 +431,16 @@ onBeforeUnmount(() => {
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    :aria-label="copy.copyLabel"
+                                    data-vg-copy-button
+                                    :data-copied="
+                                        copiedCommandId === manager.id ? 'true' : undefined
+                                    "
+                                    :aria-label="
+                                        copiedCommandId === manager.id
+                                            ? copy.copied
+                                            : copy.copyLabel
+                                    "
+                                    aria-live="polite"
                                     @click="copyCommand(manager.command, manager.id)"
                                 >
                                     <Check

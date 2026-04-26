@@ -3,6 +3,7 @@ import DefaultTheme from 'vitepress/theme';
 import { computed } from 'vue';
 import { useData } from 'vitepress';
 import HomePage from './components/HomePage.vue';
+import MotionController from './components/MotionController.vue';
 
 const VPLayout = DefaultTheme.Layout;
 const { frontmatter } = useData();
@@ -12,6 +13,8 @@ const isHome = computed(() => frontmatter.value.layout === 'home');
 
 <template>
     <div class="vg-shell" :class="{ 'vg-shell--home': isHome }">
+        <MotionController />
+
         <VPLayout>
             <template #layout-top>
                 <div class="vg-topline" aria-hidden="true"></div>

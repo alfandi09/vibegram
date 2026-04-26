@@ -45,7 +45,10 @@ const codeLabel = computed(() => props.filename || props.language.toUpperCase())
                 type="button"
                 variant="ghost"
                 size="sm"
-                :aria-label="copyLabel"
+                data-vg-copy-button
+                :data-copied="copiedId === codeLabel ? 'true' : undefined"
+                :aria-label="copiedId === codeLabel ? copiedLabel : copyLabel"
+                aria-live="polite"
                 @click="copyText(code, codeLabel)"
             >
                 <Check v-if="copiedId === codeLabel" data-icon="inline-start" />
