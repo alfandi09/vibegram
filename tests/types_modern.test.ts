@@ -7,6 +7,7 @@ import type {
     InlineKeyboardButton,
     ForumTopicCreated,
     DirectMessagePriceChanged,
+    ExtraPoll,
     GiftInfo,
     Giveaway,
     GiveawayCompleted,
@@ -246,5 +247,19 @@ describe('modern Telegram types', () => {
         };
 
         expect(button.copy_text?.text).toBe('ABC-123');
+    });
+
+    it('accepts modern multi-answer quiz poll options', () => {
+        const extra: ExtraPoll = {
+            type: 'quiz',
+            allows_multiple_answers: true,
+            correct_option_ids: [0, 2],
+        };
+
+        // @ts-expect-error correct_option_id was removed in favor of correct_option_ids.
+        const legacyExtra: ExtraPoll = { correct_option_id: 0 };
+
+        expect(extra.correct_option_ids).toEqual([0, 2]);
+        expect(legacyExtra).toEqual({ correct_option_id: 0 });
     });
 });

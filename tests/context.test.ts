@@ -567,6 +567,29 @@ describe('Context modern send helpers', () => {
         );
     });
 
+    it('replyWithPoll sends modern quiz correct_option_ids unchanged', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        await ctx.replyWithPoll(
+            'Pick the correct answers',
+            [{ text: 'A' }, { text: 'B' }, { text: 'C' }],
+            {
+                type: 'quiz',
+                allows_multiple_answers: true,
+                correct_option_ids: [0, 2],
+            }
+        );
+
+        expect(client.callApi).toHaveBeenCalledWith(
+            'sendPoll',
+            expect.objectContaining({
+                chat_id: 99,
+                question: 'Pick the correct answers',
+                correct_option_ids: [0, 2],
+            })
+        );
+    });
+
     it('supports gift, star balance, business account gifts, and suggested post helpers', async () => {
         const { ctx, client } = createContext(
             makeMessageUpdate('hello', {

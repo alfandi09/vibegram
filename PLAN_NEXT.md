@@ -96,10 +96,10 @@
     - Field legacy `forward_from`, `forward_from_chat`, `forward_from_message_id`, `forward_signature`, `forward_sender_name`, dan `forward_date` dihapus dari tipe `Message`.
     - `isForwarded` sekarang hanya memakai `forward_origin`.
 
-- [ ] Hapus `ExtraPoll.correct_option_id`.
+- [x] Hapus `ExtraPoll.correct_option_id`.
     - File: `src/types.ts`
-    - Saat ini masih ada sebagai alias deprecated untuk backward compatibility.
-    - Rekomendasi: target `2.0.0`.
+    - Alias singular dihapus dari `ExtraPoll`; gunakan `correct_option_ids` sesuai Bot API 9.6.
+    - `ctx.replyWithPoll()` tidak lagi mengonversi `correct_option_id` menjadi array.
 
 - [x] Tambahkan `copy_text` ke `InlineKeyboardButton`.
     - File: `src/types.ts`
@@ -243,7 +243,7 @@
 ### Phase E - Breaking Cleanup, target `2.0.0`
 
 1. [x] Remove deprecated forward fields.
-2. Remove `correct_option_id`.
+2. [x] Remove `correct_option_id`.
 3. Split `Chat` and `ChatFullInfo` strictly.
 4. Replace Axios/FormData with native fetch/FormData only jika benchmark dan compatibility sudah jelas.
 

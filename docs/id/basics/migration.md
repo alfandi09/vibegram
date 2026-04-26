@@ -35,3 +35,4 @@ bot.command('signup', ctx => signup.enter(ctx));
 ## Catatan Breaking Change
 
 - Untuk pesan forward, gunakan `message.forward_origin`; field legacy Bot API seperti `forward_from`, `forward_sender_name`, dan `forward_date` tidak lagi tersedia di tipe TypeScript.
+- Untuk quiz poll, gunakan `correct_option_ids: [index]` atau beberapa index; `correct_option_id` tidak lagi tersedia di tipe TypeScript.

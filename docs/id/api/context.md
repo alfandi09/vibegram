@@ -44,9 +44,10 @@ await ctx.replyWithDice('🎲'); // Dadu animasi
 
 ```typescript
 // Poll/Kuis
-await ctx.replyWithPoll('Pertanyaan?', ['Pilihan A', 'Pilihan B']);
-await ctx.replyWithQuiz('Ibu kota Indonesia?', ['Jakarta', 'Surabaya', 'Bandung'], {
-    correct_option_id: 0,
+await ctx.replyWithPoll('Pertanyaan?', [{ text: 'Pilihan A' }, { text: 'Pilihan B' }]);
+await ctx.replyWithPoll('Ibu kota Indonesia?', [{ text: 'Jakarta' }, { text: 'Surabaya' }], {
+    type: 'quiz',
+    correct_option_ids: [0],
 });
 
 // Venue & Lokasi

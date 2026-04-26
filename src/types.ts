@@ -1912,8 +1912,6 @@ export interface ExtraPoll {
     is_anonymous?: boolean;
     type?: 'regular' | 'quiz';
     allows_multiple_answers?: boolean;
-    /** @deprecated Use correct_option_ids instead. */
-    correct_option_id?: number;
     correct_option_ids?: number[];
     explanation?: string;
     explanation_parse_mode?: string;

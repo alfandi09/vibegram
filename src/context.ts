@@ -444,10 +444,6 @@ export class Context {
      */
     async replyWithPoll(question: string, options: InputPollOption[], extra?: ExtraPoll) {
         if (!this.chat) throw new Error('Cannot send poll: Chat ID is not available');
-        const pollExtra =
-            extra?.correct_option_id !== undefined && !extra.correct_option_ids
-                ? { ...extra, correct_option_ids: [extra.correct_option_id] }
-                : extra;
 
         return this.client.callApi('sendPoll', {
             chat_id: this.chat.id,
@@ -455,7 +451,7 @@ export class Context {
             message_thread_id: this.getThreadId(),
             question,
             options,
-            ...pollExtra,
+            ...extra,
         });
     }
 

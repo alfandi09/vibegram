@@ -185,7 +185,7 @@ bot.command('quiz', async ctx => {
         ],
         {
             type: 'quiz',
-            correct_option_id: 0,
+            correct_option_ids: [0],
             explanation: 'HTML = Hyper Text Markup Language',
         }
     );

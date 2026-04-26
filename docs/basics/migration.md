@@ -64,4 +64,5 @@ bot.command('signup', ctx => signup.enter(ctx));
 - Use local state first; add scenes, wizards, or conversations when flow state becomes explicit.
 - Keep webhook secrets and bot tokens outside source control.
 - For forwarded messages, use `message.forward_origin`; legacy Bot API fields such as `forward_from`, `forward_sender_name`, and `forward_date` are no longer typed.
+- For quiz polls, use `correct_option_ids: [index]` or multiple indexes; `correct_option_id` is no longer typed.
 - Run the full validation suite before publishing library changes.
