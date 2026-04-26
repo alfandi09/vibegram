@@ -15,15 +15,16 @@ Configure the polling behavior via the `options` parameter:
 ```typescript
 const bot = new Bot('YOUR_BOT_TOKEN', {
     polling: {
-        interval: 300,      // ms between polls (default: 300)
-        limit: 100,          // max updates per poll (default: 100)
-        timeout: 30,         // long-polling timeout in seconds (default: 30)
-        allowed_updates: [   // filter update types (optional)
+        interval: 300, // ms between polls (default: 300)
+        limit: 100, // max updates per poll (default: 100)
+        timeout: 30, // long-polling timeout in seconds (default: 30)
+        allowed_updates: [
+            // filter update types (optional)
             'message',
             'callback_query',
-            'chat_member'
-        ]
-    }
+            'chat_member',
+        ],
+    },
 });
 ```
 
@@ -46,47 +47,62 @@ process.once('SIGTERM', () => bot.stop());
 For production deployments, use webhooks instead of polling:
 
 ```typescript
+await bot.launch({
+    webhook: {
+        url: process.env.WEBHOOK_URL!,
+        port: Number(process.env.PORT ?? 3000),
+        path: '/webhook',
+        secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
+    },
+});
+```
+
+`launch({ webhook })` starts VibeGram's native HTTP server, registers the webhook with Telegram, and shuts down gracefully when `bot.stop()` or a process signal runs.
+
+If you already own an Express, Fastify, Hono, Koa, or native HTTP server, mount a webhook adapter and register Telegram manually:
+
+```typescript
 import express from 'express';
+import { createExpressMiddleware } from 'vibegram';
 
 const app = express();
 app.use(express.json());
 
-// Optional: secret token prevents unauthorized requests
-app.post('/webhook', bot.webhookCallback('my-secret-token'));
-
-app.listen(3000, () => {
-    console.log('Webhook server running on port 3000');
+const webhook = createExpressMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
 });
-```
 
-Register the webhook with Telegram:
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
-```typescript
-await bot.callApi('setWebhook', {
-    url: 'https://your-domain.com/webhook',
-    secret_token: 'my-secret-token'
+await bot.setWebhook('https://your-domain.com/webhook', {
+    secret_token: process.env.WEBHOOK_SECRET,
 });
+
+app.listen(3000);
 ```
 
 ## Bot-Level Methods
 
 These methods are available directly on the `Bot` instance:
 
-| Method | Description |
-|--------|-------------|
-| `bot.getMe()` | Get bot info (id, username, name) |
-| `bot.setMyCommands(commands)` | Set the command menu |
-| `bot.getMyCommands()` | Get current command list |
-| `bot.deleteMyCommands()` | Remove all commands |
-| `bot.callApi(method, params)` | Call any Telegram API method directly |
-| `bot.validateWebAppData(initData)` | Validate Mini App data |
+| Method                             | Description                           |
+| ---------------------------------- | ------------------------------------- |
+| `bot.getMe()`                      | Get bot info (id, username, name)     |
+| `bot.setMyCommands(commands)`      | Set the command menu                  |
+| `bot.getMyCommands()`              | Get current command list              |
+| `bot.deleteMyCommands()`           | Remove all commands                   |
+| `bot.callApi(method, params)`      | Call any Telegram API method directly |
+| `bot.validateWebAppData(initData)` | Validate Mini App data                |
 
 ```typescript
 // Set up the command menu
 await bot.setMyCommands([
     { command: 'start', description: 'Start the bot' },
     { command: 'help', description: 'Show help' },
-    { command: 'settings', description: 'Bot settings' }
+    { command: 'settings', description: 'Bot settings' },
 ]);
 
 // Get bot information

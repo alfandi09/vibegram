@@ -16,12 +16,13 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 const app = express();
 
 app.use(express.json());
-app.post(
-    '/webhook',
-    createExpressMiddleware(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+const webhook = createExpressMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
 app.listen(3000, async () => {
     await bot.setWebhook(`https://domain.anda.com/webhook`, {
@@ -48,6 +49,7 @@ await fastify.register(
     createFastifyPlugin(bot, {
         path: '/webhook',
         secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
     })
 );
 
@@ -68,13 +70,13 @@ import { Bot, createHonoHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 const app = new Hono();
+const webhook = createHonoHandler(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
 
-app.post(
-    '/webhook',
-    createHonoHandler(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
 export default app;
 ```
@@ -96,12 +98,13 @@ const app = new Koa();
 const router = new Router();
 
 app.use(koaBody());
-router.post(
-    '/webhook',
-    createKoaMiddleware(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+const webhook = createKoaMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+router.post('/webhook', webhook);
+router.get('/healthz', webhook);
 app.use(router.routes());
 app.listen(3000);
 ```
@@ -116,9 +119,12 @@ import { Bot, createNativeHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-http.createServer(createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SECRET })).listen(
-    3000
-);
+http.createServer(
+    createNativeHandler(bot, {
+        secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
+    })
+).listen(3000);
 ```
 
 ## Opsi Adapter
@@ -127,6 +133,7 @@ http.createServer(createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SE
 | ------------------ | -------- | ----------------------------------------------------------------- |
 | `secretToken`      | `string` | Token validasi header Telegram                                    |
 | `path`             | `string` | Path route (khusus Fastify). Default: `'/webhook'`                |
+| `healthPath`       | `string` | Path GET opsional yang mengembalikan `200 OK` tanpa proses update |
 | `maxBodySizeBytes` | `number` | Batas ukuran body mentah untuk adapter native. Default: `1000000` |
 
 ## Kode Respons
@@ -134,6 +141,7 @@ http.createServer(createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SE
 | Kondisi                                      | Status HTTP                  |
 | -------------------------------------------- | ---------------------------- |
 | Update valid diproses                        | `200 OK`                     |
+| Route health check dipanggil                 | `200 OK`                     |
 | Secret token tidak cocok                     | `403 Forbidden`              |
 | Body tidak memiliki `update_id`              | `400 Bad Request`            |
 | Content type tidak didukung (adapter native) | `415 Unsupported Media Type` |

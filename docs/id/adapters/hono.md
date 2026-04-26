@@ -12,13 +12,13 @@ import { Bot, createHonoHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 const app = new Hono();
+const webhook = createHonoHandler(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
 
-app.post(
-    '/webhook',
-    createHonoHandler(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
 export default app;
 ```

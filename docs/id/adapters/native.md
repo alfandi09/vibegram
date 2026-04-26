@@ -11,6 +11,7 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 http.createServer(
     createNativeHandler(bot, {
         secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
         maxBodySizeBytes: 1_000_000,
     })
 ).listen(3000, () => {

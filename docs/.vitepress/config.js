@@ -62,6 +62,7 @@ export default {
                             { text: 'Routing & Listeners', link: '/id/core/handling' },
                             { text: 'Filter Combinator', link: '/id/core/filters' },
                             { text: 'Penanganan Error', link: '/id/core/error-handling' },
+                            { text: 'Observability', link: '/id/core/observability' },
                         ],
                     },
                     {
@@ -176,6 +177,7 @@ export default {
                     { text: 'Routing & Listeners', link: '/core/handling' },
                     { text: 'Filter Combinators', link: '/core/filters' },
                     { text: 'Error Handling', link: '/core/error-handling' },
+                    { text: 'Observability', link: '/core/observability' },
                 ],
             },
             {

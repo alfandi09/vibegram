@@ -16,12 +16,13 @@ const bot = new Bot(process.env.BOT_TOKEN!);
 const app = express();
 
 app.use(express.json());
-app.post(
-    '/webhook',
-    createExpressMiddleware(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+const webhook = createExpressMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
 app.listen(3000, async () => {
     await bot.setWebhook(`https://your-domain.com/webhook`, {
@@ -48,6 +49,7 @@ await fastify.register(
     createFastifyPlugin(bot, {
         path: '/webhook',
         secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
     })
 );
 
@@ -68,13 +70,13 @@ import { Bot, createHonoHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 const app = new Hono();
+const webhook = createHonoHandler(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
 
-app.post(
-    '/webhook',
-    createHonoHandler(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
 
 export default app;
 ```
@@ -96,12 +98,13 @@ const app = new Koa();
 const router = new Router();
 
 app.use(koaBody());
-router.post(
-    '/webhook',
-    createKoaMiddleware(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-    })
-);
+const webhook = createKoaMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+router.post('/webhook', webhook);
+router.get('/healthz', webhook);
 
 app.use(router.routes());
 app.listen(3000);
@@ -117,27 +120,31 @@ import { Bot, createNativeHandler } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-http.createServer(createNativeHandler(bot, { secretToken: process.env.WEBHOOK_SECRET })).listen(
-    3000,
-    () => console.log('Listening on :3000')
-);
+http.createServer(
+    createNativeHandler(bot, {
+        secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
+    })
+).listen(3000, () => console.log('Listening on :3000'));
 ```
 
 ## AdapterOptions
 
 All adapters accept an `AdapterOptions` object:
 
-| Option             | Type     | Description                                                      |
-| ------------------ | -------- | ---------------------------------------------------------------- |
-| `secretToken`      | `string` | Token to validate `X-Telegram-Bot-Api-Secret-Token` header       |
-| `path`             | `string` | Route path (Fastify only). Default: `'/webhook'`                 |
-| `maxBodySizeBytes` | `number` | Maximum raw body size for the native adapter. Default: `1000000` |
+| Option             | Type     | Description                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------ |
+| `secretToken`      | `string` | Token to validate `X-Telegram-Bot-Api-Secret-Token` header         |
+| `path`             | `string` | Route path (Fastify only). Default: `'/webhook'`                   |
+| `healthPath`       | `string` | Optional GET path that returns `200 OK` without processing updates |
+| `maxBodySizeBytes` | `number` | Maximum raw body size for the native adapter. Default: `1000000`   |
 
 ## Response Codes
 
 | Condition                             | HTTP Status                  |
 | ------------------------------------- | ---------------------------- |
 | Valid update processed                | `200 OK`                     |
+| Health check path hit                 | `200 OK`                     |
 | Secret token mismatch                 | `403 Forbidden`              |
 | Missing / invalid `update_id`         | `400 Bad Request`            |
 | Invalid content type (native adapter) | `415 Unsupported Media Type` |

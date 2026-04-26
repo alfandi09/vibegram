@@ -17,6 +17,9 @@ const bot = new Bot(process.env.BOT_TOKEN!, {
             onLaunch: ({ botInfo }) => {
                 console.log(`Bot ${botInfo.username} is online`);
             },
+            onStop: ({ reason }) => {
+                console.log(`Bot stopped: ${reason ?? 'manual'}`);
+            },
             onUpdateStart: ({ updateType }) => {
                 console.log(`Starting ${updateType}`);
             },
@@ -42,13 +45,16 @@ const bot = new Bot(process.env.BOT_TOKEN!, {
 Use client hooks to observe outgoing Bot API traffic, retries, and errors.
 
 ```typescript
-import { Bot } from 'vibegram';
+import { Bot, TelegramClient } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!, {
     observability: {
         client: {
             onRequestStart: ({ method, attempt }) => {
                 console.log(`Calling ${method} (attempt ${attempt})`);
+            },
+            onRequestSuccess: ({ method, durationMs }) => {
+                console.log(`${method} succeeded in ${durationMs}ms`);
             },
             onRateLimitRetry: ({ method, retryAfter, remainingRetries }) => {
                 console.warn(
@@ -61,6 +67,17 @@ const bot = new Bot(process.env.BOT_TOKEN!, {
         },
     },
 });
+
+const client = new TelegramClient(process.env.BOT_TOKEN!, {
+    networkRetries: 2,
+    hooks: {
+        onNetworkRetry: ({ method, retryAfterMs, remainingRetries }) => {
+            console.warn(
+                `${method} transient failure, retrying in ${retryAfterMs}ms (${remainingRetries} retries left)`
+            );
+        },
+    },
+});
 ```
 
 ## Notes
@@ -68,3 +85,4 @@ const bot = new Bot(process.env.BOT_TOKEN!, {
 1. Hooks are observational only. If a hook throws, VibeGram logs the hook error and continues processing.
 2. The built-in `logger()` middleware is still useful for human-readable traces; hooks are better for metrics, tracing, and structured logging.
 3. `rateLimit()` already exposes `onLimitExceeded`, which can be used as a dedicated throttling signal.
+4. Network retries are opt-in on `TelegramClient` via `networkRetries`; the default is `0` to avoid duplicate non-idempotent Bot API calls.

@@ -27,6 +27,40 @@ app.listen(3000);
 3. `webhookCallback()` verifies the header matches your secret
 4. Requests with invalid or missing tokens receive `403 Forbidden`
 
+## Native Launch Mode
+
+For a standalone deployment, `bot.launch({ webhook })` can own the native HTTP server and register the webhook for you:
+
+```typescript
+await bot.launch({
+    webhook: {
+        url: process.env.WEBHOOK_URL!,
+        port: Number(process.env.PORT ?? 3000),
+        path: '/webhook',
+        secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
+    },
+});
+```
+
+`healthPath` returns `200 OK` for uptime checks without validating the Telegram secret token or processing an update body.
+
+## Adapter Health Checks
+
+When you use framework adapters, pass the same `healthPath` option and mount the adapter on both routes where the framework needs it:
+
+```typescript
+import { createExpressMiddleware } from 'vibegram';
+
+const webhook = createExpressMiddleware(bot, {
+    secretToken: WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+app.post('/webhook', webhook);
+app.get('/healthz', webhook);
+```
+
 ## Deployment Checklist
 
 1. Always terminate TLS in front of your webhook endpoint.
@@ -34,11 +68,13 @@ app.listen(3000);
 3. Restrict webhook routes to `POST` only.
 4. Use JSON body parsing only on the webhook route.
 5. Keep your bot token and webhook secret outside source control.
+6. Expose a lightweight health endpoint for load balancers and platform probes.
 
 ## Adapter Hardening Notes
 
 - Native HTTP adapter rejects non-JSON requests with `415 Unsupported Media Type`.
 - Native HTTP adapter rejects oversized bodies with `413 Payload Too Large`.
+- `healthPath` responds with `200 OK` before secret validation or update parsing.
 - All adapters return `500 Internal Server Error` when update processing fails.
 - Invalid or malformed update payloads return `400 Bad Request`.
 

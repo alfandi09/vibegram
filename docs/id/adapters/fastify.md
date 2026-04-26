@@ -17,6 +17,7 @@ await fastify.register(
     createFastifyPlugin(bot, {
         path: '/webhook',
         secretToken: process.env.WEBHOOK_SECRET,
+        healthPath: '/healthz',
     })
 );
 

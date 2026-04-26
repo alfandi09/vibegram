@@ -199,9 +199,11 @@
 - [x] Add `.github/ISSUE_TEMPLATE`.
     - Files: `.github/ISSUE_TEMPLATE/bug_report.md`, `.github/ISSUE_TEMPLATE/feature_request.md`.
 
-- [ ] Full docs ID sync audit.
+- [x] Full docs ID sync audit.
     - File: `docs/id/**`
-    - EN/ID sekarang punya struktur file yang sejajar, tetapi audit kesetaraan isi belum selesai.
+    - Struktur EN/ID diaudit; halaman `docs/id/core/observability.md` ditambahkan untuk menutup gap dengan `docs/core/observability.md`.
+    - Sidebar VitePress EN/ID disinkronkan untuk halaman Observability.
+    - Docs webhook/adapters EN/ID diperbarui untuk native webhook launch mode dan `healthPath`.
 
 - [x] Normalize `repository.url`.
     - File: `package.json`
