@@ -460,7 +460,7 @@ npm run typecheck
 
 ## Phase 6 - Docs Component System
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -482,11 +482,29 @@ Komponen rencana:
 
 Checklist:
 
-- [ ] Register global components di VitePress theme.
-- [ ] Pastikan semua komponen SSR-compatible.
-- [ ] Pastikan props typed.
-- [ ] Pastikan fallback content aman.
-- [ ] Dokumentasikan cara pakai komponen internal docs.
+- [x] Register global components di VitePress theme.
+- [x] Pastikan semua komponen SSR-compatible.
+- [x] Pastikan props typed.
+- [x] Pastikan fallback content aman.
+- [x] Dokumentasikan cara pakai komponen internal docs.
+
+Output:
+
+- `docs/.vitepress/theme/components/docs/`
+    - Menambahkan `InstallTabs`, `FeatureGrid`, `FeatureCard`, `ApiMethodCard`, `MethodSignature`, `CompatibilityTable`, `SecurityNote`, `VersionBadge`, `CodePreview`, `DocsCard`, dan `PackageStats`.
+    - Semua komponen memakai typed props dan slot fallback yang bisa dipakai langsung dari Markdown VitePress.
+    - Komponen copy seperti `InstallTabs` dan `CodePreview` memakai guard SSR melalui composable `useCopyText`.
+- `docs/.vitepress/theme/index.ts`
+    - Global registration untuk semua komponen docs agar bisa dipakai tanpa import manual di halaman Markdown.
+- `docs/.vitepress/theme/components/docs/README.md`
+    - Dokumentasi internal API komponen dan contoh pemakaian Markdown.
+
+QA:
+
+- Preview Markdown sementara membuktikan global components render dari Markdown: tabs, cards, alert, API card, method signature table, compatibility table, package stats, dan code preview.
+- Browser desktop 1440px: preview components tidak membuat horizontal overflow global.
+- Browser mobile 390px: cards responsif, tabs tetap usable, dan table komponen scroll secara internal tanpa overflow global.
+- Preview route QA sudah dihapus sebelum commit agar tidak menjadi halaman publik permanen.
 
 Validation:
 
