@@ -1,0 +1,23 @@
+@media (prefers-reduced-motion: no-preference) {
+    .VPNavBarMenuLink,
+    .VPButton,
+    .VPFeature,
+    .VPSidebarItem .link,
+    .vg-home-quicklinks a {
+        transition:
+            border-color 160ms ease,
+            background-color 160ms ease,
+            color 160ms ease,
+            box-shadow 160ms ease,
+            transform 160ms ease;
+    }
+
+    .VPFeature:hover {
+        transform: translateY(-2px);
+    }
+
+    .VPHero .VPButton.brand:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 34px rgba(37, 99, 235, 0.28);
+    }
+}

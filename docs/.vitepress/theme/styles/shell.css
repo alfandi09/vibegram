@@ -1,0 +1,137 @@
+.vg-topline {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 70;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--vg-accent), var(--vg-brand), transparent);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.VPNav {
+    border-bottom: 1px solid var(--vg-border);
+    background: color-mix(in srgb, var(--vg-surface) 88%, transparent);
+    backdrop-filter: blur(18px);
+}
+
+.VPNavBar {
+    border-bottom: 0 !important;
+}
+
+.VPNavBar .container {
+    max-width: 1504px;
+}
+
+.VPNavBarTitle .title {
+    border-bottom: 0 !important;
+    font-weight: 760;
+    letter-spacing: 0;
+}
+
+.VPNavBarTitle .title::before {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    margin-right: 9px;
+    border-radius: 50%;
+    background: var(--vg-brand);
+    color: white;
+    content: '';
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+    vertical-align: -8px;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button {
+    border-radius: var(--vg-radius);
+    color: var(--vg-text-soft);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuGroup .button:hover {
+    color: var(--vg-text);
+    background: var(--vg-surface-subtle);
+}
+
+.VPNavBarSearch .DocSearch-Button,
+.VPNavBarSearch .VPLocalSearchBox .search-button,
+.DocSearch-Button {
+    height: 36px;
+    border: 1px solid var(--vg-border);
+    border-radius: var(--vg-radius);
+    background: var(--vg-surface);
+    box-shadow: var(--vg-shadow-soft);
+}
+
+.VPSidebar {
+    border-right: 1px solid var(--vg-border);
+    background: color-mix(in srgb, var(--vg-bg) 88%, var(--vg-surface));
+}
+
+.VPSidebar .group {
+    border-top: 0 !important;
+}
+
+.VPSidebarItem .text {
+    font-size: 13px;
+}
+
+.VPSidebarItem.level-0 > .item > .link > .text,
+.VPSidebarItem.level-0 > .item > .text {
+    color: var(--vg-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.VPSidebarItem.is-active > .item .link {
+    border-radius: var(--vg-radius);
+    background: var(--vg-brand-soft);
+}
+
+.VPSidebarItem.is-active > .item .text {
+    color: var(--vg-brand);
+    font-weight: 700;
+}
+
+.VPDoc {
+    background: var(--vg-bg);
+}
+
+.VPDoc.has-aside .content-container {
+    max-width: 784px;
+}
+
+.VPDocAsideOutline {
+    border-left: 1px solid var(--vg-border);
+}
+
+.VPDocAsideOutline .outline-title {
+    color: var(--vg-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.VPDocFooter {
+    border-top: 1px solid var(--vg-border);
+}
+
+.vg-doc-marker {
+    width: 42px;
+    height: 3px;
+    margin-bottom: 22px;
+    border-radius: 999px;
+    background: var(--vg-brand);
+}
+
+@media (max-width: 959px) {
+    .VPSidebar {
+        background: var(--vg-surface);
+        box-shadow: var(--vg-shadow-panel);
+    }
+}

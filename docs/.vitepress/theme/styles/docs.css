@@ -1,0 +1,123 @@
+.vp-doc {
+    color: var(--vg-text);
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+    letter-spacing: 0;
+}
+
+.vp-doc h1 {
+    max-width: 760px;
+    font-size: 42px;
+    line-height: 1.08;
+}
+
+.vp-doc h2 {
+    margin-top: 48px;
+    border-top: 1px solid var(--vg-border);
+    padding-top: 30px;
+    font-size: 26px;
+}
+
+.vp-doc h3 {
+    font-size: 19px;
+}
+
+.vp-doc p,
+.vp-doc li {
+    color: var(--vg-text-soft);
+    line-height: 1.78;
+}
+
+.vp-doc a {
+    color: var(--vg-brand);
+    font-weight: 650;
+}
+
+.vp-doc code {
+    border: 1px solid var(--vg-border);
+    border-radius: 6px;
+    background: var(--vg-surface-subtle);
+    color: var(--vg-brand-strong);
+    font-size: 0.88em;
+}
+
+.vp-doc div[class*='language-'] {
+    overflow: hidden;
+    border: 1px solid var(--vg-code-border);
+    border-radius: var(--vg-radius);
+    background: var(--vg-code-bg) !important;
+    box-shadow: var(--vg-shadow-panel);
+}
+
+.vp-doc div[class*='language-'] > button.copy {
+    border: 1px solid var(--vg-code-border);
+    border-radius: 6px;
+    background-color: rgba(15, 23, 42, 0.9);
+}
+
+.vp-doc div[class*='language-'] > span.lang {
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+.vp-doc table {
+    display: table;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--vg-border);
+    border-radius: var(--vg-radius);
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--vg-surface);
+    box-shadow: var(--vg-shadow-soft);
+}
+
+.vp-doc th {
+    background: var(--vg-surface-subtle);
+    color: var(--vg-text);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.vp-doc td {
+    color: var(--vg-text-soft);
+}
+
+.custom-block {
+    border: 1px solid var(--vg-border) !important;
+    border-radius: var(--vg-radius) !important;
+    background: var(--vg-surface) !important;
+    box-shadow: var(--vg-shadow-soft);
+}
+
+.custom-block.tip {
+    border-color: rgba(37, 99, 235, 0.22) !important;
+    background: var(--vg-brand-soft) !important;
+}
+
+.custom-block.warning {
+    border-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+.custom-block .custom-block-title {
+    color: var(--vg-text);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 767px) {
+    .vp-doc h1 {
+        font-size: 34px;
+    }
+
+    .vp-doc table {
+        display: block;
+        overflow-x: auto;
+    }
+}

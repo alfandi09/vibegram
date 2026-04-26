@@ -1,0 +1,67 @@
+:root {
+    --vg-font-sans:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --vg-font-mono:
+        'SFMono-Regular', 'Cascadia Code', 'Roboto Mono', Consolas, 'Liberation Mono', monospace;
+
+    --vg-bg: #f8fafc;
+    --vg-surface: #ffffff;
+    --vg-surface-subtle: #f1f5f9;
+    --vg-surface-muted: #eef2f7;
+    --vg-text: #0f172a;
+    --vg-text-soft: #475569;
+    --vg-text-muted: #64748b;
+    --vg-border: rgba(15, 23, 42, 0.1);
+    --vg-border-strong: rgba(15, 23, 42, 0.16);
+    --vg-brand: #2563eb;
+    --vg-brand-strong: #1d4ed8;
+    --vg-brand-soft: rgba(37, 99, 235, 0.1);
+    --vg-accent: #06b6d4;
+    --vg-code-bg: #0f172a;
+    --vg-code-bg-soft: #111827;
+    --vg-code-border: rgba(148, 163, 184, 0.2);
+    --vg-radius: 8px;
+    --vg-shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --vg-shadow-panel: 0 20px 50px rgba(15, 23, 42, 0.08);
+
+    --vp-c-brand-1: var(--vg-brand);
+    --vp-c-brand-2: var(--vg-brand-strong);
+    --vp-c-brand-3: #1e40af;
+    --vp-c-brand-soft: var(--vg-brand-soft);
+
+    --vp-c-bg: var(--vg-bg);
+    --vp-c-bg-alt: var(--vg-surface);
+    --vp-c-bg-elv: var(--vg-surface);
+    --vp-c-bg-soft: var(--vg-surface-subtle);
+    --vp-c-divider: var(--vg-border);
+    --vp-c-border: var(--vg-border);
+    --vp-c-text-1: var(--vg-text);
+    --vp-c-text-2: var(--vg-text-soft);
+    --vp-c-text-3: var(--vg-text-muted);
+
+    --vp-font-family-base: var(--vg-font-sans);
+    --vp-font-family-mono: var(--vg-font-mono);
+    --vp-layout-max-width: 1504px;
+    --vp-sidebar-width: 286px;
+}
+
+.dark {
+    --vg-bg: #070b14;
+    --vg-surface: #0d1422;
+    --vg-surface-subtle: #111827;
+    --vg-surface-muted: #172033;
+    --vg-text: #e5edf9;
+    --vg-text-soft: #b7c3d7;
+    --vg-text-muted: #8fa0b8;
+    --vg-border: rgba(148, 163, 184, 0.16);
+    --vg-border-strong: rgba(148, 163, 184, 0.24);
+    --vg-brand: #60a5fa;
+    --vg-brand-strong: #38bdf8;
+    --vg-brand-soft: rgba(96, 165, 250, 0.16);
+    --vg-accent: #22d3ee;
+    --vg-code-bg: #050816;
+    --vg-code-bg-soft: #0b1020;
+    --vg-code-border: rgba(148, 163, 184, 0.18);
+    --vg-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.24);
+    --vg-shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.36);
+}

@@ -1,0 +1,44 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--vg-bg);
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    min-width: 320px;
+    background: var(--vg-bg);
+    color: var(--vg-text);
+}
+
+a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+::selection {
+    background: rgba(37, 99, 235, 0.18);
+}
+
+:focus-visible {
+    outline: 2px solid var(--vg-brand);
+    outline-offset: 3px;
+}
+
+.vg-shell {
+    min-height: 100vh;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), transparent 300px), var(--vg-bg);
+}
+
+.dark .vg-shell {
+    background: linear-gradient(180deg, rgba(13, 20, 34, 0.92), transparent 300px), var(--vg-bg);
+}

@@ -1,22 +1,6 @@
-:root {
-  /* Nuansa Ocean Blue */
-  --vp-c-brand-1: #0096c7;
-  --vp-c-brand-2: #0077b6;
-  --vp-c-brand-3: #023e8a;
-  
-  --vp-c-brand-soft: rgba(0, 150, 199, 0.16);
-}
-
-.dark {
-  /* Ocean Blue di malam hari akan dimodifikasi lebih terang agar tidak tenggelam */
-  --vp-c-brand-1: #48cae4;
-  --vp-c-brand-2: #00b4d8;
-  --vp-c-brand-3: #0096c7;
-  
-  --vp-c-brand-soft: rgba(72, 202, 228, 0.16);
-}
-
-/* Memperhalus tampilan tombol dan navigasi Custom VibeGram */
-.vp-doc h1, .vp-doc h2 {
-    font-weight: 700;
-}
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/shell.css';
+@import './styles/home.css';
+@import './styles/docs.css';
+@import './styles/motion.css';

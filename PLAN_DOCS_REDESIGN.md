@@ -155,7 +155,7 @@ Output:
 
 ## Phase 1 - Theme Foundation Rewrite
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -177,14 +177,22 @@ Files yang kemungkinan dibuat/diubah:
 
 Checklist:
 
-- [ ] Extend default VitePress theme hanya jika masih membantu.
-- [ ] Tentukan apakah layout akan full custom atau hybrid.
-- [ ] Buat root layout baru.
-- [ ] Buat CSS tokens baru.
-- [ ] Buat responsive shell desktop/mobile.
-- [ ] Pastikan `<Content />` tetap render markdown.
-- [ ] Pastikan 404 tetap tertangani.
-- [ ] Pastikan i18n route EN/ID tetap jalan.
+- [x] Extend default VitePress theme hanya jika masih membantu.
+- [x] Tentukan apakah layout akan full custom atau hybrid.
+- [x] Buat root layout baru.
+- [x] Buat CSS tokens baru.
+- [x] Buat responsive shell desktop/mobile.
+- [x] Pastikan `<Content />` tetap render markdown.
+- [x] Pastikan 404 tetap tertangani.
+- [x] Pastikan i18n route EN/ID tetap jalan.
+
+Output:
+
+- Foundation memakai hybrid layout: custom `Layout.vue` membungkus `DefaultTheme.Layout` agar local search, sidebar, mobile nav, outline, edit links, dan i18n tetap aman.
+- CSS theme dipecah menjadi `tokens.css`, `base.css`, `shell.css`, `home.css`, `docs.css`, dan `motion.css`.
+- Homepage mendapat install command panel dan proof strip sebagai jembatan menuju Phase 3.
+- Article pages mendapat token typography, code block, table, callout, sidebar, and outline styling.
+- AppHeader/AppSidebar/AppMobileNav/AppToc/AppFooter full custom ditunda sampai dependency/UI strategy Phase 2/5 agar tidak memutus VitePress behavior terlalu awal.
 
 Validation:
 
