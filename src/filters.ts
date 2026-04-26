@@ -102,8 +102,7 @@ export const isBot: FilterFn = ctx => ctx.from?.is_bot === true;
 export const isHuman: FilterFn = ctx => ctx.from?.is_bot === false;
 
 /** Matches forwarded messages */
-export const isForwarded: FilterFn = ctx =>
-    ctx.message?.forward_origin !== undefined || ctx.message?.forward_date !== undefined;
+export const isForwarded: FilterFn = ctx => ctx.message?.forward_origin !== undefined;
 
 /** Matches messages that are replies to another message */
 export const isReply: FilterFn = ctx => ctx.message?.reply_to_message !== undefined;

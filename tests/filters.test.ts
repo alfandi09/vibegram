@@ -142,9 +142,6 @@ describe('filters', () => {
                 },
             })
         ).ctx;
-        const legacyForwardedCtx = createContext(
-            makeMessageUpdate('hello', { forward_date: 1 })
-        ).ctx;
         const replyCtx = createContext(
             makeMessageUpdate('hello', { reply_to_message: { message_id: 90 } })
         ).ctx;
@@ -184,7 +181,6 @@ describe('filters', () => {
         } as any).ctx;
 
         expect(isForwarded(forwardedCtx)).toBe(true);
-        expect(isForwarded(legacyForwardedCtx)).toBe(true);
         expect(isReply(replyCtx)).toBe(true);
         expect(hasText(forwardedCtx)).toBe(true);
         expect(hasPhoto(createContext(makePhotoUpdate()).ctx)).toBe(true);

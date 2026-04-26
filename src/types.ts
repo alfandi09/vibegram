@@ -1371,18 +1371,6 @@ export interface Message {
     business_connection_id?: string;
     chat: Chat;
     forward_origin?: MessageOrigin;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_from?: User;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_from_chat?: Chat;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_from_message_id?: number;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_signature?: string;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_sender_name?: string;
-    /** @deprecated Bot API 7.0 replaced this with forward_origin. */
-    forward_date?: number;
     is_topic_message?: boolean;
     is_automatic_forward?: boolean;
     reply_to_message?: Message;

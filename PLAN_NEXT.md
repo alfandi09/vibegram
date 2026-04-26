@@ -91,10 +91,10 @@
     - Saat ini `ChatFullInfo` sudah ada, tetapi `Chat` masih permissive dan memuat banyak field full info demi backward compatibility.
     - Rekomendasi: lakukan sebagai deprecation path di 1.x, lalu breaking cleanup di 2.0.
 
-- [ ] Hapus field forward deprecated dari `Message`.
+- [x] Hapus field forward deprecated dari `Message`.
     - File: `src/types.ts`
-    - Saat ini field lama masih ada dengan `@deprecated`.
-    - Rekomendasi: jangan hapus di 1.x kecuali siap breaking; target ideal `2.0.0`.
+    - Field legacy `forward_from`, `forward_from_chat`, `forward_from_message_id`, `forward_signature`, `forward_sender_name`, dan `forward_date` dihapus dari tipe `Message`.
+    - `isForwarded` sekarang hanya memakai `forward_origin`.
 
 - [ ] Hapus `ExtraPoll.correct_option_id`.
     - File: `src/types.ts`
@@ -242,7 +242,7 @@
 
 ### Phase E - Breaking Cleanup, target `2.0.0`
 
-1. Remove deprecated forward fields.
+1. [x] Remove deprecated forward fields.
 2. Remove `correct_option_id`.
 3. Split `Chat` and `ChatFullInfo` strictly.
 4. Replace Axios/FormData with native fetch/FormData only jika benchmark dan compatibility sudah jelas.
