@@ -1,224 +1,97 @@
-.VPHero {
-    padding-top: 78px !important;
-    padding-bottom: 38px !important;
+.vg-shell--home .VPHome {
+    padding-bottom: 0 !important;
 }
 
-.VPHero .container {
-    display: block !important;
-    max-width: 1180px !important;
+.vg-shell--home .VPHome > .VPHero,
+.vg-shell--home .VPHome > .VPFeatures {
+    display: none !important;
 }
 
-.VPHero .main {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 860px !important;
-    margin: 0 auto !important;
-    text-align: center;
+.vg-home {
+    min-height: calc(100vh - var(--vp-nav-height));
+    overflow-x: clip;
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--vg-surface) 72%, transparent),
+            transparent 520px
+        ),
+        var(--vg-bg);
 }
 
-.VPHero .name,
-.VPHero .text {
-    max-width: 900px !important;
-    letter-spacing: 0;
+.dark .vg-home {
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--vg-surface) 70%, transparent),
+            transparent 520px
+        ),
+        var(--vg-bg);
 }
 
-.VPHero .name {
-    color: var(--vg-text);
-    font-size: clamp(54px, 7vw, 86px);
-    line-height: 0.96;
+.vg-home-section {
+    border-bottom: 1px solid var(--vg-border);
+    padding: 72px 0;
 }
 
-.VPHero .text {
-    margin-top: 10px;
-    background: linear-gradient(90deg, var(--vg-brand), var(--vg-accent));
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-size: clamp(34px, 4.5vw, 54px);
-    line-height: 1.03;
+.vg-home-hero {
+    padding-top: 92px;
 }
 
-.VPHero .tagline {
-    max-width: 700px !important;
-    color: var(--vg-text-soft) !important;
-    font-size: 18px !important;
-    line-height: 1.62 !important;
-}
-
-.VPHero .image {
-    display: none;
-}
-
-.VPHero .actions {
-    justify-content: center;
-}
-
-.VPHero .VPButton {
-    min-height: 44px;
-    border-radius: var(--vg-radius) !important;
-    font-weight: 700;
-}
-
-.VPHero .VPButton.brand {
-    border-color: var(--vg-brand);
-    background: var(--vg-brand);
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
-}
-
-.VPHero .VPButton.alt {
-    border: 1px solid var(--vg-border);
-    background: var(--vg-surface);
-    color: var(--vg-text-soft);
-}
-
-.vg-hero-eyebrow {
-    display: inline-flex;
-    width: fit-content;
-    margin: 0 auto 24px;
-    padding: 6px 12px;
-    border: 1px solid var(--vg-border);
-    border-radius: 999px;
-    background: var(--vg-brand-soft);
-    color: var(--vg-brand);
-    font-size: 13px;
-    font-weight: 750;
-}
-
-.vg-install-panel {
-    width: min(720px, calc(100vw - 32px));
-    margin: 28px auto 0;
-    overflow: hidden;
-    border: 1px solid var(--vg-code-border);
-    border-radius: var(--vg-radius);
-    background: var(--vg-code-bg);
-    color: #e5edf9;
-    box-shadow: var(--vg-shadow-panel);
-    text-align: left;
-}
-
-.vg-install-tabs {
-    display: flex;
-    gap: 18px;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--vg-code-border);
-    color: #94a3b8;
-    font-size: 12px;
-}
-
-.vg-install-tabs span.active {
-    color: #ffffff;
-}
-
-.vg-install-command {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 18px;
-    font-family: var(--vg-font-mono);
-    font-size: 15px;
-}
-
-.vg-copy-hint {
-    color: #93c5fd;
-    font-family: var(--vg-font-sans);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.vg-home-quicklinks {
-    display: flex;
-    justify-content: center;
-    gap: 18px;
-    margin-top: 18px;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.vg-home-quicklinks a {
-    color: var(--vg-brand);
-}
-
-.vg-proof-strip {
+.vg-home-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    max-width: 860px;
-    margin: 0 auto 24px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 42px;
+    max-width: 1180px;
+    margin: 0 auto;
     padding: 0 24px;
 }
 
-.vg-proof-strip div {
-    padding: 18px;
+.vg-console {
+    overflow: hidden;
+    align-self: center;
     border: 1px solid var(--vg-border);
     border-radius: var(--vg-radius);
     background: var(--vg-surface);
+    box-shadow: var(--vg-shadow-panel);
+}
+
+.vg-install-card {
     box-shadow: var(--vg-shadow-soft);
 }
 
-.vg-proof-strip strong,
-.vg-proof-strip span {
-    display: block;
+.vg-feature-card {
+    min-height: 100%;
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
 }
 
-.vg-proof-strip strong {
-    color: var(--vg-text);
-    font-size: 14px;
-}
-
-.vg-proof-strip span {
-    margin-top: 4px;
-    color: var(--vg-text-muted);
-    font-size: 12px;
-}
-
-.VPFeatures .container {
-    max-width: 1180px !important;
-}
-
-.VPFeature {
-    border: 1px solid var(--vg-border) !important;
-    border-radius: var(--vg-radius) !important;
-    background: var(--vg-surface) !important;
+.vg-feature-card:hover {
+    border-color: var(--vg-border-strong);
     box-shadow: var(--vg-shadow-soft);
+    transform: translateY(-2px);
 }
 
-.VPFeature .title {
-    color: var(--vg-text);
+.vg-home-cta {
+    border-bottom: 0;
+    background: color-mix(in srgb, var(--vg-surface) 62%, transparent);
 }
 
-.VPFeature .details {
-    color: var(--vg-text-soft);
-    line-height: 1.7;
+@media (min-width: 1024px) {
+    .vg-home-grid {
+        grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.72fr);
+        align-items: center;
+    }
 }
 
 @media (max-width: 767px) {
-    .VPHero {
-        padding-top: 72px !important;
-        padding-bottom: 30px !important;
+    .vg-home-section {
+        padding: 52px 0;
     }
 
-    .VPHero .name {
-        font-size: 52px;
-    }
-
-    .VPHero .text {
-        font-size: 34px;
-        line-height: 1.08;
-    }
-
-    .VPHero .tagline {
-        font-size: 17px !important;
-        line-height: 1.7 !important;
-    }
-
-    .vg-proof-strip {
-        grid-template-columns: 1fr;
-    }
-
-    .vg-install-command {
-        align-items: flex-start;
-        flex-direction: column;
+    .vg-home-hero {
+        padding-top: 58px;
     }
 }

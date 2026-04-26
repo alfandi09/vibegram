@@ -11,6 +11,9 @@ export default async () => {
 
         vite: {
             plugins: [tailwindcss()],
+            optimizeDeps: {
+                exclude: ['lucide-vue-next'],
+            },
             resolve: {
                 alias: {
                     '@': fileURLToPath(new URL('./theme', import.meta.url)),

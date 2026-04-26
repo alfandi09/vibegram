@@ -265,7 +265,7 @@ npm run typecheck
 
 ## Phase 3 - Homepage Redesign
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -301,17 +301,41 @@ Section awal:
 
 Checklist:
 
-- [ ] Rewrite `docs/index.md` frontmatter/content jika perlu.
-- [ ] Rewrite `docs/id/index.md` agar setara.
-- [ ] Buat home-specific Vue components.
-- [ ] Tambahkan install tabs.
-- [ ] Tambahkan responsive proof/features.
-- [ ] Test desktop dan mobile.
+- [x] Rewrite `docs/index.md` frontmatter/content jika perlu.
+- [x] Rewrite `docs/id/index.md` agar setara.
+- [x] Buat home-specific Vue components.
+- [x] Tambahkan install tabs.
+- [x] Tambahkan responsive proof/features.
+- [x] Test desktop dan mobile.
+
+Output:
+
+- `docs/.vitepress/theme/components/HomePage.vue`
+    - Homepage custom berbasis Vue, Tailwind, shadcn-vue, dan lucide-vue-next.
+    - Copy EN/ID memakai satu komponen dengan deteksi locale VitePress.
+    - CTA, install tabs, copy command feedback, proof strip, workflow preview, feature overview, production readiness, quick path, dan footer CTA.
+- `docs/index.md` dan `docs/id/index.md`
+    - Disederhanakan ke `layout: home` agar konten home dikendalikan penuh oleh custom component.
+- `docs/.vitepress/theme/Layout.vue`
+    - Default VitePress home hero/features diganti oleh `HomePage` lewat slot home.
+- `docs/.vitepress/theme/styles/home.css`
+    - Styling home di-scope ke `.vg-shell--home` supaya tidak mengganggu halaman docs biasa.
+- `docs/.vitepress/config.js`
+    - `lucide-vue-next` dikeluarkan dari optimizeDeps untuk mencegah dev server blank page akibat stale optimized dependency.
+
+QA:
+
+- Browser desktop 1440px: homepage render stabil, hero tidak lagi memakai default VitePress yang membuat alignment kacau.
+- Browser mobile 390px: tidak ada horizontal overflow global (`scrollWidth` = viewport width).
+- Browser light/dark: kedua theme tetap terbaca dan elemen utama tidak overlap.
+- Browser ID route: copy dan link sudah memakai Bahasa Indonesia serta path `/id/...`.
+- Install tabs diuji dengan switch tab `pnpm`.
 
 Validation:
 
 ```bash
 npm run docs:build
+npm run typecheck
 ```
 
 ---

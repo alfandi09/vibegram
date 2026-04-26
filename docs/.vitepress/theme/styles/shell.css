@@ -1,7 +1,9 @@
 .vg-topline {
     position: fixed;
-    inset: 0 0 auto;
+    top: 0;
+    left: 0;
     z-index: 70;
+    width: 100%;
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--vg-accent), var(--vg-brand), transparent);
     opacity: 0.7;
