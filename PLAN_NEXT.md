@@ -166,9 +166,10 @@
     - Retry memakai exponential backoff via `networkRetryBaseDelayMs` dan `networkRetryMaxDelayMs`.
     - Retry berlaku untuk network failure tanpa response dan HTTP 5xx; HTTP 4xx dan rate-limit 429 tidak masuk jalur network retry.
 
-- [ ] Webhook health check endpoint.
+- [x] Webhook health check endpoint.
     - File: `src/adapters.ts`
-    - Tambahkan `healthPath` untuk adapters.
+    - `AdapterOptions.healthPath` ditambahkan sebagai GET endpoint opsional untuk Express, Fastify, Hono, native HTTP, dan Koa adapters.
+    - Health check mengembalikan `200 OK` tanpa validasi secret token, parsing body, atau memanggil `bot.handleUpdate()`.
 
 - [ ] `Conversation.waitForAny()`.
     - File: `src/conversation.ts`

@@ -27,12 +27,19 @@ import type { Bot } from './bot';
 import * as crypto from 'crypto';
 
 const DEFAULT_MAX_BODY_SIZE_BYTES = 1_000_000;
+const HEALTH_CHECK_RESPONSE_BODY = 'OK';
+
+interface ChainableReply {
+    code(statusCode: number): { send(body: string): unknown };
+}
 
 export interface AdapterOptions {
     /** Telegram secret token to validate X-Telegram-Bot-Api-Secret-Token header. */
     secretToken?: string;
     /** URL path to listen on. Used only by Fastify plugin adapter. Default: '/webhook'. */
     path?: string;
+    /** Optional GET path that returns 200 OK for uptime checks without processing updates. */
+    healthPath?: string;
     /** Maximum raw body size for the native adapter. Default: 1 MB. */
     maxBodySizeBytes?: number;
 }
@@ -49,6 +56,14 @@ function assertAdapterOptions(options?: AdapterOptions): void {
     if (options.path !== undefined) {
         if (typeof options.path !== 'string' || !options.path.startsWith('/')) {
             throw new TypeError('Adapter option "path" must be a string that starts with "/".');
+        }
+    }
+
+    if (options.healthPath !== undefined) {
+        if (typeof options.healthPath !== 'string' || !options.healthPath.startsWith('/')) {
+            throw new TypeError(
+                'Adapter option "healthPath" must be a string that starts with "/".'
+            );
         }
     }
 
@@ -79,6 +94,42 @@ function hasJsonContentType(contentType: unknown): boolean {
     );
 }
 
+function getRequestPath(value: unknown): string | undefined {
+    if (typeof value !== 'string' || value.trim() === '') {
+        return undefined;
+    }
+
+    try {
+        return new URL(value, 'http://localhost').pathname;
+    } catch {
+        return undefined;
+    }
+}
+
+function isHealthCheckRequest(
+    method: unknown,
+    pathCandidate: unknown,
+    healthPath?: string
+): boolean {
+    return (
+        method === 'GET' && healthPath !== undefined && getRequestPath(pathCandidate) === healthPath
+    );
+}
+
+function sendHealthCheckResponse(res: {
+    writeHead?: (statusCode: number) => void;
+    end: (body?: string) => void;
+    statusCode?: number;
+}): void {
+    if (typeof res.writeHead === 'function') {
+        res.writeHead(200);
+    } else {
+        res.statusCode = 200;
+    }
+
+    res.end(HEALTH_CHECK_RESPONSE_BODY);
+}
+
 // ---------------------------------------------------------------------------
 // Express.js adapter
 // ---------------------------------------------------------------------------
@@ -95,6 +146,17 @@ export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const handler = bot.webhookCallback(options?.secretToken);
     return async (req: any, res: any, next: any) => {
+        if (
+            isHealthCheckRequest(
+                req.method,
+                req.path ?? req.url ?? req.originalUrl,
+                options?.healthPath
+            )
+        ) {
+            sendHealthCheckResponse(res);
+            return;
+        }
+
         try {
             await handler(req, res);
         } catch (err) {
@@ -117,9 +179,16 @@ export function createExpressMiddleware(bot: Bot, options?: AdapterOptions) {
 export function createFastifyPlugin(bot: Bot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const path = options?.path || '/webhook';
+    const healthPath = options?.healthPath;
     const secretToken = options?.secretToken;
 
     return async function plugin(fastify: any) {
+        if (healthPath) {
+            fastify.get(healthPath, async (_request: unknown, reply: ChainableReply) =>
+                reply.code(200).send(HEALTH_CHECK_RESPONSE_BODY)
+            );
+        }
+
         fastify.post(path, async (request: any, reply: any) => {
             // Validate secret token if provided.
             const header = request.headers['x-telegram-bot-api-secret-token'];
@@ -160,6 +229,10 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
     const secretToken = options?.secretToken;
 
     return async (c: any) => {
+        if (isHealthCheckRequest(c.req.method, c.req.path ?? c.req.url, options?.healthPath)) {
+            return c.text(HEALTH_CHECK_RESPONSE_BODY, 200);
+        }
+
         const header = c.req.header('x-telegram-bot-api-secret-token');
         if (!matchesSecretToken(header, secretToken)) {
             return c.text('Forbidden', 403);
@@ -200,9 +273,15 @@ export function createHonoHandler(bot: Bot, options?: AdapterOptions) {
 export function createNativeHandler(bot: Bot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
+    const healthPath = options?.healthPath;
     const maxBodySizeBytes = options?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
 
     return async (req: any, res: any) => {
+        if (isHealthCheckRequest(req.method, req.url, healthPath)) {
+            sendHealthCheckResponse(res);
+            return;
+        }
+
         if (req.method !== 'POST') {
             res.writeHead(200);
             res.end();
@@ -284,6 +363,12 @@ export function createKoaMiddleware(bot: Bot, options?: AdapterOptions) {
     const secretToken = options?.secretToken;
 
     return async (ctx: any, next: any) => {
+        if (isHealthCheckRequest(ctx.method, ctx.path ?? ctx.url, options?.healthPath)) {
+            ctx.status = 200;
+            ctx.body = HEALTH_CHECK_RESPONSE_BODY;
+            return;
+        }
+
         if (ctx.method !== 'POST') {
             return next();
         }

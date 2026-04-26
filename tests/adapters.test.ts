@@ -82,11 +82,28 @@ describe('createExpressMiddleware()', () => {
         expect(res.statusCode).toBe(400);
     });
 
+    it('returns 200 for configured health checks without handling updates', async () => {
+        const bot = makeMockBot();
+        const mw = createExpressMiddleware(bot, { healthPath: '/healthz' });
+
+        const req = { method: 'GET', path: '/healthz', headers: {} };
+        const res = { statusCode: 0, end: vi.fn() };
+        const next = vi.fn();
+
+        await mw(req, res, next);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.end).toHaveBeenCalledWith('OK');
+        expect(bot._calls).toHaveLength(0);
+        expect(next).not.toHaveBeenCalled();
+    });
+
     it('throws on invalid adapter options', () => {
         const bot = makeMockBot();
 
         expect(() => createExpressMiddleware(bot, { secretToken: '' })).toThrow('secretToken');
         expect(() => createFastifyPlugin(bot, { path: 'webhook' })).toThrow('path');
+        expect(() => createHonoHandler(bot, { healthPath: 'healthz' })).toThrow('healthPath');
         expect(() => createNativeHandler(bot, { maxBodySizeBytes: 0 })).toThrow('maxBodySizeBytes');
     });
 });
@@ -159,6 +176,28 @@ describe('createHonoHandler()', () => {
         await handler(c);
         expect(c.text).toHaveBeenCalledWith('Internal Server Error', 500);
     });
+
+    it('returns 200 for configured health checks without parsing JSON', async () => {
+        const bot = makeMockBot();
+        const handler = createHonoHandler(bot, { healthPath: '/healthz' });
+
+        const c = {
+            req: {
+                method: 'GET',
+                path: '/healthz',
+                header: vi.fn(),
+                json: vi.fn(),
+            },
+            text: vi.fn((body: string, code: number) => ({ body, code })),
+        };
+
+        const result = await handler(c);
+
+        expect(result).toEqual({ body: 'OK', code: 200 });
+        expect(c.text).toHaveBeenCalledWith('OK', 200);
+        expect(c.req.json).not.toHaveBeenCalled();
+        expect(bot._calls).toHaveLength(0);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -213,6 +252,32 @@ describe('createFastifyPlugin()', () => {
         expect(reply.code).toHaveBeenCalledWith(500);
         expect(reply.send).toHaveBeenCalledWith('Internal Server Error');
     });
+
+    it('registers a health check route when healthPath is configured', async () => {
+        const bot = makeMockBot();
+        let healthHandler: any;
+        const plugin = createFastifyPlugin(bot, { healthPath: '/healthz' });
+        const fastify = {
+            get: vi.fn((path: string, registeredHandler: any) => {
+                healthHandler = registeredHandler;
+            }),
+            post: vi.fn(),
+        };
+
+        await plugin(fastify as any);
+
+        const reply = {
+            code: vi.fn().mockReturnThis(),
+            send: vi.fn(),
+        };
+
+        await healthHandler({}, reply);
+
+        expect(fastify.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
+        expect(reply.code).toHaveBeenCalledWith(200);
+        expect(reply.send).toHaveBeenCalledWith('OK');
+        expect(bot._calls).toHaveLength(0);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -246,6 +311,21 @@ describe('createKoaMiddleware()', () => {
 
         await mw(ctx, next);
         expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('returns 200 for configured health checks without calling next', async () => {
+        const bot = makeMockBot();
+        const mw = createKoaMiddleware(bot, { healthPath: '/healthz' });
+
+        const ctx: any = { method: 'GET', path: '/healthz', status: 0, body: '' };
+        const next = vi.fn();
+
+        await mw(ctx, next);
+
+        expect(ctx.status).toBe(200);
+        expect(ctx.body).toBe('OK');
+        expect(bot._calls).toHaveLength(0);
+        expect(next).not.toHaveBeenCalled();
     });
 
     it('returns 500 when bot.handleUpdate throws', async () => {
@@ -301,6 +381,23 @@ describe('createNativeHandler()', () => {
 
         expect(res.writeHead).toHaveBeenCalledWith(413);
         expect(res.end).toHaveBeenCalledWith('Payload Too Large');
+        expect(bot._calls).toHaveLength(0);
+    });
+
+    it('returns 200 for configured health checks without reading the request body', async () => {
+        const bot = makeMockBot();
+        const handler = createNativeHandler(bot, { healthPath: '/healthz' });
+        const req = Object.assign(Readable.from([JSON.stringify({ update_id: 99 })]), {
+            method: 'GET',
+            url: '/healthz?ready=1',
+            headers: {},
+        });
+        const res = { writeHead: vi.fn(), end: vi.fn() };
+
+        await handler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        expect(res.end).toHaveBeenCalledWith('OK');
         expect(bot._calls).toHaveLength(0);
     });
 
