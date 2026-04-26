@@ -109,7 +109,7 @@ Hal yang perlu dihindari:
 
 ## Phase 0 - Audit dan Concept Direction
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -117,31 +117,39 @@ Tujuan:
 
 Checklist:
 
-- [ ] Audit semua route docs EN.
-- [ ] Audit semua route docs ID.
-- [ ] Audit halaman yang paling penting:
-    - [ ] Home
-    - [ ] Quickstart
-    - [ ] Installation
-    - [ ] Bot instance
-    - [ ] Webhook
-    - [ ] API context
-    - [ ] Bot methods
-    - [ ] Conversations
-    - [ ] Adapters
-- [ ] Audit theme saat ini:
-    - [ ] `docs/.vitepress/config.js`
-    - [ ] `docs/.vitepress/theme/index.ts`
-    - [ ] `docs/.vitepress/theme/style.css`
-- [ ] Buat design brief final.
-- [ ] Buat minimal satu konsep visual untuk homepage dan docs reading page.
-- [ ] User approve konsep sebelum implementasi.
+- [x] Audit semua route docs EN.
+- [x] Audit semua route docs ID.
+- [x] Audit halaman yang paling penting:
+    - [x] Home
+    - [x] Quickstart
+    - [x] Installation
+    - [x] Bot instance
+    - [x] Webhook
+    - [x] API context
+    - [x] Bot methods
+    - [x] Conversations
+    - [x] Adapters
+- [x] Audit theme saat ini:
+    - [x] `docs/.vitepress/config.js`
+    - [x] `docs/.vitepress/theme/index.ts`
+    - [x] `docs/.vitepress/theme/style.css`
+- [x] Buat design brief final.
+- [x] Buat minimal satu konsep visual untuk homepage dan docs reading page.
+- [x] User approve konsep sebelum implementasi.
 
 Deliverable:
 
 - Design brief.
 - Accepted UI concept.
 - Daftar halaman prioritas redesign.
+
+Output:
+
+- `DOCS_REDESIGN_PHASE0.md`
+    - Audit route dan asset docs.
+    - Accepted concept path.
+    - Design system direction.
+    - Phase 1 readiness notes.
 
 ---
 
