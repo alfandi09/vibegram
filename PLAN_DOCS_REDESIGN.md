@@ -342,7 +342,7 @@ npm run typecheck
 
 ## Phase 4 - Docs Reading Experience
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -350,31 +350,53 @@ Tujuan:
 
 Checklist:
 
-- [ ] Redesign typography:
-    - [ ] h1
-    - [ ] h2
-    - [ ] h3
-    - [ ] paragraph
-    - [ ] list
-    - [ ] inline code
-    - [ ] blockquote
-- [ ] Redesign code block.
-- [ ] Redesign table.
-- [ ] Redesign custom containers:
-    - [ ] tip
-    - [ ] warning
-    - [ ] danger
-    - [ ] details
-- [ ] Redesign previous/next nav.
-- [ ] Redesign edit link.
-- [ ] Redesign aside/table of contents.
-- [ ] Pastikan line length nyaman di desktop.
-- [ ] Pastikan code block usable di mobile.
+- [x] Redesign typography:
+    - [x] h1
+    - [x] h2
+    - [x] h3
+    - [x] paragraph
+    - [x] list
+    - [x] inline code
+    - [x] blockquote
+- [x] Redesign code block.
+- [x] Redesign table.
+- [x] Redesign custom containers:
+    - [x] tip
+    - [x] warning
+    - [x] danger
+    - [x] details
+- [x] Redesign previous/next nav.
+- [x] Redesign edit link.
+- [x] Redesign aside/table of contents.
+- [x] Pastikan line length nyaman di desktop.
+- [x] Pastikan code block usable di mobile.
+
+Output:
+
+- `docs/.vitepress/theme/styles/docs.css`
+    - Typography artikel dirapikan untuk heading, paragraph, list, link, inline code, blockquote, code block, table, dan custom block.
+    - Inline code tidak lagi bocor ke code block.
+    - Code block memakai dark code surface yang konsisten di light/dark mode dan memaksa token Shiki memakai warna `--shiki-dark`.
+    - Table desktop kembali memakai layout table normal; mobile tetap scrollable tanpa horizontal overflow global.
+    - Custom block `info`, `tip`, `warning`, `danger`, dan `details` memakai border/status token yang jelas.
+- `docs/.vitepress/theme/styles/shell.css`
+    - Outline/TOC, edit link, dan previous/next nav dipoles agar terasa satu sistem dengan docs shell.
+- `docs/.vitepress/theme/styles/tokens.css`
+    - Tambah token status `success`, `warning`, dan `danger` untuk custom block.
+
+QA:
+
+- Browser desktop `basics/installation`: heading, list, inline code, dan code block tampil rapi; code block tidak lagi belang.
+- Browser desktop `api/context`: tabel penuh tanpa blank area kanan dan tanpa overflow global.
+- Browser mobile 390px `api/context`: table scrollable secara internal (`tableScrollWidth` > table width) dan page `scrollWidth` tetap sama dengan viewport.
+- Browser mobile 390px `security/webhook`: warning/tip custom block tampil dengan status color dan tanpa overflow global.
+- Dark mode DOM check: body, text, inline code, code block, dan warning block memakai token dark yang benar.
 
 Validation:
 
 ```bash
 npm run docs:build
+npm run typecheck
 ```
 
 ---

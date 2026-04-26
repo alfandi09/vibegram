@@ -158,6 +158,10 @@
     border-left: 1px solid var(--vg-border);
 }
 
+.VPDocAsideOutline .content {
+    padding-left: 20px;
+}
+
 .VPDocAsideOutline .outline-title {
     color: var(--vg-text-muted);
     font-size: 11px;
@@ -166,8 +170,100 @@
     text-transform: uppercase;
 }
 
+.VPDocAsideOutline .outline-link {
+    border-radius: 6px;
+    color: var(--vg-text-muted);
+    line-height: 1.45;
+    padding: 5px 8px;
+    transition:
+        background-color 140ms ease,
+        color 140ms ease;
+}
+
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+    background: var(--vg-brand-soft);
+    color: var(--vg-brand);
+}
+
+.VPDocAsideOutline .outline-marker {
+    left: 0;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--vg-brand);
+}
+
 .VPDocFooter {
+    margin-top: 56px;
     border-top: 1px solid var(--vg-border);
+    padding-top: 28px;
+}
+
+.VPDocFooter .edit-info {
+    padding-bottom: 20px;
+}
+
+.VPDocFooter .edit-link-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    border: 1px solid var(--vg-border);
+    border-radius: var(--vg-radius);
+    background: var(--vg-surface);
+    color: var(--vg-text-soft);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 11px;
+    box-shadow: var(--vg-shadow-soft);
+}
+
+.VPDocFooter .edit-link-button:hover {
+    border-color: var(--vg-border-strong);
+    color: var(--vg-brand);
+}
+
+.VPDocFooter .prev-next {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    border-top: 0;
+    padding-top: 0;
+}
+
+.VPDocFooter .pager-link {
+    min-height: 92px;
+    border: 1px solid var(--vg-border);
+    border-radius: var(--vg-radius);
+    background: var(--vg-surface);
+    padding: 16px;
+    box-shadow: var(--vg-shadow-soft);
+    transition:
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        transform 140ms ease;
+}
+
+.VPDocFooter .pager-link:hover {
+    border-color: var(--vg-border-strong);
+    box-shadow: var(--vg-shadow-panel);
+    transform: translateY(-1px);
+}
+
+.VPDocFooter .pager-link .desc {
+    color: var(--vg-text-muted);
+    font-size: 11px;
+    font-weight: 820;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.VPDocFooter .pager-link .title {
+    margin-top: 8px;
+    color: var(--vg-text);
+    font-size: 16px;
+    font-weight: 760;
+    line-height: 1.35;
 }
 
 .vg-doc-marker {
@@ -182,5 +278,19 @@
     .VPSidebar {
         background: var(--vg-surface);
         box-shadow: var(--vg-shadow-panel);
+    }
+}
+
+@media (max-width: 767px) {
+    .VPDoc .container {
+        padding-top: 32px !important;
+    }
+
+    .VPDocFooter .prev-next {
+        grid-template-columns: 1fr;
+    }
+
+    .VPDocFooter .pager-link {
+        min-height: 78px;
     }
 }

@@ -1,72 +1,227 @@
 .vp-doc {
     color: var(--vg-text);
+    font-size: 16px;
+    line-height: 1.78;
+}
+
+.vp-doc > :first-child {
+    margin-top: 0;
 }
 
 .vp-doc h1,
 .vp-doc h2,
-.vp-doc h3 {
+.vp-doc h3,
+.vp-doc h4 {
+    color: var(--vg-text);
     letter-spacing: 0;
+    text-wrap: balance;
 }
 
 .vp-doc h1 {
     max-width: 760px;
+    margin: 0 0 28px;
     font-size: 42px;
+    font-weight: 820;
     line-height: 1.08;
 }
 
 .vp-doc h2 {
-    margin-top: 48px;
+    margin-top: 56px;
+    margin-bottom: 18px;
     border-top: 1px solid var(--vg-border);
-    padding-top: 30px;
-    font-size: 26px;
+    padding-top: 32px;
+    font-size: 27px;
+    font-weight: 780;
+    line-height: 1.2;
 }
 
 .vp-doc h3 {
-    font-size: 19px;
+    margin-top: 34px;
+    margin-bottom: 12px;
+    font-size: 20px;
+    font-weight: 740;
+    line-height: 1.3;
+}
+
+.vp-doc h4 {
+    margin-top: 26px;
+    color: var(--vg-text-soft);
+    font-size: 16px;
+    font-weight: 760;
+}
+
+.vp-doc .header-anchor {
+    color: var(--vg-brand);
+    opacity: 0;
+    transition: opacity 140ms ease;
+}
+
+.vp-doc :is(h1, h2, h3, h4):hover .header-anchor,
+.vp-doc .header-anchor:focus-visible {
+    opacity: 1;
 }
 
 .vp-doc p,
 .vp-doc li {
     color: var(--vg-text-soft);
-    line-height: 1.78;
+}
+
+.vp-doc p {
+    margin: 16px 0;
+}
+
+.vp-doc ul,
+.vp-doc ol {
+    margin: 16px 0 22px;
+    padding-left: 1.4rem;
+}
+
+.vp-doc li + li {
+    margin-top: 6px;
+}
+
+.vp-doc li::marker {
+    color: var(--vg-brand);
 }
 
 .vp-doc a {
     color: var(--vg-brand);
     font-weight: 650;
+    text-decoration-color: color-mix(in srgb, var(--vg-brand) 36%, transparent);
+    text-underline-offset: 4px;
 }
 
-.vp-doc code {
+.vp-doc a:hover {
+    color: var(--vg-brand-strong);
+    text-decoration-color: currentColor;
+}
+
+.vp-doc :not(pre) > code {
     border: 1px solid var(--vg-border);
     border-radius: 6px;
     background: var(--vg-surface-subtle);
     color: var(--vg-brand-strong);
     font-size: 0.88em;
+    font-weight: 650;
+    padding: 0.12em 0.36em;
+}
+
+.vp-doc blockquote {
+    margin: 24px 0;
+    border: 1px solid var(--vg-border);
+    border-left: 3px solid var(--vg-brand);
+    border-radius: var(--vg-radius);
+    background: var(--vg-surface);
+    padding: 16px 18px;
+    box-shadow: var(--vg-shadow-soft);
+}
+
+.vp-doc blockquote > p {
+    margin: 0;
+    color: var(--vg-text-soft);
 }
 
 .vp-doc div[class*='language-'] {
+    position: relative;
     overflow: hidden;
+    margin: 22px 0 30px;
     border: 1px solid var(--vg-code-border);
     border-radius: var(--vg-radius);
     background: var(--vg-code-bg) !important;
     box-shadow: var(--vg-shadow-panel);
 }
 
+.vp-doc div[class*='language-']::before {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 1;
+    height: 38px;
+    border-bottom: 1px solid var(--vg-code-border);
+    background:
+        linear-gradient(90deg, rgba(96, 165, 250, 0.12), transparent 42%), var(--vg-code-bg-soft);
+    content: '';
+    pointer-events: none;
+}
+
+.vp-doc div[class*='language-'] pre {
+    margin: 0;
+    background: transparent !important;
+    padding: 54px 20px 20px;
+    line-height: 1.72;
+    scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.vp-doc div[class*='language-'] pre::-webkit-scrollbar {
+    height: 10px;
+}
+
+.vp-doc div[class*='language-'] pre::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.vp-doc div[class*='language-'] pre::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.6);
+    background-clip: content-box;
+}
+
+.vp-doc div[class*='language-'] pre code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    padding: 0;
+}
+
+.vp-doc div[class*='language-'] .shiki,
+.vp-doc div[class*='language-'] .shiki span {
+    background: transparent !important;
+    color: var(--shiki-dark, #e5edf9) !important;
+}
+
+.vp-doc div[class*='language-'] .line {
+    min-height: 1.72em;
+}
+
 .vp-doc div[class*='language-'] > button.copy {
+    top: 7px;
+    right: 10px;
+    z-index: 2;
+    width: 30px;
+    height: 24px;
     border: 1px solid var(--vg-code-border);
     border-radius: 6px;
-    background-color: rgba(15, 23, 42, 0.9);
+    background-color: rgba(15, 23, 42, 0.72);
+    opacity: 0.86;
+}
+
+.vp-doc div[class*='language-'] > button.copy:hover,
+.vp-doc div[class*='language-'] > button.copy:focus-visible {
+    background-color: rgba(37, 99, 235, 0.45);
+    opacity: 1;
 }
 
 .vp-doc div[class*='language-'] > span.lang {
+    top: 10px;
+    right: 52px;
+    z-index: 2;
     color: #93c5fd;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 780;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .vp-doc table {
     display: table;
     width: 100%;
+    max-width: 100%;
     overflow: hidden;
+    margin: 22px 0 30px;
     border: 1px solid var(--vg-border);
     border-radius: var(--vg-radius);
     border-collapse: separate;
@@ -75,8 +230,39 @@
     box-shadow: var(--vg-shadow-soft);
 }
 
-.vp-doc th {
+.vp-doc table::-webkit-scrollbar {
+    height: 10px;
+}
+
+.vp-doc table::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--vg-border-strong);
+    background-clip: content-box;
+}
+
+.vp-doc thead {
     background: var(--vg-surface-subtle);
+}
+
+.vp-doc tr {
+    border: 0;
+}
+
+.vp-doc th,
+.vp-doc td {
+    min-width: 140px;
+    border: 0;
+    border-bottom: 1px solid var(--vg-border);
+    padding: 13px 16px;
+    vertical-align: top;
+}
+
+.vp-doc tr:last-child td {
+    border-bottom: 0;
+}
+
+.vp-doc th {
     color: var(--vg-text);
     font-size: 12px;
     font-weight: 800;
@@ -88,51 +274,106 @@
     color: var(--vg-text-soft);
 }
 
+.vp-doc td code {
+    white-space: nowrap;
+}
+
 .custom-block {
+    position: relative;
+    margin: 24px 0;
     border: 1px solid var(--vg-border) !important;
+    border-left: 3px solid var(--vg-brand) !important;
     border-radius: var(--vg-radius) !important;
     background: var(--vg-surface) !important;
+    padding: 16px 18px 16px 20px;
     box-shadow: var(--vg-shadow-soft);
 }
 
+.custom-block.info,
 .custom-block.tip {
-    border-color: rgba(37, 99, 235, 0.22) !important;
-    background: var(--vg-brand-soft) !important;
+    border-left-color: var(--vg-success) !important;
+    background: var(--vg-success-soft) !important;
 }
 
 .custom-block.warning {
-    border-color: rgba(245, 158, 11, 0.28) !important;
+    border-left-color: var(--vg-warning) !important;
+    background: var(--vg-warning-soft) !important;
+}
+
+.custom-block.danger {
+    border-left-color: var(--vg-danger) !important;
+    background: var(--vg-danger-soft) !important;
+}
+
+.custom-block.details {
+    border-left-color: var(--vg-text-muted) !important;
 }
 
 .custom-block .custom-block-title {
+    margin-bottom: 8px;
     color: var(--vg-text);
-    font-size: 13px;
-    letter-spacing: 0.04em;
+    font-size: 12px;
+    font-weight: 820;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 
+.custom-block p {
+    margin: 8px 0 0;
+    color: var(--vg-text-soft);
+}
+
+.custom-block summary {
+    cursor: pointer;
+    color: var(--vg-text);
+    font-weight: 760;
+}
+
 @media (max-width: 767px) {
+    .vp-doc {
+        font-size: 15.5px;
+    }
+
     .vp-doc h1 {
         font-size: 34px;
+        line-height: 1.12;
     }
 
     .vp-doc h2 {
-        margin-top: 42px;
+        margin-top: 44px;
         padding-top: 26px;
+        font-size: 24px;
+    }
+
+    .vp-doc h3 {
+        font-size: 18px;
     }
 
     .vp-doc div[class*='language-'] {
-        margin-right: 0;
-        margin-left: 0;
+        margin: 20px 0 28px;
         border-radius: var(--vg-radius);
     }
 
     .vp-doc div[class*='language-'] pre {
-        padding: 18px 16px;
+        padding: 52px 16px 18px;
+    }
+
+    .vp-doc div[class*='language-'] pre code {
+        font-size: 12.5px;
+    }
+
+    .vp-doc th,
+    .vp-doc td {
+        min-width: 132px;
+        padding: 12px 14px;
     }
 
     .vp-doc table {
         display: block;
         overflow-x: auto;
+    }
+
+    .custom-block {
+        padding: 14px 15px 14px 17px;
     }
 }
