@@ -167,6 +167,21 @@ describe('Composer.hears()', () => {
         expect(capturedCtx!.match![1]).toBe('42');
     });
 
+    it('matches non-stateful regex triggers even when caller-set lastIndex is nonzero', async () => {
+        const composer = new Composer<Context>();
+        const handler = vi.fn();
+        const trigger = /^ticket-(\d+)$/;
+        trigger.lastIndex = 8;
+        composer.hears(trigger, handler);
+
+        const { ctx } = createContext(makeMessageUpdate('ticket-42'));
+        await runComposer(composer, ctx);
+
+        expect(handler).toHaveBeenCalledOnce();
+        expect(ctx.match?.[1]).toBe('42');
+        expect(trigger.lastIndex).toBe(8);
+    });
+
     it('sets ctx.match to null for plain string match', async () => {
         const composer = new Composer<Context>();
         let capturedCtx: Context | null = null;
@@ -209,6 +224,7 @@ describe('Composer.hears()', () => {
 
         expect(handler).toHaveBeenCalledTimes(2);
         expect(secondCtx.match?.[1]).toBe('99');
+        expect(trigger.lastIndex).toBe(0);
     });
 
     it('skips update when no text is present', async () => {
@@ -265,6 +281,7 @@ describe('Composer.action()', () => {
 
         expect(handler).toHaveBeenCalledTimes(2);
         expect(secondCtx.match?.[1]).toBe('2');
+        expect(trigger.lastIndex).toBe(0);
     });
 
     it('does NOT trigger on non-callback_query update', async () => {

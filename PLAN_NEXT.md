@@ -112,9 +112,10 @@
 
 ### Performance and Internals
 
-- [ ] Optimasi `Composer.cloneTriggerRegex()`.
+- [x] Optimasi `Composer.cloneTriggerRegex()`.
     - File: `src/composer.ts`
-    - Saat ini selalu clone regex. Rekomendasi: clone hanya jika regex punya flag `g` atau `y`.
+    - Regex sekarang hanya di-clone jika punya flag stateful `g` atau `y`; regex non-stateful dipakai langsung.
+    - Regression test memastikan global/sticky regex tetap aman dari `lastIndex` leakage.
 
 - [ ] Lazy import `fs` dan `crypto`.
     - File: `src/client.ts`, `src/webapp.ts`
