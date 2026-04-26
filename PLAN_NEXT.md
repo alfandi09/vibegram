@@ -160,10 +160,11 @@
     - File: `src/context.ts`
     - `ctx.telegram` sekarang alias scoped `TelegramClient`, sehingga direct API tetap discoverable tanpa menduplikasi semua wrapper `Bot`.
 
-- [ ] Network error retry.
+- [x] Network error retry.
     - File: `src/client.ts`
-    - Tambahkan `networkRetries` dan exponential backoff.
-    - Jangan retry 4xx client errors.
+    - `TelegramClientOptions.networkRetries` ditambahkan dengan default `0` agar retry network tetap opt-in.
+    - Retry memakai exponential backoff via `networkRetryBaseDelayMs` dan `networkRetryMaxDelayMs`.
+    - Retry berlaku untuk network failure tanpa response dan HTTP 5xx; HTTP 4xx dan rate-limit 429 tidak masuk jalur network retry.
 
 - [ ] Webhook health check endpoint.
     - File: `src/adapters.ts`

@@ -48,6 +48,104 @@ describe('TelegramClient', () => {
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
     });
 
+    it('retries transient network failures with exponential backoff when enabled', async () => {
+        const hooks = {
+            onNetworkRetry: vi.fn(),
+            onRequestError: vi.fn(),
+        };
+        const client = new TelegramClient('test-token', {
+            hooks,
+            networkRetries: 2,
+            networkRetryBaseDelayMs: 100,
+            networkRetryMaxDelayMs: 1000,
+        });
+        const post = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('socket hang up'))
+            .mockRejectedValueOnce(new Error('timeout'))
+            .mockResolvedValueOnce({ data: { ok: true, result: true } });
+        const delays: number[] = [];
+        (client as any).http = { post };
+
+        vi.spyOn(global, 'setTimeout').mockImplementation(((fn: any, delay?: number) => {
+            delays.push(delay ?? 0);
+            fn();
+            return 0;
+        }) as any);
+
+        await expect(client.callApi('sendMessage')).resolves.toBe(true);
+
+        expect(post).toHaveBeenCalledTimes(3);
+        expect(delays).toEqual([100, 200]);
+        expect(hooks.onNetworkRetry).toHaveBeenCalledTimes(2);
+        expect(hooks.onNetworkRetry).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                attempt: 2,
+                retryAfterMs: 200,
+                remainingRetries: 0,
+            })
+        );
+        expect(hooks.onRequestError).not.toHaveBeenCalled();
+    });
+
+    it('retries HTTP 5xx responses but does not retry 4xx client errors', async () => {
+        const serverErrorClient = new TelegramClient('test-token', {
+            networkRetries: 1,
+            networkRetryBaseDelayMs: 0,
+        });
+        const serverErrorPost = vi
+            .fn()
+            .mockRejectedValueOnce({
+                response: {
+                    status: 502,
+                    data: {
+                        error_code: 502,
+                        description: 'Bad Gateway',
+                    },
+                },
+            })
+            .mockResolvedValueOnce({ data: { ok: true, result: true } });
+        (serverErrorClient as any).http = { post: serverErrorPost };
+
+        await expect(serverErrorClient.callApi('sendMessage')).resolves.toBe(true);
+        expect(serverErrorPost).toHaveBeenCalledTimes(2);
+
+        const clientErrorClient = new TelegramClient('test-token', {
+            networkRetries: 2,
+            networkRetryBaseDelayMs: 0,
+        });
+        const clientErrorPost = vi.fn().mockRejectedValue({
+            response: {
+                status: 400,
+                data: {
+                    error_code: 400,
+                    description: 'Bad Request',
+                },
+            },
+        });
+        (clientErrorClient as any).http = { post: clientErrorPost };
+
+        await expect(clientErrorClient.callApi('sendMessage')).rejects.toBeInstanceOf(
+            TelegramApiError
+        );
+        expect(clientErrorPost).toHaveBeenCalledOnce();
+    });
+
+    it('validates network retry options', () => {
+        expect(() => new TelegramClient('test-token', { networkRetries: -1 })).toThrow(
+            'networkRetries'
+        );
+        expect(
+            () =>
+                new TelegramClient('test-token', {
+                    networkRetryBaseDelayMs: Number.NaN,
+                })
+        ).toThrow('networkRetryBaseDelayMs');
+        expect(() => new TelegramClient('test-token', { networkRetryMaxDelayMs: -1 })).toThrow(
+            'networkRetryMaxDelayMs'
+        );
+    });
+
     it('rejects non-plain root payloads before sending', async () => {
         const client = new TelegramClient('test-token');
         const post = vi.fn();

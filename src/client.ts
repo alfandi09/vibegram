@@ -7,6 +7,9 @@ import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 const DEFAULT_MAX_JSON_PAYLOAD_BYTES = 50 * 1024 * 1024;
+const DEFAULT_NETWORK_RETRIES = 0;
+const DEFAULT_NETWORK_RETRY_BASE_DELAY_MS = 500;
+const DEFAULT_NETWORK_RETRY_MAX_DELAY_MS = 5000;
 
 type UploadValue = Buffer | NodeJS.ReadableStream;
 
@@ -228,10 +231,20 @@ interface AxiosErrorLike {
         url?: unknown;
     };
     response?: {
+        status?: unknown;
+        data?: unknown;
         config?: {
             baseURL?: unknown;
             url?: unknown;
         };
+    };
+}
+
+interface TelegramErrorPayload {
+    error_code?: unknown;
+    description?: unknown;
+    parameters?: {
+        retry_after?: unknown;
     };
 }
 
@@ -264,6 +277,62 @@ function getErrorMessage(error: unknown, token: string): string {
     return redactToken(message, token) as string;
 }
 
+function getErrorStatusCode(error: unknown): number | undefined {
+    if (typeof error !== 'object' || error === null) return undefined;
+
+    const status = (error as AxiosErrorLike).response?.status;
+    return typeof status === 'number' ? status : undefined;
+}
+
+function isRetryableNetworkError(error: unknown): boolean {
+    const statusCode = getErrorStatusCode(error);
+    return statusCode === undefined || statusCode >= 500;
+}
+
+function getTelegramErrorPayload(error: unknown): TelegramErrorPayload | undefined {
+    if (typeof error !== 'object' || error === null) return undefined;
+
+    const data = (error as AxiosErrorLike).response?.data;
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+        return undefined;
+    }
+
+    return data as TelegramErrorPayload;
+}
+
+function getRetryAfterSeconds(payload: TelegramErrorPayload | undefined): number {
+    const retryAfter = payload?.parameters?.retry_after;
+    return typeof retryAfter === 'number' && Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter
+        : 1;
+}
+
+function getTelegramErrorCode(payload: TelegramErrorPayload, fallbackStatusCode?: number): number {
+    return typeof payload.error_code === 'number' ? payload.error_code : (fallbackStatusCode ?? 0);
+}
+
+function getTelegramErrorDescription(payload: TelegramErrorPayload): string {
+    return typeof payload.description === 'string'
+        ? payload.description
+        : 'Telegram request failed';
+}
+
+function validateNonNegativeIntegerOption(name: string, value: number): void {
+    if (!Number.isInteger(value) || value < 0) {
+        throw new TypeError(`${name} must be a non-negative integer.`);
+    }
+}
+
+function validateNonNegativeNumberOption(name: string, value: number): void {
+    if (!Number.isFinite(value) || value < 0) {
+        throw new TypeError(`${name} must be a non-negative number.`);
+    }
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export interface TelegramClientRequestEvent {
     method: string;
     attempt: number;
@@ -285,11 +354,17 @@ export interface TelegramClientRetryEvent extends TelegramClientErrorEvent {
     remainingRetries: number;
 }
 
+export interface TelegramClientNetworkRetryEvent extends TelegramClientErrorEvent {
+    retryAfterMs: number;
+    remainingRetries: number;
+}
+
 export interface TelegramClientHooks {
     onRequestStart?: (event: TelegramClientRequestEvent) => void | Promise<void>;
     onRequestSuccess?: (event: TelegramClientSuccessEvent) => void | Promise<void>;
     onRequestError?: (event: TelegramClientErrorEvent) => void | Promise<void>;
     onRateLimitRetry?: (event: TelegramClientRetryEvent) => void | Promise<void>;
+    onNetworkRetry?: (event: TelegramClientNetworkRetryEvent) => void | Promise<void>;
 }
 
 export interface TelegramClientOptions {
@@ -300,6 +375,22 @@ export interface TelegramClientOptions {
      * Defaults to 50MB.
      */
     maxJsonPayloadBytes?: number;
+    /**
+     * Number of retries for transient network failures and HTTP 5xx responses.
+     * HTTP 4xx client errors and Telegram rate-limit responses are never retried here.
+     * Defaults to 0 to avoid duplicate non-idempotent Bot API calls unless explicitly enabled.
+     */
+    networkRetries?: number;
+    /**
+     * Initial delay in milliseconds for network retries. Each retry doubles the delay.
+     * Defaults to 500ms.
+     */
+    networkRetryBaseDelayMs?: number;
+    /**
+     * Maximum network retry delay in milliseconds.
+     * Defaults to 5000ms.
+     */
+    networkRetryMaxDelayMs?: number;
 }
 
 export class TelegramClient {
@@ -307,15 +398,26 @@ export class TelegramClient {
     private readonly _token: string;
     private readonly hooks?: TelegramClientHooks;
     private readonly maxJsonPayloadBytes: number;
+    private readonly networkRetries: number;
+    private readonly networkRetryBaseDelayMs: number;
+    private readonly networkRetryMaxDelayMs: number;
 
     constructor(token: string, options?: TelegramClientOptions) {
         this._token = token;
         this.hooks = options?.hooks;
         this.maxJsonPayloadBytes = options?.maxJsonPayloadBytes ?? DEFAULT_MAX_JSON_PAYLOAD_BYTES;
+        this.networkRetries = options?.networkRetries ?? DEFAULT_NETWORK_RETRIES;
+        this.networkRetryBaseDelayMs =
+            options?.networkRetryBaseDelayMs ?? DEFAULT_NETWORK_RETRY_BASE_DELAY_MS;
+        this.networkRetryMaxDelayMs =
+            options?.networkRetryMaxDelayMs ?? DEFAULT_NETWORK_RETRY_MAX_DELAY_MS;
 
         if (!Number.isFinite(this.maxJsonPayloadBytes) || this.maxJsonPayloadBytes <= 0) {
             throw new TypeError('maxJsonPayloadBytes must be a positive number.');
         }
+        validateNonNegativeIntegerOption('networkRetries', this.networkRetries);
+        validateNonNegativeNumberOption('networkRetryBaseDelayMs', this.networkRetryBaseDelayMs);
+        validateNonNegativeNumberOption('networkRetryMaxDelayMs', this.networkRetryMaxDelayMs);
 
         // Keep-Alive agent prevents repeated TCP/TLS handshakes in high-traffic environments.
         const agent = new https.Agent({ keepAlive: true, maxSockets: 100 });
@@ -350,16 +452,24 @@ export class TelegramClient {
         }
     }
 
-    /**
-     * Calls a Telegram Bot API method with automatic multipart/form-data delegation
-     * and recursive rate-limit retry handling.
-     */
-    async callApi(
+    private getNetworkRetryDelayMs(remainingRetries: number): number {
+        if (this.networkRetryBaseDelayMs === 0 || this.networkRetryMaxDelayMs === 0) {
+            return 0;
+        }
+
+        const retryNumber = this.networkRetries - remainingRetries + 1;
+        const exponent = Math.min(retryNumber - 1, 30);
+        const delay = this.networkRetryBaseDelayMs * 2 ** exponent;
+        return Math.min(delay, this.networkRetryMaxDelayMs);
+    }
+
+    private async callApiAttempt(
         method: string,
-        data?: any,
-        retries: number = 3,
-        attempt: number = 1
-    ): Promise<any> {
+        data: unknown,
+        rateLimitRetries: number,
+        networkRetries: number,
+        attempt: number
+    ): Promise<unknown> {
         const start = Date.now();
         validateRequestPayload(data, this.maxJsonPayloadBytes);
         const { reqData, headers, isMultipart } = prepareRequestPayload(data);
@@ -389,7 +499,7 @@ export class TelegramClient {
             );
 
             return result.result;
-        } catch (error: any) {
+        } catch (error: unknown) {
             sanitizeAxiosError(error, this._token);
 
             if (
@@ -409,9 +519,12 @@ export class TelegramClient {
                 throw error;
             }
 
+            const statusCode = getErrorStatusCode(error);
+            const telegramErrorPayload = getTelegramErrorPayload(error);
+
             // Handle Rate Limiting (429 Too Many Requests) with auto-retry.
-            if (error.response && error.response.status === 429 && retries > 0) {
-                const retryAfter = error.response.data?.parameters?.retry_after || 1;
+            if (statusCode === 429 && rateLimitRetries > 0) {
+                const retryAfter = getRetryAfterSeconds(telegramErrorPayload);
                 await this.invokeHook('onRateLimitRetry', () =>
                     this.hooks?.onRateLimitRetry?.({
                         method,
@@ -421,23 +534,54 @@ export class TelegramClient {
                         error,
                         statusCode: 429,
                         retryAfter,
-                        remainingRetries: retries,
+                        remainingRetries: rateLimitRetries,
                     })
                 );
                 console.warn(`[Rate Limit] Telegram quota exceeded. Retrying in ${retryAfter}s...`);
-                await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-                return this.callApi(method, data, retries - 1, attempt + 1);
+                await sleep(retryAfter * 1000);
+                return this.callApiAttempt(
+                    method,
+                    data,
+                    rateLimitRetries - 1,
+                    networkRetries,
+                    attempt + 1
+                );
             }
 
-            if (error.response && error.response.data) {
-                const apiError = error.response.data;
+            if (networkRetries > 0 && isRetryableNetworkError(error)) {
+                const retryAfterMs = this.getNetworkRetryDelayMs(networkRetries);
+                await this.invokeHook('onNetworkRetry', () =>
+                    this.hooks?.onNetworkRetry?.({
+                        method,
+                        attempt,
+                        isMultipart,
+                        durationMs: Date.now() - start,
+                        error,
+                        statusCode,
+                        retryAfterMs,
+                        remainingRetries: networkRetries - 1,
+                    })
+                );
+                await sleep(retryAfterMs);
+                return this.callApiAttempt(
+                    method,
+                    data,
+                    rateLimitRetries,
+                    networkRetries - 1,
+                    attempt + 1
+                );
+            }
+
+            if (telegramErrorPayload) {
+                const errorCode = getTelegramErrorCode(telegramErrorPayload, statusCode);
+                const description = getTelegramErrorDescription(telegramErrorPayload);
                 const typedError =
-                    error.response.status === 429
-                        ? new RateLimitError(apiError.parameters?.retry_after || 1)
+                    statusCode === 429
+                        ? new RateLimitError(getRetryAfterSeconds(telegramErrorPayload))
                         : new TelegramApiError(
-                              `Telegram request failed: [${apiError.error_code}] ${apiError.description}`,
-                              apiError.error_code,
-                              apiError.description
+                              `Telegram request failed: [${errorCode}] ${description}`,
+                              errorCode,
+                              description
                           );
 
                 await this.invokeHook('onRequestError', () =>
@@ -447,11 +591,11 @@ export class TelegramClient {
                         isMultipart,
                         durationMs: Date.now() - start,
                         error: typedError,
-                        statusCode: error.response.status,
+                        statusCode,
                     })
                 );
 
-                if (error.response.status === 429) {
+                if (statusCode === 429) {
                     throw typedError;
                 }
 
@@ -475,6 +619,14 @@ export class TelegramClient {
 
             throw networkError;
         }
+    }
+
+    /**
+     * Calls a Telegram Bot API method with automatic multipart/form-data delegation
+     * plus rate-limit and optional network retry handling.
+     */
+    async callApi(method: string, data?: any, retries: number = 3): Promise<any> {
+        return this.callApiAttempt(method, data, retries, this.networkRetries, 1);
     }
 
     /**
