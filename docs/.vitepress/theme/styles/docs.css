@@ -116,6 +116,21 @@
         font-size: 34px;
     }
 
+    .vp-doc h2 {
+        margin-top: 42px;
+        padding-top: 26px;
+    }
+
+    .vp-doc div[class*='language-'] {
+        margin-right: 0;
+        margin-left: 0;
+        border-radius: var(--vg-radius);
+    }
+
+    .vp-doc div[class*='language-'] pre {
+        padding: 18px 16px;
+    }
+
     .vp-doc table {
         display: block;
         overflow-x: auto;

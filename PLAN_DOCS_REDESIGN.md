@@ -192,6 +192,7 @@ Output:
 - CSS theme dipecah menjadi `tokens.css`, `base.css`, `shell.css`, `home.css`, `docs.css`, dan `motion.css`.
 - Homepage mendapat install command panel dan proof strip sebagai jembatan menuju Phase 3.
 - Article pages mendapat token typography, code block, table, callout, sidebar, and outline styling.
+- Visual polish pass ditambahkan setelah screenshot audit: hero alignment, mobile top spacing, sidebar scrollbar, brand mark, dan mobile code block dirapikan.
 - AppHeader/AppSidebar/AppMobileNav/AppToc/AppFooter full custom ditunda sampai dependency/UI strategy Phase 2/5 agar tidak memutus VitePress behavior terlalu awal.
 
 Validation:

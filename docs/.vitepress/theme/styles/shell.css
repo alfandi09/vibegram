@@ -24,12 +24,16 @@
 
 .VPNavBarTitle .title {
     border-bottom: 0 !important;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
     font-weight: 760;
     letter-spacing: 0;
 }
 
 .VPNavBarTitle .title::before {
     display: inline-block;
+    flex: 0 0 auto;
     width: 28px;
     height: 28px;
     margin-right: 9px;
@@ -39,6 +43,19 @@
     content: '';
     box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
     vertical-align: -8px;
+}
+
+.VPNavBarTitle .title::after {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    width: 11px;
+    height: 8px;
+    border-top: 2px solid #fff;
+    border-right: 2px solid #fff;
+    content: '';
+    transform: translateY(-50%) rotate(35deg) skewX(-16deg);
+    transform-origin: center;
 }
 
 .VPNavBarMenuLink,
@@ -68,6 +85,32 @@
 .VPSidebar {
     border-right: 1px solid var(--vg-border);
     background: color-mix(in srgb, var(--vg-bg) 88%, var(--vg-surface));
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+}
+
+.VPSidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.VPSidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.VPSidebar::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    background-clip: content-box;
+}
+
+.VPSidebar:hover {
+    scrollbar-color: var(--vg-border-strong) transparent;
+}
+
+.VPSidebar:hover::-webkit-scrollbar-thumb {
+    background: var(--vg-border-strong);
+    background-clip: content-box;
 }
 
 .VPSidebar .group {
@@ -101,6 +144,10 @@
     background: var(--vg-bg);
 }
 
+.VPDoc .container {
+    padding-top: 44px !important;
+}
+
 .VPDoc.has-aside .content-container {
     max-width: 784px;
 }
@@ -124,7 +171,7 @@
 .vg-doc-marker {
     width: 42px;
     height: 3px;
-    margin-bottom: 22px;
+    margin-bottom: 18px;
     border-radius: 999px;
     background: var(--vg-brand);
 }
