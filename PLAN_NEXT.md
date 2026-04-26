@@ -127,9 +127,9 @@
 
 ### DX and Public API
 
-- [ ] Typed middleware guard.
-    - File: `src/composer.ts`
-    - Tambahkan `guard()` atau overload typed middleware untuk narrow context.
+- [x] Typed middleware guard.
+    - File: `src/filters.ts`
+    - `guard()` sudah punya overload untuk predicate biasa dan type predicate, sehingga handler bisa menerima narrowed context.
 
 - [x] Subpath exports.
     - File: `package.json`
@@ -201,9 +201,10 @@
     - File: `package.json`
     - npm publish memperingatkan auto-correct ke `git+https://github.com/alfandi09/vibegram.git`.
 
-- [ ] GitHub Release/tag item dari PLAN lama ditolak untuk eksekusi otomatis.
+- [x] GitHub Release/tag item dari PLAN lama ditolak untuk eksekusi otomatis.
     - PLAN lama menyarankan `git tag v1.0.1`.
     - Ini konflik dengan AGENTS.md yang melarang tag manual tanpa instruksi eksplisit.
+    - Ditutup sebagai rejected item, bukan backlog aktif.
 
 ---
 
@@ -245,7 +246,7 @@
 1. [x] Remove deprecated forward fields.
 2. [x] Remove `correct_option_id`.
 3. [x] Split `Chat` and `ChatFullInfo` strictly.
-4. Replace Axios/FormData with native fetch/FormData only jika benchmark dan compatibility sudah jelas.
+4. [ ] Replace Axios/FormData with native fetch/FormData only jika benchmark dan compatibility sudah jelas.
 
 ---
 
