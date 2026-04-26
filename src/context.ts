@@ -17,6 +17,8 @@ import {
     ExtraRestrictMember,
     ExtraPromoteMember,
     ExtraInviteLink,
+    GetBusinessAccountGiftsOptions,
+    GetUserGiftsOptions,
     InputFile,
     InputMedia,
     InputSticker,
@@ -34,6 +36,7 @@ import {
     GiftInfo,
     Gifts,
     OwnedGifts,
+    SendGiftOptions,
     StarAmount,
     StarTransactions,
 } from './types';
@@ -51,6 +54,7 @@ export class Context {
     private static readonly NO_VALUE = Symbol('context:no-value');
     public readonly update: Update;
     public readonly client: TelegramClient;
+    public readonly telegram: TelegramClient;
     public session?: any; // Injected by session() middleware
     public wizard?: {
         state: any;
@@ -97,6 +101,7 @@ export class Context {
         // Each update gets its own request-scoped client facade so middleware can
         // safely decorate ctx.client without leaking state into concurrent updates.
         this.client = createScopedClient(client);
+        this.telegram = this.client;
     }
 
     /**
@@ -1306,16 +1311,7 @@ export class Context {
     /**
      * Send a Star gift to another user.
      */
-    async sendGift(
-        userId: number,
-        giftId: string,
-        extra?: {
-            pay_for_upgrade?: boolean;
-            text?: string;
-            text_parse_mode?: string;
-            text_entities?: any[];
-        }
-    ) {
+    async sendGift(userId: number, giftId: string, extra?: SendGiftOptions) {
         return this.client.callApi('sendGift', { user_id: userId, gift_id: giftId, ...extra });
     }
 
@@ -1325,12 +1321,7 @@ export class Context {
     async sendGiftToChat(
         chatId: number | string,
         giftId: string,
-        extra?: {
-            pay_for_upgrade?: boolean;
-            text?: string;
-            text_parse_mode?: string;
-            text_entities?: any[];
-        }
+        extra?: SendGiftOptions
     ): Promise<boolean> {
         return this.client.callApi('sendGift', { chat_id: chatId, gift_id: giftId, ...extra });
     }
@@ -1338,27 +1329,30 @@ export class Context {
     /**
      * Get the list of gifts owned by the given user or the bot.
      */
-    async getUserGifts(extra?: {
-        user_id?: number;
-        exclude_unlimited?: boolean;
-        exclude_limited_upgradable?: boolean;
-        exclude_limited_non_upgradable?: boolean;
-        exclude_from_blockchain?: boolean;
-        exclude_unique?: boolean;
-        sort_by_price?: boolean;
-        offset?: string;
-        limit?: number;
-    }): Promise<OwnedGifts> {
-        return this.client.callApi('getUserGifts', extra);
+    async getUserGifts(userId: number, extra?: GetUserGiftsOptions): Promise<OwnedGifts>;
+    async getUserGifts(extra?: { user_id?: number } & GetUserGiftsOptions): Promise<OwnedGifts>;
+    async getUserGifts(
+        userIdOrExtra?: number | ({ user_id?: number } & GetUserGiftsOptions),
+        extra?: GetUserGiftsOptions
+    ): Promise<OwnedGifts> {
+        const payload =
+            typeof userIdOrExtra === 'number'
+                ? { user_id: userIdOrExtra, ...extra }
+                : userIdOrExtra;
+
+        return this.client.callApi('getUserGifts', payload);
     }
 
     /**
      * Convert a received gift to Telegram Stars.
      */
-    async convertGiftToStars(businessConnectionId: string, messageId: number): Promise<boolean> {
+    async convertGiftToStars(
+        businessConnectionId: string,
+        ownedGiftId: string | number
+    ): Promise<boolean> {
         return this.client.callApi('convertGiftToStars', {
             business_connection_id: businessConnectionId,
-            message_id: messageId,
+            owned_gift_id: String(ownedGiftId),
         });
     }
 
@@ -1367,12 +1361,12 @@ export class Context {
      */
     async saveGift(
         businessConnectionId: string,
-        messageId: number,
+        ownedGiftId: string | number,
         extra?: { is_saved?: boolean }
     ): Promise<boolean> {
         return this.client.callApi('saveGift', {
             business_connection_id: businessConnectionId,
-            message_id: messageId,
+            owned_gift_id: String(ownedGiftId),
             ...extra,
         });
     }
@@ -1416,18 +1410,7 @@ export class Context {
      */
     async getBusinessAccountGifts(
         businessConnectionId: string,
-        extra?: {
-            exclude_unsaved?: boolean;
-            exclude_saved?: boolean;
-            exclude_unlimited?: boolean;
-            exclude_limited_upgradable?: boolean;
-            exclude_limited_non_upgradable?: boolean;
-            exclude_unique?: boolean;
-            exclude_from_blockchain?: boolean;
-            sort_by_price?: boolean;
-            offset?: string;
-            limit?: number;
-        }
+        extra?: GetBusinessAccountGiftsOptions
     ): Promise<OwnedGifts> {
         return this.client.callApi('getBusinessAccountGifts', {
             business_connection_id: businessConnectionId,

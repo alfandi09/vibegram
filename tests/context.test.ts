@@ -39,6 +39,19 @@ describe('Context getters', () => {
         expect(ctx.from?.id).toBe(42);
     });
 
+    it('.telegram aliases the scoped Telegram client for direct API calls', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        expect(ctx.telegram).toBe(ctx.client);
+
+        await ctx.telegram.callApi('sendChatAction', { chat_id: 99, action: 'typing' });
+
+        expect(client.callApi).toHaveBeenCalledWith('sendChatAction', {
+            chat_id: 99,
+            action: 'typing',
+        });
+    });
+
     it('.message returns undefined for callback_query-only updates without message', () => {
         const update = {
             update_id: 10,
@@ -566,6 +579,10 @@ describe('Context modern send helpers', () => {
         await ctx.getMyStarBalance();
         await ctx.getStarBalance();
         await ctx.getStarTransactions({ offset: 10, limit: 5 });
+        await ctx.getUserGifts(42, { limit: 10 });
+        await ctx.getUserGifts({ user_id: 43, offset: 'next' });
+        await ctx.convertGiftToStars('bc-11', 'owned-1');
+        await ctx.saveGift('bc-11', 'owned-2', { is_saved: false });
         await ctx.getBusinessAccountGifts('bc-11', { exclude_unique: true, limit: 20 });
         await ctx.getBusinessAccountStarBalance('bc-11');
         await ctx.transferBusinessAccountStars('bc-11', 50);
@@ -592,6 +609,23 @@ describe('Context modern send helpers', () => {
         expect(client.callApi).toHaveBeenCalledWith('getStarTransactions', {
             offset: 10,
             limit: 5,
+        });
+        expect(client.callApi).toHaveBeenCalledWith('getUserGifts', {
+            user_id: 42,
+            limit: 10,
+        });
+        expect(client.callApi).toHaveBeenCalledWith('getUserGifts', {
+            user_id: 43,
+            offset: 'next',
+        });
+        expect(client.callApi).toHaveBeenCalledWith('convertGiftToStars', {
+            business_connection_id: 'bc-11',
+            owned_gift_id: 'owned-1',
+        });
+        expect(client.callApi).toHaveBeenCalledWith('saveGift', {
+            business_connection_id: 'bc-11',
+            owned_gift_id: 'owned-2',
+            is_saved: false,
         });
         expect(client.callApi).toHaveBeenCalledWith(
             'getBusinessAccountGifts',

@@ -4,17 +4,18 @@ The `Context` object is created for every incoming update and provides shortcuts
 
 ## Properties
 
-| Property      | Type      | Description                                |
-| ------------- | --------- | ------------------------------------------ |
-| `ctx.update`  | `Update`  | Raw update object from Telegram            |
-| `ctx.message` | `Message` | The incoming message (if any)              |
-| `ctx.from`    | `User`    | The user who sent the update               |
-| `ctx.chat`    | `Chat`    | The chat where the update occurred         |
-| `ctx.command` | `object`  | Parsed command data (`{ command, args }`)  |
-| `ctx.session` | `any`     | Session data (requires session middleware) |
-| `ctx.scene`   | `object`  | Scene navigation controls                  |
-| `ctx.wizard`  | `object`  | Wizard step controls                       |
-| `ctx.i18n`    | `object`  | Internationalization helper                |
+| Property       | Type             | Description                                |
+| -------------- | ---------------- | ------------------------------------------ |
+| `ctx.update`   | `Update`         | Raw update object from Telegram            |
+| `ctx.message`  | `Message`        | The incoming message (if any)              |
+| `ctx.from`     | `User`           | The user who sent the update               |
+| `ctx.chat`     | `Chat`           | The chat where the update occurred         |
+| `ctx.command`  | `object`         | Parsed command data (`{ command, args }`)  |
+| `ctx.session`  | `any`            | Session data (requires session middleware) |
+| `ctx.scene`    | `object`         | Scene navigation controls                  |
+| `ctx.wizard`   | `object`         | Wizard step controls                       |
+| `ctx.i18n`     | `object`         | Internationalization helper                |
+| `ctx.telegram` | `TelegramClient` | Scoped direct Telegram API client          |
 
 ## Messaging Methods
 
@@ -106,7 +107,7 @@ The `Context` object is created for every incoming update and provides shortcuts
 | `ctx.getFileLink(fileId)`                     | `getFile`                       | Get file download URL                  |
 | `ctx.downloadFile(fileId, destPath?)`         | —                               | Download file to disk or buffer        |
 | `ctx.getAvailableGifts()`                     | `getAvailableGifts`             | List gifts available to the bot        |
-| `ctx.getUserGifts(extra?)`                    | `getUserGifts`                  | List gifts owned by a user             |
+| `ctx.getUserGifts(userId, extra?)`            | `getUserGifts`                  | List gifts owned by a user             |
 | `ctx.getBusinessAccountGifts(id, extra?)`     | `getBusinessAccountGifts`       | List gifts owned by a business account |
 | `ctx.getMyStarBalance()`                      | `getMyStarBalance`              | Get the bot's Star balance             |
 | `ctx.getBusinessAccountStarBalance(id)`       | `getBusinessAccountStarBalance` | Get a business account's Star balance  |
@@ -137,4 +138,10 @@ await ctx.replyWithChecklist({
 // Edit a message after delay
 const msg = await ctx.reply('Loading...');
 setTimeout(() => ctx.editMessageText('Done!'), 2000);
+
+// Call a Telegram API method that has no shortcut yet
+await ctx.telegram.callApi('sendChatAction', {
+    chat_id: ctx.chat!.id,
+    action: 'typing',
+});
 ```

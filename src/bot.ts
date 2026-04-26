@@ -7,16 +7,32 @@ import {
     BotDescription,
     BotName,
     BotShortDescription,
+    BusinessConnection,
     ChatAdministratorRights,
     GameHighScore,
+    GetBusinessAccountGiftsOptions,
+    GetChatGiftsOptions,
+    GetUserGiftsOptions,
+    GiftPremiumSubscriptionOptions,
+    Gifts,
     InlineQueryResult,
     InputProfilePhoto,
+    InputStoryContent,
     LabeledPrice,
     MenuButton,
+    OwnedGifts,
     PassportElementError,
     PreparedKeyboardButton,
+    PostStoryOptions,
+    RepostStoryOptions,
+    SendGiftOptions,
     SentWebAppMessage,
     SetWebhookOptions,
+    Story,
+    AcceptedGiftTypes,
+    EditStoryOptions,
+    TransferGiftOptions,
+    UpgradeGiftOptions,
     Update,
     UserProfileAudios,
     UserProfilePhotos,
@@ -512,6 +528,302 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number
     ): Promise<PreparedKeyboardButton> {
         return this.client.callApi('savePreparedKeyboardButton', { button, user_id: userId });
+    }
+
+    /**
+     * Get information about a business connection.
+     */
+    async getBusinessConnection(businessConnectionId: string): Promise<BusinessConnection> {
+        return this.client.callApi('getBusinessConnection', {
+            business_connection_id: businessConnectionId,
+        });
+    }
+
+    /**
+     * Mark an incoming business message as read.
+     */
+    async readBusinessMessage(
+        businessConnectionId: string,
+        chatId: number,
+        messageId: number
+    ): Promise<boolean> {
+        return this.client.callApi('readBusinessMessage', {
+            business_connection_id: businessConnectionId,
+            chat_id: chatId,
+            message_id: messageId,
+        });
+    }
+
+    /**
+     * Delete messages on behalf of a managed business account.
+     */
+    async deleteBusinessMessages(
+        businessConnectionId: string,
+        messageIds: number[]
+    ): Promise<boolean> {
+        return this.client.callApi('deleteBusinessMessages', {
+            business_connection_id: businessConnectionId,
+            message_ids: messageIds,
+        });
+    }
+
+    /**
+     * Change the first and last name of a managed business account.
+     */
+    async setBusinessAccountName(
+        businessConnectionId: string,
+        firstName: string,
+        extra?: { last_name?: string }
+    ): Promise<boolean> {
+        return this.client.callApi('setBusinessAccountName', {
+            business_connection_id: businessConnectionId,
+            first_name: firstName,
+            ...extra,
+        });
+    }
+
+    /**
+     * Change the username of a managed business account.
+     */
+    async setBusinessAccountUsername(
+        businessConnectionId: string,
+        username?: string
+    ): Promise<boolean> {
+        return this.client.callApi('setBusinessAccountUsername', {
+            business_connection_id: businessConnectionId,
+            username,
+        });
+    }
+
+    /**
+     * Change the bio of a managed business account.
+     */
+    async setBusinessAccountBio(businessConnectionId: string, bio?: string): Promise<boolean> {
+        return this.client.callApi('setBusinessAccountBio', {
+            business_connection_id: businessConnectionId,
+            bio,
+        });
+    }
+
+    /**
+     * Change the profile photo of a managed business account.
+     */
+    async setBusinessAccountProfilePhoto(
+        businessConnectionId: string,
+        photo: InputProfilePhoto,
+        extra?: { is_public?: boolean }
+    ): Promise<boolean> {
+        return this.client.callApi('setBusinessAccountProfilePhoto', {
+            business_connection_id: businessConnectionId,
+            photo,
+            ...extra,
+        });
+    }
+
+    /**
+     * Remove the profile photo of a managed business account.
+     */
+    async removeBusinessAccountProfilePhoto(
+        businessConnectionId: string,
+        extra?: { is_public?: boolean }
+    ): Promise<boolean> {
+        return this.client.callApi('removeBusinessAccountProfilePhoto', {
+            business_connection_id: businessConnectionId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Change incoming gift settings for a managed business account.
+     */
+    async setBusinessAccountGiftSettings(
+        businessConnectionId: string,
+        showGiftButton: boolean,
+        acceptedGiftTypes: AcceptedGiftTypes
+    ): Promise<boolean> {
+        return this.client.callApi('setBusinessAccountGiftSettings', {
+            business_connection_id: businessConnectionId,
+            show_gift_button: showGiftButton,
+            accepted_gift_types: acceptedGiftTypes,
+        });
+    }
+
+    /**
+     * Get gifts that can be sent by the bot.
+     */
+    async getAvailableGifts(): Promise<Gifts> {
+        return this.client.callApi('getAvailableGifts');
+    }
+
+    /**
+     * Send a Star gift to a user.
+     */
+    async sendGift(userId: number, giftId: string, extra?: SendGiftOptions): Promise<boolean> {
+        return this.client.callApi('sendGift', {
+            user_id: userId,
+            gift_id: giftId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Send a Star gift to a channel or chat.
+     */
+    async sendGiftToChat(
+        chatId: number | string,
+        giftId: string,
+        extra?: SendGiftOptions
+    ): Promise<boolean> {
+        return this.client.callApi('sendGift', {
+            chat_id: chatId,
+            gift_id: giftId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Gift Telegram Premium to a user.
+     */
+    async giftPremiumSubscription(
+        userId: number,
+        monthCount: number,
+        starCount: number,
+        extra?: GiftPremiumSubscriptionOptions
+    ): Promise<boolean> {
+        return this.client.callApi('giftPremiumSubscription', {
+            user_id: userId,
+            month_count: monthCount,
+            star_count: starCount,
+            ...extra,
+        });
+    }
+
+    /**
+     * Get gifts owned and hosted by a user.
+     */
+    async getUserGifts(userId: number, extra?: GetUserGiftsOptions): Promise<OwnedGifts> {
+        return this.client.callApi('getUserGifts', {
+            user_id: userId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Get gifts owned by a chat.
+     */
+    async getChatGifts(chatId: number | string, extra?: GetChatGiftsOptions): Promise<OwnedGifts> {
+        return this.client.callApi('getChatGifts', {
+            chat_id: chatId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Get gifts owned by a managed business account.
+     */
+    async getBusinessAccountGifts(
+        businessConnectionId: string,
+        extra?: GetBusinessAccountGiftsOptions
+    ): Promise<OwnedGifts> {
+        return this.client.callApi('getBusinessAccountGifts', {
+            business_connection_id: businessConnectionId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Upgrade a regular gift owned by a business account.
+     */
+    async upgradeGift(
+        businessConnectionId: string,
+        ownedGiftId: string,
+        extra?: UpgradeGiftOptions
+    ): Promise<boolean> {
+        return this.client.callApi('upgradeGift', {
+            business_connection_id: businessConnectionId,
+            owned_gift_id: ownedGiftId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Transfer a unique gift owned by a business account to another user.
+     */
+    async transferGift(
+        businessConnectionId: string,
+        ownedGiftId: string,
+        newOwnerChatId: number,
+        extra?: TransferGiftOptions
+    ): Promise<boolean> {
+        return this.client.callApi('transferGift', {
+            business_connection_id: businessConnectionId,
+            owned_gift_id: ownedGiftId,
+            new_owner_chat_id: newOwnerChatId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Post a story on behalf of a managed business account.
+     */
+    async postStory(
+        businessConnectionId: string,
+        content: InputStoryContent,
+        activePeriod: number,
+        extra?: PostStoryOptions
+    ): Promise<Story> {
+        return this.client.callApi('postStory', {
+            business_connection_id: businessConnectionId,
+            content,
+            active_period: activePeriod,
+            ...extra,
+        });
+    }
+
+    /**
+     * Repost a story on behalf of a managed business account.
+     */
+    async repostStory(
+        businessConnectionId: string,
+        fromChatId: number,
+        fromStoryId: number,
+        activePeriod: number,
+        extra?: RepostStoryOptions
+    ): Promise<Story> {
+        return this.client.callApi('repostStory', {
+            business_connection_id: businessConnectionId,
+            from_chat_id: fromChatId,
+            from_story_id: fromStoryId,
+            active_period: activePeriod,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit a story posted by the bot on behalf of a managed business account.
+     */
+    async editStory(
+        businessConnectionId: string,
+        storyId: number,
+        content: InputStoryContent,
+        extra?: EditStoryOptions
+    ): Promise<Story> {
+        return this.client.callApi('editStory', {
+            business_connection_id: businessConnectionId,
+            story_id: storyId,
+            content,
+            ...extra,
+        });
+    }
+
+    /**
+     * Delete a story posted by the bot on behalf of a managed business account.
+     */
+    async deleteStory(businessConnectionId: string, storyId: number): Promise<boolean> {
+        return this.client.callApi('deleteStory', {
+            business_connection_id: businessConnectionId,
+            story_id: storyId,
+        });
     }
 
     /**

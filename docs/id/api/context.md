@@ -4,17 +4,18 @@ Objek `Context` (biasa disebut `ctx`) dibuat untuk setiap update yang diterima b
 
 ## Properti
 
-| Properti | Tipe | Deskripsi |
-|----------|------|-----------|
-| `ctx.update` | `Update` | Objek update mentah dari Telegram |
-| `ctx.message` | `Message` | Pesan dari update (jika ada) |
-| `ctx.chat` | `Chat` | Chat tempat update terjadi |
-| `ctx.from` | `User` | Pengguna yang mengirim update |
-| `ctx.match` | `RegExpMatchArray \| null` | Hasil regex dari `hears()` / `action()` |
-| `ctx.command` | `{ name, args }` | Data command dari `command()` |
-| `ctx.session` | — | Data session (jika middleware session dipasang) |
-| `ctx.scene` | — | Kontrol scene (jika middleware stage dipasang) |
-| `ctx.wizard` | — | Kontrol wizard (jika wizard dipasang) |
+| Properti       | Tipe                       | Deskripsi                                           |
+| -------------- | -------------------------- | --------------------------------------------------- |
+| `ctx.update`   | `Update`                   | Objek update mentah dari Telegram                   |
+| `ctx.message`  | `Message`                  | Pesan dari update (jika ada)                        |
+| `ctx.chat`     | `Chat`                     | Chat tempat update terjadi                          |
+| `ctx.from`     | `User`                     | Pengguna yang mengirim update                       |
+| `ctx.match`    | `RegExpMatchArray \| null` | Hasil regex dari `hears()` / `action()`             |
+| `ctx.command`  | `{ name, args }`           | Data command dari `command()`                       |
+| `ctx.telegram` | `TelegramClient`           | Client Telegram API langsung yang scoped per update |
+| `ctx.session`  | —                          | Data session (jika middleware session dipasang)     |
+| `ctx.scene`    | —                          | Kontrol scene (jika middleware stage dipasang)      |
+| `ctx.wizard`   | —                          | Kontrol wizard (jika wizard dipasang)               |
 
 ## Metode Pesan & Media
 
@@ -36,7 +37,7 @@ await ctx.replyWithDocument('file_id');
 await ctx.replyWithVoice('file_id');
 await ctx.replyWithSticker('file_id');
 await ctx.replyWithAnimation('file_id'); // GIF
-await ctx.replyWithDice('🎲');           // Dadu animasi
+await ctx.replyWithDice('🎲'); // Dadu animasi
 ```
 
 ### Pesan Interaktif
@@ -79,8 +80,8 @@ await ctx.deleteMessage(messageId); // hapus pesan spesifik
 ```typescript
 // Jawab callback query (wajib untuk menghentikan loading indicator)
 await ctx.answerCbQuery();
-await ctx.answerCbQuery('Berhasil! ✅', false);        // teks tanpa alert
-await ctx.answerCbQuery('Perhatian!', true);            // tampilkan sebagai alert
+await ctx.answerCbQuery('Berhasil! ✅', false); // teks tanpa alert
+await ctx.answerCbQuery('Perhatian!', true); // tampilkan sebagai alert
 ```
 
 ## Inline Query
@@ -112,7 +113,7 @@ await ctx.setReaction('🔥', true); // ukuran besar
 ## Forum Topic
 
 ```typescript
-await ctx.createForumTopic('Topik Baru', { icon_color: 0x6FB9F0 });
+await ctx.createForumTopic('Topik Baru', { icon_color: 0x6fb9f0 });
 await ctx.closeForumTopic(messageThreadId);
 await ctx.reopenForumTopic(messageThreadId);
 await ctx.deleteForumTopic(messageThreadId);
@@ -159,9 +160,21 @@ await ctx.getUserChatBoosts(userId);
 ```typescript
 await ctx.getAvailableGifts();
 await ctx.sendGift(userId, giftId, { text: 'Selamat!' });
+await ctx.sendGiftToChat('@channel', giftId);
+await ctx.getUserGifts(userId, { limit: 10 });
+await ctx.getBusinessAccountGifts(businessConnectionId, { limit: 10 });
 await ctx.getStarBalance();
 await ctx.refundStarPayment(userId, chargeId);
 await ctx.getStarTransactions();
+```
+
+## Akses API Langsung
+
+```typescript
+await ctx.telegram.callApi('sendChatAction', {
+    chat_id: ctx.chat!.id,
+    action: 'typing',
+});
 ```
 
 ## Verifikasi

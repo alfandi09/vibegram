@@ -14,6 +14,7 @@
 - Phase A patch hygiene: released as `1.2.1` via `bd9ad6c fix: prepare 1.2.1 patch release`.
 - Phase B security/stability: implemented locally without version bump.
 - Phase C developer experience: implemented locally without version bump.
+- Phase D API coverage: implemented locally without version bump.
 - `1.1.0` harus dianggap burned. npm menolak publish dengan pesan versi pernah dipublish, walau daftar versi saat itu belum menampilkannya.
 - Versi yang harus dihindari: `1.0.0-rc.1`, `1.0.0-rc.2`, `1.0.0`, `1.0.1`, `1.1.0`, `1.1.1`, `1.1.2`, `1.2.0`, `1.2.1`.
 - Kandidat versi berikut:
@@ -154,10 +155,9 @@
     - Tambahkan `bot.launch({ webhook: { url, port, secretToken, path } })`.
     - Perlu test native HTTP server dan shutdown behavior.
 
-- [ ] `ctx.telegram` proxy.
+- [x] `ctx.telegram` proxy.
     - File: `src/context.ts`
-    - Sediakan discoverable direct API helpers di context.
-    - Perlu desain agar tidak menduplikasi semua wrapper secara sulit dirawat.
+    - `ctx.telegram` sekarang alias scoped `TelegramClient`, sehingga direct API tetap discoverable tanpa menduplikasi semua wrapper `Bot`.
 
 - [ ] Network error retry.
     - File: `src/client.ts`
@@ -174,13 +174,15 @@
 
 ### Bot API Coverage Backlog
 
-- [ ] Business account wrappers.
+- [x] Business account wrappers.
     - Methods: `readBusinessMessage`, `deleteBusinessMessages`, `setBusinessAccountName`, `setBusinessAccountUsername`, `setBusinessAccountBio`, `setBusinessAccountProfilePhoto`, `removeBusinessAccountProfilePhoto`, `setBusinessAccountGiftSettings`, `getBusinessConnection`.
-    - File: `src/bot.ts` atau `src/context.ts`.
+    - File: `src/bot.ts`.
+    - Tests: `tests/bot.test.ts`.
 
-- [ ] Gift and story wrappers.
+- [x] Gift and story wrappers.
     - Methods: `giftPremiumSubscription`, `upgradeGift`, `transferGift`, `getChatGifts`, `postStory`, `editStory`, `deleteStory`, `repostStory`.
-    - File: `src/bot.ts` atau `src/context.ts`.
+    - File: `src/bot.ts`, `src/types.ts`.
+    - Tests: `tests/bot.test.ts`, `tests/context.test.ts`.
 
 ### Docs and Infra
 
@@ -233,10 +235,10 @@
 
 ### Phase D - API Coverage, target minor release
 
-1. Business account wrappers.
-2. Gift and story wrappers.
-3. `ctx.telegram` design jika benar-benar mengurangi boilerplate.
-4. Docs update untuk wrappers baru.
+1. [x] Business account wrappers.
+2. [x] Gift and story wrappers.
+3. [x] `ctx.telegram` design jika benar-benar mengurangi boilerplate.
+4. [x] Docs update untuk wrappers baru.
 
 ### Phase E - Breaking Cleanup, target `2.0.0`
 

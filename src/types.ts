@@ -1581,6 +1581,80 @@ export interface InputProfilePhotoAnimated {
 
 export type InputProfilePhoto = InputProfilePhotoStatic | InputProfilePhotoAnimated;
 
+export interface InputStoryContentPhoto {
+    type: 'photo';
+    photo: InputFile;
+}
+
+export interface InputStoryContentVideo {
+    type: 'video';
+    video: InputFile;
+    duration?: number;
+    cover_frame_timestamp?: number;
+    is_animation?: boolean;
+}
+
+export type InputStoryContent = InputStoryContentPhoto | InputStoryContentVideo;
+
+export interface StoryAreaPosition {
+    x_percentage: number;
+    y_percentage: number;
+    width_percentage: number;
+    height_percentage: number;
+    rotation_angle: number;
+    corner_radius_percentage: number;
+}
+
+export interface LocationAddress {
+    country_code: string;
+    state?: string;
+    city?: string;
+    street?: string;
+}
+
+export interface StoryAreaTypeLocation {
+    type: 'location';
+    latitude: number;
+    longitude: number;
+    address?: LocationAddress;
+}
+
+export interface StoryAreaTypeSuggestedReaction {
+    type: 'suggested_reaction';
+    reaction_type: ReactionType;
+    is_dark?: boolean;
+    is_flipped?: boolean;
+}
+
+export interface StoryAreaTypeLink {
+    type: 'link';
+    url: string;
+}
+
+export interface StoryAreaTypeWeather {
+    type: 'weather';
+    temperature: number;
+    emoji: string;
+    background_color: number;
+}
+
+export interface StoryAreaTypeUniqueGift {
+    type: 'unique_gift';
+    name: string;
+}
+
+export type StoryAreaType =
+    | StoryAreaTypeLocation
+    | StoryAreaTypeSuggestedReaction
+    | StoryAreaTypeLink
+    | StoryAreaTypeWeather
+    | StoryAreaTypeUniqueGift;
+
+export interface StoryArea {
+    position: StoryAreaPosition;
+    type: StoryAreaType;
+}
+
 export interface PreparedKeyboardButton {
     text: string;
     request_user?: KeyboardButtonRequestUser;
@@ -1601,6 +1675,68 @@ export interface PassportElementError {
     type: string;
     message: string;
     [key: string]: unknown;
+}
+
+export interface GiftTextOptions {
+    text?: string;
+    text_parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    text_entities?: MessageEntity[];
+}
+
+export interface SendGiftOptions extends GiftTextOptions {
+    pay_for_upgrade?: boolean;
+}
+
+export type GiftPremiumSubscriptionOptions = GiftTextOptions;
+
+export interface OwnedGiftsQueryOptions {
+    exclude_unlimited?: boolean;
+    exclude_limited_upgradable?: boolean;
+    exclude_limited_non_upgradable?: boolean;
+    exclude_from_blockchain?: boolean;
+    exclude_unique?: boolean;
+    sort_by_price?: boolean;
+    offset?: string;
+    limit?: number;
+}
+
+export interface GetChatGiftsOptions extends OwnedGiftsQueryOptions {
+    exclude_unsaved?: boolean;
+    exclude_saved?: boolean;
+}
+
+export type GetUserGiftsOptions = OwnedGiftsQueryOptions;
+
+export type GetBusinessAccountGiftsOptions = GetChatGiftsOptions;
+
+export interface UpgradeGiftOptions {
+    keep_original_details?: boolean;
+    star_count?: number;
+}
+
+export interface TransferGiftOptions {
+    star_count?: number;
+}
+
+export interface PostStoryOptions {
+    caption?: string;
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    areas?: StoryArea[];
+    post_to_chat_page?: boolean;
+    protect_content?: boolean;
+}
+
+export interface EditStoryOptions {
+    caption?: string;
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    areas?: StoryArea[];
+}
+
+export interface RepostStoryOptions {
+    post_to_chat_page?: boolean;
+    protect_content?: boolean;
 }
 
 export interface InputMediaBase {
