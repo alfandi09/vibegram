@@ -329,6 +329,13 @@
     font-weight: 760;
 }
 
+@media (max-width: 959px) {
+    .vp-doc table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
 @media (max-width: 767px) {
     .vp-doc {
         font-size: 15.5px;
@@ -366,11 +373,6 @@
     .vp-doc td {
         min-width: 132px;
         padding: 12px 14px;
-    }
-
-    .vp-doc table {
-        display: block;
-        overflow-x: auto;
     }
 
     .custom-block {

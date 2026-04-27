@@ -28,6 +28,10 @@
     gap: 10px;
 }
 
+.VPNavBar .content {
+    min-width: 0;
+}
+
 .VPNavBarTitle .title {
     border-bottom: 0 !important;
     position: relative;
@@ -109,6 +113,10 @@
 .VPSwitchAppearance,
 .VPSocialLink {
     border-radius: var(--vg-radius);
+}
+
+.VPNavBarExtra.extra {
+    margin-right: 0 !important;
 }
 
 .VPFlyout .button {

@@ -630,7 +630,7 @@ npm run typecheck
 
 ## Phase 9 - Responsive dan Browser QA
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -646,15 +646,40 @@ Viewport wajib:
 
 Checklist:
 
-- [ ] Header tidak overlap.
-- [ ] Sidebar tidak memotong konten.
-- [ ] Mobile nav bisa ditutup/dibuka.
-- [ ] Code block bisa discroll.
-- [ ] Table tidak merusak layout.
-- [ ] CTA tetap terlihat.
-- [ ] Language switch tidak membingungkan.
-- [ ] Dark mode tidak kehilangan kontras.
-- [ ] No horizontal overflow global.
+- [x] Header tidak overlap.
+- [x] Sidebar tidak memotong konten.
+- [x] Mobile nav bisa ditutup/dibuka.
+- [x] Code block bisa discroll.
+- [x] Table tidak merusak layout.
+- [x] CTA tetap terlihat.
+- [x] Language switch tidak membingungkan.
+- [x] Dark mode tidak kehilangan kontras.
+- [x] No horizontal overflow global.
+
+Output:
+
+- `docs/.vitepress/theme/styles/shell.css`
+    - `.VPNavBar .content` dibuat `min-width: 0` agar header tablet bisa menyusut tanpa overflow.
+    - `.VPNavBarExtra.extra` dinormalkan dari margin negatif VitePress agar tombol extra tidak keluar viewport.
+- `docs/.vitepress/theme/styles/docs.css`
+    - Table mode scroll internal diperluas sampai breakpoint tablet (`max-width: 959px`), bukan hanya mobile kecil.
+
+QA:
+
+- Browser desktop 1440px:
+    - Homepage CTA terlihat di first viewport dan tidak ada horizontal overflow.
+    - `api/context` tidak overlap header/sidebar; table tetap desktop table normal.
+- Browser laptop 1280px:
+    - `api/context` tidak overflow global dan sidebar tidak memotong konten.
+- Browser tablet 768px:
+    - Header tidak lagi melebar karena nav content bisa shrink.
+    - Table dan code block scroll secara internal; page `scrollWidth` tidak melewati viewport.
+- Browser mobile 390px dan small mobile 360px:
+    - `api/context` tidak overflow global.
+    - Code block dan table scroll secara internal.
+    - Mobile nav bisa dibuka/ditutup; language switch menampilkan English/Bahasa Indonesia dengan jelas.
+- Dark mode:
+    - Teks docs dan nav screen tetap punya kontras tinggi terhadap background dark.
 
 Validation:
 
