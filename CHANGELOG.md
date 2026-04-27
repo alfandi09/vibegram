@@ -5,6 +5,52 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.0.0] - 2026-04-27
+
+### Breaking Changes
+
+- Removed deprecated forward-message fields from `Message`: `forward_from`, `forward_from_chat`, `forward_from_message_id`, `forward_signature`, `forward_sender_name`, and `forward_date`. Use `forward_origin` for modern Bot API-compatible forwarded-message data.
+- Removed the deprecated singular `ExtraPoll.correct_option_id` alias. Use `correct_option_ids` for quiz poll answers.
+- Split compact update chat data from full chat metadata more strictly: `Chat` now represents lightweight chat identity from updates, while `getChat()` returns `ChatFullInfo` for rich metadata such as permissions, description, photo, accepted gift settings, parent chat, rating, and related full-info fields.
+
+### Added
+
+- Added opt-in Telegram client network retries via `networkRetries`, `networkRetryBaseDelayMs`, and `networkRetryMaxDelayMs` for network failures and HTTP 5xx responses.
+- Added `AdapterOptions.healthPath` for Express, Fastify, Hono, Koa, and native HTTP webhook adapters.
+- Added native graceful webhook launch mode through `bot.launch({ webhook: { url, port, secretToken, path, healthPath } })`, including shutdown support via `bot.stop()`.
+- Added `ConversationManager.cancelAll()` for custom persistence and graceful shutdown workflows.
+- Added `ConversationContext.waitForAny()` with a discriminated union result for text, callback queries, and supported media updates.
+- Added `ctx.telegram` as a discoverable alias for the scoped `TelegramClient`.
+- Added typed `guard()` middleware overloads for predicate-based context narrowing.
+- Added public subpath exports for modules such as markup, filters, errors, types, adapters, conversations, sessions, scenes, queues, rate limiting, plugins, inline builders, and web app helpers.
+- Added business account wrappers including account name, username, bio, profile photo, gift settings, business message reads/deletes, and business connection lookup.
+- Added gift and story wrappers including premium subscription gifting, gift upgrade/transfer, chat gifts, and story post/edit/delete/repost helpers.
+- Added periodic cleanup controls for `MemorySessionStore` via `cleanupExpired()`, `close()`, and `cleanupIntervalMs`.
+
+### Changed
+
+- Hardened `rateLimit()` default key generation with fallbacks for updates without `from` or `chat`, plus optional `strictMode`.
+- Validated `TelegramClient.callApi()` payload boundaries with plain-object root checks and configurable JSON payload size limits.
+- Updated webhook adapters so health checks bypass secret-token validation, body parsing, and update handling.
+- Expanded JSDoc examples for key public APIs including `Bot`, common context replies, callback answers, chat administration, polls, chat actions, reactions, and middleware guards.
+- Updated English and Indonesian docs for webhook launch mode, health checks, conversations, API methods, business flows, security, queueing, installation, and migration guidance.
+- Rebuilt the VitePress documentation experience with a custom theme, Tailwind/shadcn-vue style system, reusable docs components, local search UI, responsive navigation, motion controls, GitHub Pages-safe links, and EN/ID content sync.
+
+### Fixed
+
+- Fixed `InlineKeyboardButton.copy_text` type coverage so copy-text keyboard buttons match runtime markup output.
+- Fixed docs language parity by adding the missing Indonesian Observability page and syncing sidebar structure.
+- Fixed docs internal links for GitHub Pages static hosting by resolving internal markdown-style routes to `.html` output paths where needed.
+
+### Performance
+
+- Optimized trigger regex handling so non-stateful regular expressions are reused while global/sticky expressions are still cloned to prevent `lastIndex` leakage.
+
+### Tests
+
+- Added regression coverage for rate-limit fallback behavior, client payload validation, network retries, adapter health checks, native webhook launch mode, graceful shutdown paths, typed guards, package subpath exports, business/gift/story wrappers, conversation `waitForAny()`, type-level breaking changes, and docs build validation.
+- Full release validation passed locally with lint, source/test/example type checks, Vitest, library build, docs build, and npm dry pack.
+
 ## [1.2.1] - 2026-04-25
 
 ### Added
