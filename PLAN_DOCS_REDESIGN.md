@@ -699,7 +699,7 @@ Browser verification:
 
 ## Phase 10 - GitHub Pages Hardening
 
-Status: belum mulai.
+Status: selesai.
 
 Tujuan:
 
@@ -707,14 +707,37 @@ Tujuan:
 
 Checklist:
 
-- [ ] `base: '/vibegram/'` tetap benar.
-- [ ] Asset path tidak memakai absolute root yang salah.
-- [ ] Direct refresh route aman.
-- [ ] EN route aman.
-- [ ] ID route aman.
-- [ ] Search asset aman.
-- [ ] Dark mode state aman.
-- [ ] Build output tetap di `docs/.vitepress/dist`.
+- [x] `base: '/vibegram/'` tetap benar.
+- [x] Asset path tidak memakai absolute root yang salah.
+- [x] Direct refresh route aman.
+- [x] EN route aman.
+- [x] ID route aman.
+- [x] Search asset aman.
+- [x] Dark mode state aman.
+- [x] Build output tetap di `docs/.vitepress/dist`.
+
+Output:
+
+- `docs/.vitepress/theme/lib/links.ts`
+    - Menambahkan `resolveDocsHref()` untuk menormalisasi link internal docs ke static `.html` files.
+    - Link root, anchor, dan URL eksternal tetap dipertahankan apa adanya.
+- `HomePage`, `DocsCard`, dan `FeatureCard`
+    - Internal docs links dari komponen Vue sekarang memakai `/vibegram/... .html`, bukan path extensionless yang bergantung pada SPA fallback.
+
+QA:
+
+- Static output berisi `index.html`, `404.html`, `api/context.html`, `id/api/context.html`, dan `logo.svg`.
+- Audit HTML build tidak menemukan `href="/..."` atau `src="/..."` yang keluar dari base `/vibegram/`.
+- Homepage preview:
+    - CTA dan feature cards mengarah ke `/vibegram/basics/quickstart.html`, `/vibegram/api/context.html`, dan route docs `.html` lain.
+    - Logo, JS, CSS, dan font assets resolve dari `/vibegram/`.
+- Direct refresh preview:
+    - EN route `/vibegram/api/context.html` render normal.
+    - ID route `/vibegram/id/api/context.html` dan `/vibegram/id/basics/quickstart.html` render normal.
+- Search preview:
+    - Local search memuat index chunk dan hasil `webhook` memakai URL `/vibegram/id/... .html`.
+- Dark mode:
+    - Theme class tetap aman setelah reload preview.
 
 Validation:
 

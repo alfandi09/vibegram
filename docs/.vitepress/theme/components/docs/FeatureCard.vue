@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ArrowRight } from 'lucide-vue-next';
-import { withBase } from 'vitepress';
 import {
     Card,
     CardContent,
@@ -12,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { resolveDocsHref } from '@/lib/links';
 
 const props = withDefaults(
     defineProps<{
@@ -31,9 +31,7 @@ const resolvedHref = computed(() => {
         return '';
     }
 
-    return props.href.startsWith('http') || props.href.startsWith('#')
-        ? props.href
-        : withBase(props.href);
+    return resolveDocsHref(props.href);
 });
 </script>
 

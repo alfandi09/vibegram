@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { resolveDocsHref } from '@/lib/links';
 
 interface FeatureItem {
     icon: Component;
@@ -295,7 +296,7 @@ const quickPath = computed<StepItem[]>(() =>
           ]
 );
 
-const localHref = (href: string): string => withBase(href);
+const localHref = (href: string): string => resolveDocsHref(href);
 
 const writeClipboard = async (command: string): Promise<boolean> => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
