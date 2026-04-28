@@ -14,13 +14,13 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 - Added built-in `/codex` commands for help, status, model listing, explicit prompts, conversation reset, and personality management.
 - Added session-token provider support for Codex `auth.json`, ChatGPT account headers, stable device IDs, SSE response parsing, request retries, timeout aborts, and optional token auto-refresh.
 - Added local memory, usage tracking, group mention safeguards, audit callbacks, live Telegram smoke-test examples, and unit tests for the experimental Codex plugin.
-- Added English and Indonesian Codex plugin documentation, including setup, `auth.json` handling, live-test commands, provider options, troubleshooting, and security guidance.
+- Added English and Indonesian Codex plugin documentation, including server-first secret setup, deployment recipes, persistence guidance, `auth.json` handling, local smoke-test commands, provider options, troubleshooting, and security guidance.
+- Added internal English and Indonesian changelog pages for docs users, with GitHub links to the full release history.
 
 ### Changed
 
 - Added VitePress navigation entries for `AI Plugins` / `Plugin AI` and the new Codex documentation pages.
 - Updated the root dependency pin from `axios` `1.15.0` to `1.15.2`.
-- Updated `.gitignore` to exclude local AI planning artifacts such as `PLAN*.md`, `AGENT*.md`, Claude scratch files, and Codex instruction scratch files while keeping `AGENTS.md` trackable.
 
 ### Tests
 

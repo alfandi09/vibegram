@@ -59,6 +59,7 @@ export default async () => {
                         { text: 'Panduan', link: '/id/basics/introduction' },
                         { text: 'Referensi API', link: '/id/api/context' },
                         { text: 'Plugin AI', link: '/id/plugins/codex' },
+                        { text: 'Changelog', link: '/id/changelog' },
                     ],
                     sidebar: [
                         {
@@ -178,10 +179,7 @@ export default async () => {
                 { text: 'Guide', link: '/basics/introduction' },
                 { text: 'API Reference', link: '/api/context' },
                 { text: 'AI Plugins', link: '/plugins/codex' },
-                {
-                    text: 'Changelog',
-                    link: 'https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md',
-                },
+                { text: 'Changelog', link: '/changelog' },
             ],
 
             sidebar: [

@@ -1,73 +1,88 @@
 /**
- * Example: Codex Bot via session token (EXPERIMENTAL)
+ * Example: Codex bot via session token (experimental).
  *
- * Cara pakai:
- * 1. Pastikan file auth JSON tersedia (dari `codex login`), atau tempelkan
- *    access_token langsung ke BOT_GPT_ACCESS_TOKEN env var.
- * 2. Set TELEGRAM_BOT_TOKEN di .env
- * 3. Jalankan: npx ts-node examples/bot-codex.ts
+ * Usage:
+ * 1. Create auth JSON with `codex login`.
+ * 2. Deploy the file as a secret and set CODEX_AUTH_JSON_PATH.
+ * 3. Set TELEGRAM_BOT_TOKEN.
+ * 4. Run: npx ts-node examples/bot-codex.ts
  *
- * CATATAN: Provider ini mengarah ke chatgpt.com/backend-api/codex/responses
- *          (endpoint internal ChatGPT), BUKAN api.openai.com.
- *          Token session dari Codex hanya valid di endpoint ini.
- *
- * PERINGATAN: Token ini berumur pendek (~1 jam, auto-refresh tersedia).
- *             Ketika refresh gagal, bot akan memberitahu user dan tidak crash.
+ * This provider targets chatgpt.com/backend-api/codex/responses, not
+ * api.openai.com. Session tokens are valid only for the ChatGPT/Codex backend.
  */
 
 import { Bot } from 'vibegram';
-import { codex, codexProvider, codexProviderFromJson } from '../src';
+import { codex, codexProvider } from '../src';
 
-// Pilih salah satu cara inisialisasi provider:
+function parseNumberList(value: string | undefined): number[] {
+    if (!value) return [];
 
-// Cara 1: Dari file auth JSON Codex (auto-detect default path)
-const provider1 = codexProvider({
-    // authJsonPath: path.join(os.homedir(), '.codex', 'auth.json'), // default
-    model: 'gpt-5.3-codex',
+    return value
+        .split(',')
+        .map(item => Number(item.trim()))
+        .filter(Number.isFinite);
+}
+
+const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+const authJsonPath = process.env.CODEX_AUTH_JSON_PATH;
+
+if (!telegramToken) {
+    throw new Error('TELEGRAM_BOT_TOKEN is required');
+}
+
+if (!authJsonPath) {
+    throw new Error('CODEX_AUTH_JSON_PATH is required');
+}
+
+const provider = codexProvider({
+    authJsonPath,
+    accountId: process.env.CODEX_ACCOUNT_ID,
+    deviceId: process.env.CODEX_DEVICE_ID,
+    model: process.env.CODEX_MODEL ?? 'gpt-5.3-codex',
+    reasoningEffort: process.env.CODEX_REASONING_EFFORT as
+        | 'low'
+        | 'medium'
+        | 'high'
+        | 'xhigh'
+        | undefined,
 });
 
-// Cara 2: Access token langsung dari env var
-// const provider2 = codexProvider({
-//     accessToken: process.env.BOT_GPT_ACCESS_TOKEN!,
-//     model: 'gpt-5.3-codex',
-// });
+const bot = new Bot(telegramToken);
 
-// Cara 3: Dari JSON object (misalnya dari database / secret manager)
-// const authData = JSON.parse(fs.readFileSync('/path/to/auth.json', 'utf-8'));
-// const provider3 = codexProviderFromJson(authData, { model: 'gpt-5.3-codex' });
-
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
-
-// Pasang plugin Codex
 bot.use(
     codex({
-        provider: provider1,
-        systemPrompt: 'Kamu adalah asisten yang membantu dan berbicara dalam bahasa Indonesia.',
-        maxPromptLength: 4000,
-        maxHistory: 20,
-        timeoutMs: 60_000,
-        commandPrefix: 'codex',
-        autoReply: true,       // Balas semua pesan di direct chat
-        groupMentionOnly: true, // Di group: hanya balas kalau di-mention
-        botUsername: process.env.TELEGRAM_BOT_USERNAME, // required for group auto-reply
-
-        onAudit: (event) => {
+        provider,
+        systemPrompt:
+            process.env.CODEX_SYSTEM_PROMPT ??
+            'Kamu adalah asisten yang membantu dan berbicara dalam bahasa Indonesia.',
+        maxPromptLength: Number(process.env.CODEX_MAX_PROMPT_LENGTH ?? 4000),
+        maxHistory: Number(process.env.CODEX_MAX_HISTORY ?? 20),
+        timeoutMs: Number(process.env.CODEX_TIMEOUT_MS ?? 60_000),
+        commandPrefix: process.env.CODEX_COMMAND_PREFIX ?? 'codex',
+        autoReply: process.env.CODEX_AUTO_REPLY !== 'false',
+        groupMentionOnly: process.env.CODEX_GROUP_MENTION_ONLY !== 'false',
+        botUsername: process.env.TELEGRAM_BOT_USERNAME,
+        allowedUserIds: parseNumberList(process.env.CODEX_ALLOWED_USER_IDS),
+        allowedChatIds: parseNumberList(process.env.CODEX_ALLOWED_CHAT_IDS),
+        onAudit: event => {
             console.log(
                 `[Codex Audit] user=${event.userId} chat=${event.chatId} ` +
-                `provider=${event.provider} model=${event.model ?? '?'} ` +
-                `success=${event.success} ${event.durationMs}ms` +
-                (event.error ? ` error="${event.error}"` : '')
+                    `provider=${event.provider} model=${event.model ?? '?'} ` +
+                    `success=${event.success} ${event.durationMs}ms` +
+                    (event.error ? ` error="${event.error}"` : '')
             );
         },
     })
 );
 
-// Start command
-bot.start(async (ctx) => {
+bot.start(async ctx => {
     await ctx.reply(
-        '👋 Halo! Saya bot bertenaga Codex.\n\n' +
-        'Kirim pesan apapun untuk mulai chat.\n' +
-        'Gunakan /codex help untuk melihat command yang tersedia.'
+        [
+            'Halo! Saya bot bertenaga Codex.',
+            '',
+            'Kirim pesan untuk mulai chat.',
+            'Gunakan /codex help untuk melihat command yang tersedia.',
+        ].join('\n')
     );
 });
 
@@ -75,6 +90,5 @@ bot.launch().then(() => {
     console.log('Bot started (Codex mode)');
 });
 
-// Graceful shutdown
 process.once('SIGINT', () => bot.stop());
 process.once('SIGTERM', () => bot.stop());

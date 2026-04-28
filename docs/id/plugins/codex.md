@@ -1,36 +1,38 @@
 # Codex untuk Telegram
 
-Plugin `@vibegram/codex` menambahkan `ctx.codex` ke setiap handler VibeGram agar bot Telegram bisa berkomunikasi dengan ChatGPT melalui session token Codex.
+Plugin `@vibegram/codex` menambahkan `ctx.codex` ke handler VibeGram agar bot Telegram bisa berkomunikasi dengan ChatGPT melalui session token Codex.
 
 ::: warning Status Experimental
-Paket ini masih berada di `experimental/codex`. API, environment variable, dan endpoint internal dapat berubah sebelum rilis stabil.
+Paket ini masih berada di `experimental/codex`. API, environment variable, dan endpoint internal ChatGPT dapat berubah sebelum rilis stabil.
 :::
+
+## Rekomendasi Penggunaan
+
+Gunakan plugin ini untuk bot pribadi, eksperimen privat, dan internal tool dengan daftar user Telegram yang Anda kontrol.
+
+Jangan anggap ini seperti OpenAI API resmi. `codexProvider()` mengarah ke backend ChatGPT/Codex dengan session token ChatGPT, bukan ke `api.openai.com` dengan API key. Provider ini best-effort dan bisa berhenti bekerja jika OpenAI mengubah aturan session, header backend, sentinel check, atau proteksi anti-otomasi.
 
 ## Cara Kerja
 
-Plugin menginjeksi helper `ctx.codex` ke setiap update. Saat user mengirim pesan, plugin akan:
+Plugin menginjeksi helper `ctx.codex` ke setiap update. Untuk setiap prompt, plugin akan:
 
-1. Mengecek izin akses (`allowedUserIds` / `allowedChatIds`)
-2. Membangun percakapan dari riwayat pesan (sliding window)
-3. Menginjeksi personality/instruksi custom per-user jika ada
-4. Mengirim percakapan ke `chatgpt.com/backend-api/codex/responses`
-5. Mem-parse SSE stream response dan mengirim teks sebagai balasan Telegram
+1. Mengecek `allowedUserIds` dan `allowedChatIds`
+2. Membangun percakapan singkat dari riwayat tersimpan
+3. Menambahkan `systemPrompt` dan personality per-user jika ada
+4. Mengirim request ke `chatgpt.com/backend-api/codex/responses`
+5. Mem-parse SSE stream response dan mengirim teks ke Telegram
 
-Penggunaan dihitung dari **kuota Codex** — terpisah dari kuota chat ChatGPT web.
-
-## Batasan
-
-`codexProvider()` menargetkan backend internal ChatGPT. Provider ini bersifat best-effort dan bisa gagal jika OpenAI mengubah aturan auth, sentinel check, atau proteksi anti-otomasi. Gunakan untuk eksperimen pribadi, bot privat, dan pembelajaran — bukan untuk workload produksi.
+Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 
 ## Instalasi
 
-Jika `@vibegram/codex` sudah dipublish:
+Saat package experimental ini sudah dipublish, install dari npm:
 
 ```bash
 npm install vibegram @vibegram/codex
 ```
 
-Jika menggunakan package experimental dari repository ini:
+Sampai saat itu, gunakan package experimental langsung dari repository ini:
 
 ```bash
 git clone https://github.com/alfandi09/vibegram.git
@@ -43,36 +45,60 @@ npm install
 npm run build
 ```
 
-Untuk mengkonsumsi package lokal dari project bot Anda:
+Lalu gunakan dari project bot Anda dengan local file dependency:
 
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.0.0",
+    "vibegram": "^2.1.0",
     "@vibegram/codex": "file:../vibegram/experimental/codex"
   }
 }
 ```
 
-Lalu jalankan:
+## Setup Server
+
+Untuk bot sungguhan, buat session Codex di mesin terpercaya, lalu deploy `auth.json` ke server sebagai secret file. Bot hanya perlu membaca file itu saat runtime.
+
+Layout server yang disarankan:
+
+```text
+/opt/my-telegram-bot/
+  app/
+  secrets/
+    codex-auth.json
+```
+
+Contoh environment:
 
 ```bash
-npm install
+TELEGRAM_BOT_TOKEN=123456:replace-me
+CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
+CODEX_MODEL=gpt-5.3-codex
+CODEX_ALLOWED_USER_IDS=123456,789012
+CODEX_ALLOWED_CHAT_IDS=123456,-1001234567890
+TELEGRAM_BOT_USERNAME=my_bot
 ```
+
+Simpan secret file di luar repository, batasi permission, dan jangan pernah cetak isinya ke log.
+
+```bash
+chmod 600 /opt/my-telegram-bot/secrets/codex-auth.json
+```
+
+Jika platform Anda mendukung secret mount, mount `codex-auth.json` sebagai file lalu arahkan `CODEX_AUTH_JSON_PATH` ke path mount tersebut. Ini opsi paling rapi karena provider bisa me-refresh access token dan menulis token baru kembali ke disk.
 
 ## Mendapatkan `auth.json`
 
-`auth.json` dibuat oleh Codex CLI setelah Anda sign in dengan akun ChatGPT. Perlakukan file ini sebagai rahasia — berisi session token yang memberikan akses ke langganan Anda.
-
-### 1. Sign in ke Codex
+Jalankan Codex login di mesin lokal terpercaya atau temporary shell server:
 
 ```bash
 codex login
 ```
 
-Pastikan sign in dengan mode ChatGPT (bukan mode API key).
+Pilih mode login ChatGPT, bukan mode API key.
 
-### 2. Lokasi `auth.json`
+Path lokal default:
 
 | OS | Path default |
 | --- | --- |
@@ -81,80 +107,124 @@ Pastikan sign in dengan mode ChatGPT (bukan mode API key).
 
 Verifikasi file ada tanpa mencetak token:
 
-```powershell
-Test-Path "$env:USERPROFILE\.codex\auth.json"
+```bash
+test -f "$HOME/.codex/auth.json"
 ```
 
-Jangan pernah commit `auth.json`, upload ke log, atau paste `tokens.access_token` di chat publik.
+Setelah itu salin file ke secret path server dengan metode deployment Anda. Contohnya `scp`, Docker/Kubernetes secrets, private CI secret artifact, atau file manual di VPS.
 
-## Environment Variable
+## Resep Deployment
 
-Windows PowerShell:
+Contoh berikut mengasumsikan bot Anda sudah dibuild menjadi aplikasi Node.js yang siap deploy.
 
-```powershell
-$env:TELEGRAM_BOT_TOKEN="123456:replace-me"
-$env:CHATGPT_AUTH_JSON_PATH="$env:USERPROFILE\.codex\auth.json"
-$env:GPT_MODEL="gpt-5.3-codex"
-```
+### VPS dengan systemd
 
-macOS/Linux:
+Simpan konfigurasi runtime di environment file:
 
 ```bash
-export TELEGRAM_BOT_TOKEN="123456:replace-me"
-export CHATGPT_AUTH_JSON_PATH="$HOME/.codex/auth.json"
-export GPT_MODEL="gpt-5.3-codex"
+sudo install -d -m 700 /opt/my-telegram-bot/secrets
+sudo cp ~/.codex/auth.json /opt/my-telegram-bot/secrets/codex-auth.json
+sudo chmod 600 /opt/my-telegram-bot/secrets/codex-auth.json
 ```
 
-Opsional:
-
-```bash
+```text
+# /etc/vibegram-codex.env
+TELEGRAM_BOT_TOKEN=123456:replace-me
+CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
+CODEX_MODEL=gpt-5.3-codex
+CODEX_ALLOWED_USER_IDS=123456,789012
 TELEGRAM_BOT_USERNAME=my_bot
-CHATGPT_ACCOUNT_ID=acct_xxx
-CHATGPT_DEVICE_ID=stable-device-id
-GPT_REASONING_EFFORT=low
-GPT_ALLOWED_USER_IDS=123456,789012
-GPT_ALLOWED_CHAT_IDS=123456,-1001234567890
-GPT_AUTO_REPLY=true
 ```
 
-## Bot Minimal
+Unit service minimal:
+
+```ini
+[Unit]
+Description=VibeGram Codex Telegram Bot
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/my-telegram-bot/app
+EnvironmentFile=/etc/vibegram-codex.env
+ExecStart=/usr/bin/node dist/bot.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Docker secret mount
+
+Mount `codex-auth.json` sebagai file, lalu arahkan `CODEX_AUTH_JSON_PATH` ke path mount:
+
+```yaml
+services:
+  bot:
+    image: my-telegram-bot:latest
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      CODEX_AUTH_JSON_PATH: /run/secrets/codex-auth.json
+      CODEX_MODEL: gpt-5.3-codex
+      CODEX_ALLOWED_USER_IDS: "123456,789012"
+      TELEGRAM_BOT_USERNAME: my_bot
+    volumes:
+      - ./secrets/codex-auth.json:/run/secrets/codex-auth.json
+    restart: unless-stopped
+```
+
+Pastikan file mount bisa ditulis jika ingin auto-refresh token tersimpan dan tetap bertahan setelah container restart.
+
+## Bot Server Minimal
 
 ```typescript
 import { Bot } from 'vibegram';
 import { codex, codexProvider } from '@vibegram/codex';
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
+function parseNumberList(value: string | undefined): number[] {
+    if (!value) return [];
 
-if (!token) {
+    return value
+        .split(',')
+        .map(item => Number(item.trim()))
+        .filter(Number.isFinite);
+}
+
+const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+const authJsonPath = process.env.CODEX_AUTH_JSON_PATH;
+
+if (!telegramToken) {
     throw new Error('TELEGRAM_BOT_TOKEN wajib diisi');
 }
 
-const allowedUserIds = process.env.GPT_ALLOWED_USER_IDS
-    ?.split(',')
-    .map(value => Number(value.trim()))
-    .filter(Number.isFinite);
+if (!authJsonPath) {
+    throw new Error('CODEX_AUTH_JSON_PATH wajib diisi');
+}
 
-const bot = new Bot(token);
+const bot = new Bot(telegramToken);
 
 bot.use(
     codex({
         provider: codexProvider({
-            authJsonPath: process.env.CHATGPT_AUTH_JSON_PATH,
-            accountId: process.env.CHATGPT_ACCOUNT_ID,
-            deviceId: process.env.CHATGPT_DEVICE_ID,
-            model: process.env.GPT_MODEL ?? 'gpt-5.3-codex',
-            reasoningEffort: process.env.GPT_REASONING_EFFORT as
+            authJsonPath,
+            accountId: process.env.CODEX_ACCOUNT_ID,
+            deviceId: process.env.CODEX_DEVICE_ID,
+            model: process.env.CODEX_MODEL ?? 'gpt-5.3-codex',
+            reasoningEffort: process.env.CODEX_REASONING_EFFORT as
                 | 'low'
                 | 'medium'
                 | 'high'
                 | 'xhigh'
                 | undefined,
         }),
-        systemPrompt: 'Kamu adalah asisten Telegram yang ringkas dan membantu.',
-        autoReply: true,
-        timeoutMs: 60_000,
+        systemPrompt: process.env.CODEX_SYSTEM_PROMPT ?? 'Kamu adalah asisten Telegram yang ringkas.',
+        allowedUserIds: parseNumberList(process.env.CODEX_ALLOWED_USER_IDS),
+        allowedChatIds: parseNumberList(process.env.CODEX_ALLOWED_CHAT_IDS),
+        botUsername: process.env.TELEGRAM_BOT_USERNAME,
+        autoReply: process.env.CODEX_AUTO_REPLY !== 'false',
+        groupMentionOnly: true,
         maxHistory: 20,
-        allowedUserIds,
+        timeoutMs: 60_000,
         onAudit: event => {
             console.log('[codex]', {
                 userId: event.userId,
@@ -174,6 +244,38 @@ bot.start(ctx => ctx.reply('Kirim pesan atau gunakan /codex ask <teks>.'));
 await bot.launch();
 ```
 
+## Development Lokal
+
+Untuk test lokal, bot bisa langsung diarahkan ke file default Codex CLI:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="123456:replace-me"
+$env:CODEX_AUTH_JSON_PATH="$env:USERPROFILE\.codex\auth.json"
+$env:CODEX_MODEL="gpt-5.3-codex"
+```
+
+Atau di macOS/Linux:
+
+```bash
+export TELEGRAM_BOT_TOKEN="123456:replace-me"
+export CODEX_AUTH_JSON_PATH="$HOME/.codex/auth.json"
+export CODEX_MODEL="gpt-5.3-codex"
+```
+
+Contoh live smoke test memang khusus local dan berada di:
+
+```text
+experimental/codex/examples/live-telegram-bot.ts
+```
+
+Jalankan dari package experimental:
+
+```bash
+cd experimental/codex
+npm run build
+npm run test:live
+```
+
 ## Command Bawaan
 
 Plugin otomatis menyediakan command dengan prefix default `/codex`.
@@ -181,17 +283,17 @@ Plugin otomatis menyediakan command dengan prefix default `/codex`.
 | Command | Fungsi |
 | --- | --- |
 | `/codex help` | Menampilkan bantuan |
-| `/codex status` | Mengecek provider, model, expiry token, usage & personality |
+| `/codex status` | Mengecek provider, model, expiry token, usage, dan personality |
 | `/codex models` | Menampilkan daftar model provider |
 | `/codex reset` | Menghapus riwayat percakapan user/chat |
 | `/codex ask <teks>` | Mengirim prompt eksplisit |
-| `/codex personality <teks>` | Set instruksi khusus untuk user Anda |
-| `/codex personality` | Lihat personality saat ini |
+| `/codex personality <teks>` | Set instruksi khusus untuk user |
+| `/codex personality` | Melihat personality saat ini |
 | `/codex personality reset` | Reset ke personality default |
 
 ## Group Chat
 
-Untuk group dan supergroup, set `botUsername` agar plugin hanya membalas saat bot disebut.
+Untuk group dan supergroup, set `botUsername` agar plugin hanya membalas saat bot disebut secara eksplisit.
 
 ```typescript
 bot.use(
@@ -203,86 +305,112 @@ bot.use(
 );
 ```
 
-Jika `botUsername` tidak diisi, auto-reply di group dimatikan agar bot tidak membalas percakapan yang bukan ditujukan kepadanya.
+Jika `botUsername` tidak diisi, auto-reply di group dimatikan agar bot tidak membalas pesan yang bukan ditujukan kepadanya.
 
-## Custom Personality (Instruksi Per-User)
+## Custom Personality
 
-Setiap user bisa mengatur personality/instruksi khusus yang ditambahkan ke system prompt di setiap request. Fitur ini bekerja seperti "Custom Instructions" di ChatGPT.
+Setiap user Telegram bisa mengatur instruksi khusus. Plugin akan menambahkan instruksi itu ke `systemPrompt`.
 
-### Mengatur Personality
-
-```
-/codex personality Jawab selalu dalam bahasa Indonesia dan gaya formal
+```text
+/codex personality Jawab dalam bahasa Indonesia dan ringkas
 /codex personality Kamu adalah coding expert. Selalu berikan contoh kode.
-/codex personality Kamu adalah chef profesional. Berikan resep dan tips memasak.
+/codex personality reset
 ```
 
-### Melihat atau Reset
+Detail:
 
-```
-/codex personality          # Lihat personality saat ini
-/codex personality reset    # Reset ke default
-```
-
-**Cara kerja:**
-- Disimpan per-user di memory store (bertahan antar percakapan)
+- Disimpan per user di memory store yang dikonfigurasi
 - Maksimal 2000 karakter
-- Di-inject sebagai: `{systemPrompt}\n\nUser custom instructions: {personality}`
-- Tampil di output `/codex status`
+- Tampil di `/codex status`
 
 ## Tracking Penggunaan
 
-Plugin melacak statistik penggunaan selama sesi bot berjalan:
+Plugin melacak statistik penggunaan selama proses bot berjalan:
 
 - Total request
-- Token input/output/total yang dipakai
+- Token input, output, dan total
 - Hitungan request dan token per-user
 
 Lihat statistik dengan `/codex status`.
 
-> Catatan: Ini hanya tracking penggunaan sesi lokal. Tidak ada API untuk mengecek sisa kuota langganan Codex/ChatGPT.
+Ini hanya telemetry lokal proses bot. Plugin tidak mengecek sisa kuota langganan ChatGPT/Codex.
 
-## Auto-Refresh Token
+## Auto Refresh
 
-Ketika `access_token` kedaluwarsa, provider **otomatis me-refresh** menggunakan `refresh_token` dari `auth.json`. Proses ini transparan — user tidak akan merasakan gangguan.
+Saat access token expired, provider bisa me-refresh token memakai `refresh_token` dari `auth.json`.
 
-**Cara kerja:**
+Ini paling aman jika memakai `authJsonPath`, karena provider bisa memperbarui file yang sama di disk setelah refresh. Jika hanya memberikan direct access token, tidak ada refresh token yang bisa dipakai dan bot perlu re-authentication setelah token expired.
 
-1. Sebelum setiap request, provider mengecek JWT `exp` claim
-2. Jika expired, mengirim request `grant_type: refresh_token` ke `auth.openai.com/oauth/token`
-3. `access_token` baru menggantikan yang lama di memori dan di `auth.json` di disk
-4. Request asli melanjutkan dengan token yang baru
+Alur refresh:
 
-**Detail penting:**
+1. Provider mengecek JWT `exp` claim sebelum request
+2. Jika expired, provider mengirim refresh request ke `auth.openai.com/oauth/token`
+3. Access token baru disimpan di memori
+4. Jika path auth file tersedia, token baru ditulis kembali ke disk
 
-- Aktif secara default jika `refresh_token` ada di `auth.json`
-- Request refresh bersamaan dicegah (hanya satu refresh pada satu waktu)
-- Jika `refresh_token` sendiri expired atau dicabut, jalankan `codex login` lagi
-- Nonaktifkan dengan `autoRefresh: false` di opsi provider
+## Persistence
 
-## Live Smoke Test
+Secara default, plugin memakai in-memory store. Ini cukup untuk test lokal dan bot pribadi sederhana, tapi data berikut akan hilang saat proses restart:
 
-Contoh bot live tersedia di `experimental/codex/examples/live-telegram-bot.ts`.
+- Riwayat percakapan
+- Personality/instruksi per-user
+- Counter penggunaan dalam proses
 
-```powershell
-cd path\to\vibegram\experimental\codex
-$env:TELEGRAM_BOT_TOKEN="123456:replace-me"
-$env:CHATGPT_AUTH_JSON_PATH="$env:USERPROFILE\.codex\auth.json"
-$env:GPT_MODEL="gpt-5.3-codex"
-npm run test:live
+Untuk bot server jangka panjang, gunakan custom `memoryStore` yang disimpan di database atau cache Anda sendiri.
+
+```typescript
+import type { CodexMemoryStore, CodexMessage } from '@vibegram/codex';
+
+class DatabaseCodexStore implements CodexMemoryStore {
+    async append(key: string, message: CodexMessage): Promise<void> {
+        // Simpan { key, role: message.role, content: message.content } ke store Anda.
+    }
+
+    async list(key: string): Promise<CodexMessage[]> {
+        // Kembalikan message dari paling lama ke paling baru.
+        return [];
+    }
+
+    async clear(key: string): Promise<void> {
+        // Hapus semua message untuk key ini.
+    }
+}
+
+bot.use(
+    codex({
+        provider,
+        memoryStore: new DatabaseCodexStore(),
+    })
+);
 ```
 
-Untuk penggunaan group:
+Store key sudah discoping berdasarkan user, chat, dan thread group jika memungkinkan. Pertahankan urutan message saat mengembalikan data dari `list()`.
 
-```powershell
-$env:TELEGRAM_BOT_USERNAME="nama_bot_tanpa_at"
+## Advanced Auth Loading
+
+Gunakan `authJsonPath` untuk sebagian besar deployment server karena provider bisa membaca `access_token` dan `refresh_token`, lalu menulis token hasil refresh kembali ke disk.
+
+Jika platform Anda menyimpan secret sebagai JSON object, bukan file, Anda bisa membuat provider dengan `codexProviderFromJson()`:
+
+```typescript
+import { codexProviderFromJson } from '@vibegram/codex';
+
+const authJson = JSON.parse(process.env.CODEX_AUTH_JSON_JSON ?? '{}');
+
+const provider = codexProviderFromJson(authJson, {
+    model: process.env.CODEX_MODEL ?? 'gpt-5.3-codex',
+    accountId: process.env.CODEX_ACCOUNT_ID,
+    deviceId: process.env.CODEX_DEVICE_ID,
+});
 ```
+
+Ini berguna untuk secret manager atau test environment, tapi token hasil refresh tidak bisa otomatis ditulis kembali ke sumber secret. Untuk bot jangka panjang, lebih baik gunakan `authJsonPath` yang writable kecuali deployment Anda punya mekanisme rotate dan reload secret.
 
 ## Opsi Plugin
 
 | Opsi | Default | Deskripsi |
 | --- | --- | --- |
-| `provider` | wajib | Provider Codex (`codexProvider()`) |
+| `provider` | wajib | Provider Codex dari `codexProvider()` |
 | `systemPrompt` | `You are a helpful assistant.` | Instruksi sistem untuk setiap percakapan |
 | `maxPromptLength` | `4000` | Panjang maksimal prompt user |
 | `maxResponseLength` | `4096` | Panjang maksimal balasan sebelum dipotong |
@@ -293,7 +421,7 @@ $env:TELEGRAM_BOT_USERNAME="nama_bot_tanpa_at"
 | `commandPrefix` | `codex` | Prefix command, contoh `/codex` |
 | `autoReply` | `true` | Auto-reply ke pesan teks di DM |
 | `groupMentionOnly` | `true` | Di group, hanya reply saat disebut |
-| `botUsername` | kosong | Username bot untuk deteksi mention di group |
+| `botUsername` | kosong | Username bot untuk deteksi mention group |
 | `memoryStore` | in-memory | Adapter penyimpanan riwayat percakapan |
 | `onAudit` | kosong | Callback audit aman tanpa isi prompt |
 
@@ -301,68 +429,36 @@ $env:TELEGRAM_BOT_USERNAME="nama_bot_tanpa_at"
 
 | Opsi | Default | Deskripsi |
 | --- | --- | --- |
-| `accessToken` | — | Bearer token langsung (skip auth.json) |
-| `authJsonPath` | `~/.codex/auth.json` | Path ke file auth Codex |
+| `accessToken` | kosong | Bearer token langsung. Ini melewati `auth.json` dan tidak bisa refresh kecuali provider dibuat ulang dengan token baru. |
+| `authJsonPath` | `~/.codex/auth.json` | Path ke file auth JSON Codex |
 | `model` | `gpt-5.3-codex` | Model yang diminta |
-| `reasoningEffort` | — | `low` / `medium` / `high` / `xhigh` |
-| `timeoutMs` | `60000` | Timeout request |
-| `maxRetries` | `2` | Percobaan ulang pada error 5xx |
-| `baseUrl` | `chatgpt.com/backend-api/codex` | Base URL API backend |
+| `reasoningEffort` | kosong | `low`, `medium`, `high`, atau `xhigh` |
+| `timeoutMs` | `60000` | Timeout request provider |
+| `maxRetries` | `2` | Percobaan ulang pada error 5xx sementara |
+| `baseUrl` | `https://chatgpt.com/backend-api/codex` | Base URL backend API |
 | `accountId` | auto-detected | Header ChatGPT account ID |
 | `deviceId` | random UUID | Header `oai-device-id` |
-| `autoRefresh` | `true` | Auto-refresh token expired via OAuth2 |
-
-## Cara Kerja `codexProvider`
-
-Provider membaca `access_token` dari `auth.json`, lalu memanggil:
-
-```text
-POST https://chatgpt.com/backend-api/codex/responses
-```
-
-Payload utama:
-
-```json
-{
-  "model": "gpt-5.3-codex",
-  "instructions": "Kamu adalah asisten Telegram.",
-  "input": [{ "role": "user", "content": "Halo" }],
-  "store": false,
-  "stream": true
-}
-```
-
-Header penting:
-
-```text
-Authorization: Bearer <access_token>
-Content-Type: application/json
-Accept: text/event-stream
-oai-device-id: <uuid>
-oai-language: en
-Chatgpt-Account-Id: <account_id jika tersedia>
-```
-
-Response dikembalikan sebagai Server-Sent Events (SSE). Provider mengumpulkan event `response.output_text.delta` dan menggunakan `response.completed` sebagai hasil akhir.
+| `autoRefresh` | `true` jika `refresh_token` tersedia | Auto-refresh token expired via OAuth2 |
 
 ## Troubleshooting
 
 | Error | Penyebab umum | Solusi |
 | --- | --- | --- |
-| `auth JSON not found` | Path salah | Set `CHATGPT_AUTH_JSON_PATH` ke path absolut |
-| `No access_token found` | Login Codex belum selesai | Jalankan `codex login` lagi |
-| `access_token has expired` | JWT sudah expired dan auto-refresh gagal | Cek validitas `refresh_token` atau jalankan `codex login` |
-| `Token refresh failed` | `refresh_token` expired atau dicabut | Jalankan `codex login` untuk token baru |
-| `401` saat token belum expired | Backend mungkin butuh token keamanan tambahan | Refresh login dan coba lagi |
-| `403` | Model tidak tersedia atau plan tidak cocok | Coba model lain yang tersedia dari `/codex models` |
+| `auth JSON not found` | Path secret server salah | Set `CODEX_AUTH_JSON_PATH` ke path absolut yang bisa dibaca |
+| `No access_token found` | File login tidak lengkap atau memakai mode API key | Jalankan `codex login` lagi dengan mode ChatGPT |
+| `access_token has expired` | JWT expired dan refresh tidak tersedia atau gagal | Cek `refresh_token` atau jalankan `codex login` lagi |
+| `Token refresh failed` | Refresh token expired atau dicabut | Ganti secret server dengan `auth.json` baru |
+| `401` saat token belum expired | Backend membutuhkan perilaku client tambahan yang tidak direplikasi provider | Refresh login dan coba lagi |
+| `403` | Model tidak tersedia atau plan tidak cocok | Coba model lain dari `/codex models` |
 | `429` | Rate limit Codex | Tunggu dan coba lagi |
 | `503 Cloudflare` | Akses otomatis diblokir | Plugin ini tidak bypass Cloudflare |
-| `Empty response` | SSE stream tidak mengembalikan event teks | Cek nama model dan coba model lain dari `/codex models` |
+| `Empty response` | SSE stream tidak mengembalikan event teks | Cek akses model dan coba lagi |
 
 ## Checklist Keamanan
 
-- Simpan `TELEGRAM_BOT_TOKEN` dan `auth.json` di environment variable atau secret manager.
-- Jangan pernah commit `.env`, `auth.json`, log token, atau file `.codex` yang dicetak.
-- Gunakan `allowedUserIds` untuk bot pribadi agar user lain tidak bisa menghabiskan kuota Codex Anda.
-- Gunakan `onAudit` untuk observabilitas, tapi jangan log full prompt jika mengandung data sensitif.
-- Rotasi Telegram bot token jika pernah terbagikan di chat atau log.
+- Simpan `TELEGRAM_BOT_TOKEN` dan `codex-auth.json` di secret manager atau path privat server.
+- Jangan commit `.env`, `auth.json`, log token, screenshot token, atau file `.codex` yang disalin.
+- Gunakan `allowedUserIds` atau `allowedChatIds`; kalau tidak, siapa pun yang mengakses bot bisa menghabiskan kuota.
+- Pastikan `onAudit` hanya berisi metadata. Jangan log full prompt secara default.
+- Rotasi token bot Telegram jika pernah terbagikan di chat atau log.
+- Perlakukan plugin ini sebagai experimental dan private-use only.
