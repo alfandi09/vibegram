@@ -58,6 +58,7 @@ export default async () => {
                         { text: 'Beranda', link: '/id/' },
                         { text: 'Panduan', link: '/id/basics/introduction' },
                         { text: 'Referensi API', link: '/id/api/context' },
+                        { text: 'Plugin AI', link: '/id/plugins/codex' },
                     ],
                     sidebar: [
                         {
@@ -149,6 +150,11 @@ export default async () => {
                                 { text: 'Native HTTP', link: '/id/adapters/native' },
                             ],
                         },
+                        {
+                            text: 'Plugin AI',
+                            collapsed: false,
+                            items: [{ text: 'Codex untuk Telegram', link: '/id/plugins/codex' }],
+                        },
                     ],
                     outlineTitle: 'Di halaman ini',
                     docFooter: {
@@ -171,6 +177,7 @@ export default async () => {
                 { text: 'Home', link: '/' },
                 { text: 'Guide', link: '/basics/introduction' },
                 { text: 'API Reference', link: '/api/context' },
+                { text: 'AI Plugins', link: '/plugins/codex' },
                 {
                     text: 'Changelog',
                     link: 'https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md',
@@ -263,6 +270,11 @@ export default async () => {
                         { text: 'Hono', link: '/adapters/hono' },
                         { text: 'Native HTTP', link: '/adapters/native' },
                     ],
+                },
+                {
+                    text: 'AI Plugins',
+                    collapsed: false,
+                    items: [{ text: 'Codex for Telegram', link: '/plugins/codex' }],
                 },
             ],
 

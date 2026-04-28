@@ -7,3 +7,16 @@ docs/.vitepress/dist/
 .env
 .DS_Store
 *.log
+
+# Local AI planning / scratch artifacts
+.claude/
+PLAN*.md
+*PLAN*.md
+AGENT*.md
+*AGENT*.md
+CODEX-INSTRUCTIONS.md
+ANALYSIS.md
+CLAUDE*.md
+*CLAUDE*.md
+CHANGELOG-*-FIX.md
+!AGENTS.md

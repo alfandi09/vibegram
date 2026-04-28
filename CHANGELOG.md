@@ -5,6 +5,28 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.1.0] - 2026-04-29
+
+### Added
+
+- Added the experimental `@vibegram/codex` package under `experimental/codex` for connecting VibeGram Telegram bots to ChatGPT/Codex sessions through `codex()` middleware and `codexProvider()`.
+- Added `ctx.codex` helpers for asking Codex, checking status, listing models, resetting conversation history, and managing per-user custom instructions.
+- Added built-in `/codex` commands for help, status, model listing, explicit prompts, conversation reset, and personality management.
+- Added session-token provider support for Codex `auth.json`, ChatGPT account headers, stable device IDs, SSE response parsing, request retries, timeout aborts, and optional token auto-refresh.
+- Added local memory, usage tracking, group mention safeguards, audit callbacks, live Telegram smoke-test examples, and unit tests for the experimental Codex plugin.
+- Added English and Indonesian Codex plugin documentation, including setup, `auth.json` handling, live-test commands, provider options, troubleshooting, and security guidance.
+
+### Changed
+
+- Added VitePress navigation entries for `AI Plugins` / `Plugin AI` and the new Codex documentation pages.
+- Updated the root dependency pin from `axios` `1.15.0` to `1.15.2`.
+- Updated `.gitignore` to exclude local AI planning artifacts such as `PLAN*.md`, `AGENT*.md`, Claude scratch files, and Codex instruction scratch files while keeping `AGENTS.md` trackable.
+
+### Tests
+
+- Added and validated Codex plugin/provider regression coverage for context injection, memory failure behavior, timeout aborts, group mention detection, status commands, `/responses` payloads, headers, and SSE parsing.
+- Validated the experimental Codex package with typecheck, tests, and build, and validated the VitePress docs build.
+
 ## [2.0.0] - 2026-04-27
 
 ### Breaking Changes
