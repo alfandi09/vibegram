@@ -113,7 +113,7 @@ Middleware menyediakan TTL yang tepat untuk setiap counter window. Store menyimp
 `RedisCodexMemoryStore` mengimplementasikan kontrak memory Codex: `append`, `list`, dan `clear`.
 
 ```typescript
-import { codex, codexProvider } from '@vibegram/codex';
+import { codex, codexProvider } from 'vibegram/codex';
 import { RedisCodexMemoryStore } from '@vibegram/storage-redis';
 
 bot.use(codex({

@@ -7,37 +7,38 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'
 };
 
 const publicSubpaths = [
-    'adapters',
-    'bot',
-    'cache',
-    'client',
-    'composer',
-    'context',
-    'conversation',
-    'errors',
-    'filters',
-    'i18n',
-    'inline',
-    'logger',
-    'markup',
-    'menu',
-    'plugin',
-    'queue',
-    'ratelimit',
-    'scene',
-    'session',
-    'types',
-    'webapp',
-    'wizard',
-];
+    ['adapters', 'adapters'],
+    ['bot', 'bot'],
+    ['cache', 'cache'],
+    ['client', 'client'],
+    ['codex', 'codex/index'],
+    ['composer', 'composer'],
+    ['context', 'context'],
+    ['conversation', 'conversation'],
+    ['errors', 'errors'],
+    ['filters', 'filters'],
+    ['i18n', 'i18n'],
+    ['inline', 'inline'],
+    ['logger', 'logger'],
+    ['markup', 'markup'],
+    ['menu', 'menu'],
+    ['plugin', 'plugin'],
+    ['queue', 'queue'],
+    ['ratelimit', 'ratelimit'],
+    ['scene', 'scene'],
+    ['session', 'session'],
+    ['types', 'types'],
+    ['webapp', 'webapp'],
+    ['wizard', 'wizard'],
+] as const;
 
 describe('package exports', () => {
     it('exposes dual CJS/ESM/type entries for every public subpath', () => {
-        for (const subpath of publicSubpaths) {
+        for (const [subpath, distPath] of publicSubpaths) {
             expect(packageJson.exports[`./${subpath}`]).toEqual({
-                import: `./dist/esm/${subpath}.js`,
-                require: `./dist/cjs/${subpath}.js`,
-                types: `./dist/types/${subpath}.d.ts`,
+                import: `./dist/esm/${distPath}.js`,
+                require: `./dist/cjs/${distPath}.js`,
+                types: `./dist/types/${distPath}.d.ts`,
             });
         }
     });

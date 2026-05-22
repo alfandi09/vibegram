@@ -1,9 +1,9 @@
 # Codex untuk Telegram
 
-Plugin `@vibegram/codex` menambahkan `ctx.codex` ke handler VibeGram agar bot Telegram bisa berkomunikasi dengan ChatGPT melalui session token Codex.
+Modul plugin `vibegram/codex` menambahkan `ctx.codex` ke handler VibeGram agar bot Telegram bisa berkomunikasi dengan ChatGPT melalui session token Codex.
 
 ::: warning Status Experimental
-Plugin ini berada di `plugins/codex`. API, environment variable, dan endpoint internal ChatGPT dapat berubah sebelum rilis stabil.
+Modul ini dibundel di package utama `vibegram` sebagai subpath `vibegram/codex`. API, environment variable, dan endpoint internal ChatGPT dapat berubah sebelum rilis stabil.
 :::
 
 ## Rekomendasi Penggunaan
@@ -26,34 +26,14 @@ Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 
 ## Instalasi
 
-Saat package plugin ini sudah dipublish, install dari npm:
+Install rilis VibeGram terbaru. Codex sudah termasuk di package utama `vibegram` dan diimport dari subpath `vibegram/codex`:
 
 ```bash
-npm install vibegram @vibegram/codex
+npm install vibegram@^2.2.1
 ```
 
-Sampai saat itu, gunakan package plugin langsung dari repository ini:
-
-```bash
-git clone https://github.com/alfandi09/vibegram.git
-cd vibegram
-npm install
-npm run build
-
-cd plugins/codex
-npm install
-npm run build
-```
-
-Lalu gunakan dari project bot Anda dengan local file dependency:
-
-```json
-{
-  "dependencies": {
-    "vibegram": "^2.1.0",
-    "@vibegram/codex": "file:../vibegram/plugins/codex"
-  }
-}
+```typescript
+import { codex, codexProvider } from 'vibegram/codex';
 ```
 
 ## Setup Server
@@ -116,7 +96,7 @@ Setelah itu salin file ke secret path server dengan metode deployment Anda. Cont
 
 ## Login Device Code dari Telegram
 
-`@vibegram/codex` juga mengekspor helper Device Authorization Grant berbasis OAuth 2.0 Device Code flow (RFC 8628). Gunakan ini jika admin Telegram terpercaya perlu membuat atau refresh `auth.json` langsung dari chat tanpa menginstall Codex CLI di mesin tersebut.
+`vibegram/codex` juga mengekspor helper Device Authorization Grant berbasis OAuth 2.0 Device Code flow (RFC 8628). Gunakan ini jika admin Telegram terpercaya perlu membuat atau refresh `auth.json` langsung dari chat tanpa menginstall Codex CLI di mesin tersebut.
 
 Command ini harus admin-only. Flow ini menulis token ChatGPT/Codex ke disk, jadi jangan pernah buka command ini untuk user bot biasa atau member group.
 
@@ -146,7 +126,7 @@ Jika Anda perlu command custom di luar middleware plugin, gunakan helper secara 
 
 ```typescript
 import { Bot } from 'vibegram';
-import { deviceLogin } from '@vibegram/codex';
+import { deviceLogin } from 'vibegram/codex';
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -290,7 +270,7 @@ Pastikan file mount bisa ditulis jika ingin auto-refresh token tersimpan dan tet
 
 ```typescript
 import { Bot } from 'vibegram';
-import { codex, codexProvider } from '@vibegram/codex';
+import { codex, codexProvider } from 'vibegram/codex';
 
 function parseNumberList(value: string | undefined): number[] {
     if (!value) return [];
@@ -378,15 +358,14 @@ export CODEX_MODEL="gpt-5.3-codex"
 Contoh live smoke test memang khusus local dan berada di:
 
 ```text
-plugins/codex/examples/live-telegram-bot.ts
+examples/codex-live-telegram-bot.ts
 ```
 
-Jalankan dari package plugin:
+Jalankan dari root repository:
 
 ```bash
-cd plugins/codex
 npm run build
-npm run test:live
+npx ts-node examples/codex-live-telegram-bot.ts
 ```
 
 ## Command Bawaan
@@ -475,7 +454,7 @@ Secara default, plugin memakai in-memory store. Ini cukup untuk test lokal dan b
 Untuk bot server jangka panjang, gunakan custom `memoryStore` yang disimpan di database atau cache Anda sendiri.
 
 ```typescript
-import type { CodexMemoryStore, CodexMessage } from '@vibegram/codex';
+import type { CodexMemoryStore, CodexMessage } from 'vibegram/codex';
 
 class DatabaseCodexStore implements CodexMemoryStore {
     async append(key: string, message: CodexMessage): Promise<void> {
@@ -509,7 +488,7 @@ Gunakan `authJsonPath` untuk sebagian besar deployment server karena provider bi
 Jika platform Anda menyimpan secret sebagai JSON object, bukan file, Anda bisa membuat provider dengan `codexProviderFromJson()`:
 
 ```typescript
-import { codexProviderFromJson } from '@vibegram/codex';
+import { codexProviderFromJson } from 'vibegram/codex';
 
 const authJson = JSON.parse(process.env.CODEX_AUTH_JSON_JSON ?? '{}');
 

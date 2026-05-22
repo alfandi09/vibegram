@@ -1,5 +1,5 @@
 /**
- * @module @vibegram/codex - Codex ChatGPT Plugin Types
+ * @module vibegram/codex - Codex ChatGPT Plugin Types
  *
  * Auth mode: ChatGPT session token → `accessToken` option (from Codex / auth JSON)
  */

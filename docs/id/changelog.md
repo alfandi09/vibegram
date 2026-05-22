@@ -4,6 +4,22 @@ Catatan rilis VibeGram. Halaman ini menyorot perubahan yang paling berguna untuk
 
 Untuk log rilis lengkap, lihat repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.2.1
+
+Dirilis pada 2026-05-22.
+
+### Sorotan
+
+- Membundel plugin Telegram Codex ke package utama `vibegram`.
+- Menambahkan subpath publik `vibegram/codex` untuk `codex()`, `codexProvider()`, helper login Device Code, type memory store, dan helper provider.
+- Publish tetap lewat alur rilis normal `vibegram`, bukan package terpisah `@vibegram/codex`.
+
+### Penggunaan
+
+```typescript
+import { codex, codexProvider } from 'vibegram/codex';
+```
+
 ## 2.1.0
 
 Dirilis pada 2026-04-29.

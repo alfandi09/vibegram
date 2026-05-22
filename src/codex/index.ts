@@ -1,9 +1,9 @@
 /**
- * @vibegram/codex — Public API barrel export
+ * vibegram/codex - Public API barrel export
  */
 
 // Core plugin
-export { codex } from './plugin.js';
+export { codex } from './plugin';
 
 // Types
 export type {
@@ -20,20 +20,20 @@ export type {
     CodexSessionState,
     CodexPluginOptions,
     CodexAuditEvent,
-} from './types.js';
+} from './types';
 
 // Memory store
-export { MemoryCodexStore } from './memory.js';
+export { MemoryCodexStore } from './memory';
 
 // Provider — Codex session token
 export {
     codexProvider,
     codexProviderFromJson,
-} from './providers/chatgpt-token.js';
+} from './providers/chatgpt-token';
 export type {
     CodexProviderOptions,
     CodexAuthJson,
-} from './providers/chatgpt-token.js';
+} from './providers/chatgpt-token';
 
 // Auth — Device Code login flow
 export {
@@ -41,11 +41,11 @@ export {
     requestDeviceCode,
     pollDeviceToken,
     saveDeviceTokens,
-} from './auth/device-code.js';
+} from './auth/device-code';
 export type {
     DeviceCodeResponse,
     DeviceCodeTokenResult,
     DeviceCodePollStatus,
     DeviceLoginCallbacks,
     DeviceLoginOptions,
-} from './auth/device-code.js';
+} from './auth/device-code';

@@ -54,7 +54,7 @@ bot.use(rateLimit({
 ## Codex Memory
 
 ```typescript
-import { codex, codexProvider } from '@vibegram/codex';
+import { codex, codexProvider } from 'vibegram/codex';
 import { RedisCodexMemoryStore } from '@vibegram/storage-redis';
 
 bot.use(codex({

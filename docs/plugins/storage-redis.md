@@ -113,7 +113,7 @@ The middleware provides the correct TTL per counter window. The store persists `
 `RedisCodexMemoryStore` implements the Codex memory contract: `append`, `list`, and `clear`.
 
 ```typescript
-import { codex, codexProvider } from '@vibegram/codex';
+import { codex, codexProvider } from 'vibegram/codex';
 import { RedisCodexMemoryStore } from '@vibegram/storage-redis';
 
 bot.use(codex({

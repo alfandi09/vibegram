@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { codex } from '../src/plugin.js';
-import { MemoryCodexStore } from '../src/memory.js';
-import type { CodexProvider } from '../src/types.js';
+import { codex } from '../src/codex/plugin';
+import { MemoryCodexStore } from '../src/codex/memory';
+import type { CodexAskResult, CodexProvider } from '../src/codex/types';
 
 type FakeCtx = {
     chat?: { id: number; type?: string };
@@ -90,7 +90,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('@vibegram/codex plugin', () => {
+describe('vibegram/codex plugin', () => {
     it('should attach ctx.codex and auto-reply in private chats', async () => {
         const provider = createProvider('reply');
         const ctx = createCtx('hello');
@@ -150,7 +150,7 @@ describe('@vibegram/codex plugin', () => {
             name: 'slow',
             ask: vi.fn(
                 input =>
-                    new Promise((_, reject) => {
+                    new Promise<CodexAskResult>((_, reject) => {
                         input.signal?.addEventListener('abort', () => {
                             aborted = true;
                             reject(input.signal?.reason);

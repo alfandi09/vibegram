@@ -8,16 +8,15 @@
  *   /codex auth export — Download saved auth.json in a private admin chat
  */
 
-import { Context } from 'vibegram';
-import { Middleware } from 'vibegram';
+import { Middleware } from '../composer';
+import { Context } from '../context';
 import {
     CodexPluginOptions,
     CodexContext,
     CodexMessage,
-    CodexAuditEvent,
-} from './types.js';
-import { MemoryCodexStore } from './memory.js';
-import { deviceLogin } from './auth/device-code.js';
+} from './types';
+import { MemoryCodexStore } from './memory';
+import { deviceLogin } from './auth/device-code';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -733,7 +732,7 @@ export function codex<C extends Context = Context>(
 // TypeScript module augmentation — ctx.codex
 // ---------------------------------------------------------------------------
 
-declare module 'vibegram' {
+declare module '../context' {
     interface Context {
         codex?: CodexContext;
     }

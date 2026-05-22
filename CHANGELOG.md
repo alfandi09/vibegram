@@ -9,6 +9,16 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.2.1] - 2026-05-22
+
+### Changed
+
+- Promoted the Codex Telegram plugin into the main `vibegram` package as the public `vibegram/codex` subpath so bots can use it without installing or publishing a separate `@vibegram/codex` package.
+- Moved Codex source, examples, and tests into the root build and test pipeline.
+- Updated English and Indonesian Codex documentation to install `vibegram@^2.2.1` and import Codex helpers from `vibegram/codex`.
+
+---
+
 ## [2.2.0] - 2026-05-22
 
 ### Added

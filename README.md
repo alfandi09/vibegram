@@ -29,6 +29,7 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 - **Keyboard Builder** - Declarative inline, reply, and force-reply keyboard construction
 - **Smart Command Parsing** - Parse `/command arg1 arg2` via `ctx.command.args`
 - **I18n Support** - Locale-aware middleware with auto-detection
+- **Codex Plugin Module** - Import `codex()` and ChatGPT session helpers from `vibegram/codex`
 - **Observability Hooks** - Request logging, timing metrics, and lifecycle hooks for retries and failures
 - **Verified Release Pipeline** - Automated tests, typechecks, example validation, dual CJS/ESM build, and docs generation
 
@@ -50,6 +51,7 @@ This table highlights built-in VibeGram capabilities, not a ranking of other bot
 | Inline Result Builder |   Yes    |
 | TypeScript Types      |   Yes    |
 | Plugin System         |   Yes    |
+| Codex Plugin Subpath  |   Yes    |
 
 ---
 

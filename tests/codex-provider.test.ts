@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import { afterEach, describe, expect, it } from 'vitest';
-import { codexProvider } from '../src/providers/chatgpt-token.js';
+import { codexProvider } from '../src/codex/providers/chatgpt-token';
 
 type CapturedRequest = {
     method?: string;

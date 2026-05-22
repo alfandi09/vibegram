@@ -4,6 +4,22 @@ Release notes for VibeGram. This page highlights the changes most useful for dev
 
 For the complete release log, see the repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.2.1
+
+Released on 2026-05-22.
+
+### Highlights
+
+- Bundled the Codex Telegram plugin into the main `vibegram` package.
+- Added the public `vibegram/codex` subpath for `codex()`, `codexProvider()`, Device Code login helpers, memory store types, and provider helpers.
+- Kept publishing on the normal `vibegram` release flow instead of publishing a separate `@vibegram/codex` package.
+
+### Usage
+
+```typescript
+import { codex, codexProvider } from 'vibegram/codex';
+```
+
 ## 2.1.0
 
 Released on 2026-04-29.

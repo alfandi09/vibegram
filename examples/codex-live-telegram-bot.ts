@@ -1,5 +1,5 @@
 /**
- * Live Telegram smoke test for @vibegram/codex.
+ * Live Telegram smoke test for vibegram/codex.
  *
  * Required env:
  * - TELEGRAM_BOT_TOKEN
@@ -22,13 +22,13 @@
  * Legacy GPT_* and CHATGPT_* env names are still accepted as fallbacks.
  */
 
-import { Bot } from 'vibegram';
-import type * as CodexPackage from '../src';
+import { Bot } from '../src/index';
+import type * as CodexPackage from '../src/codex';
 
 const {
     codex,
     codexProvider,
-} = require('../dist/cjs/index.js') as typeof CodexPackage;
+} = require('../dist/cjs/codex/index.js') as typeof CodexPackage;
 
 function requireEnv(name: string): string {
     const value = process.env[name];

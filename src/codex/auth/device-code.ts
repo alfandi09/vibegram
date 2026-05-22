@@ -14,7 +14,7 @@
 import axios, { AxiosError } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { CodexAuthJson } from '../providers/chatgpt-token.js';
+import type { CodexAuthJson } from '../providers/chatgpt-token';
 
 // ---------------------------------------------------------------------------
 // OpenAI OAuth constants (same as Codex CLI)

@@ -6,7 +6,7 @@
  * the system prompt at index 0 if present).
  */
 
-import { CodexMemoryStore, CodexMessage } from './types.js';
+import { CodexMemoryStore, CodexMessage } from './types';
 
 export class MemoryCodexStore implements CodexMemoryStore {
     private store = new Map<string, CodexMessage[]>();

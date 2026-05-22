@@ -34,7 +34,7 @@ import {
     CodexStatusResult,
     CodexModelInfo,
     CodexMessage,
-} from '../types.js';
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Auth JSON shapes

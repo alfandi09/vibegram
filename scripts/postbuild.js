@@ -37,9 +37,16 @@ function addJsExtensionsToEsmImports(source) {
 }
 
 function rewriteEsmImports(esmDir) {
-    const files = fs.readdirSync(esmDir).filter(file => file.endsWith('.js'));
-    for (const file of files) {
-        const filePath = path.join(esmDir, file);
+    const entries = fs.readdirSync(esmDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const filePath = path.join(esmDir, entry.name);
+        if (entry.isDirectory()) {
+            rewriteEsmImports(filePath);
+            continue;
+        }
+
+        if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+
         const source = fs.readFileSync(filePath, 'utf8');
         const rewritten = addJsExtensionsToEsmImports(source);
         if (rewritten !== source) {

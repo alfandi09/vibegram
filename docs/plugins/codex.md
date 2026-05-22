@@ -1,9 +1,9 @@
 # Codex for Telegram
 
-The `@vibegram/codex` plugin adds `ctx.codex` to VibeGram handlers so a Telegram bot can talk to ChatGPT through a Codex session token.
+The `vibegram/codex` plugin module adds `ctx.codex` to VibeGram handlers so a Telegram bot can talk to ChatGPT through a Codex session token.
 
 ::: warning Experimental
-This plugin lives in `plugins/codex`. Its API, environment variables, and internal ChatGPT endpoint can change before a stable release.
+This module is bundled with `vibegram` as the `vibegram/codex` subpath. Its API, environment variables, and internal ChatGPT endpoint can change before a stable release.
 :::
 
 ## Recommended Use
@@ -26,34 +26,14 @@ Usage counts against the Codex quota available to the signed-in ChatGPT account.
 
 ## Install
 
-When this plugin package is published, install it from npm:
+Install the latest VibeGram release. Codex is included in the main `vibegram` package and is imported from the `vibegram/codex` subpath:
 
 ```bash
-npm install vibegram @vibegram/codex
+npm install vibegram@^2.2.1
 ```
 
-Until then, use the plugin package directly from this repository:
-
-```bash
-git clone https://github.com/alfandi09/vibegram.git
-cd vibegram
-npm install
-npm run build
-
-cd plugins/codex
-npm install
-npm run build
-```
-
-Then consume it from your bot project with a local file dependency:
-
-```json
-{
-  "dependencies": {
-    "vibegram": "^2.1.0",
-    "@vibegram/codex": "file:../vibegram/plugins/codex"
-  }
-}
+```typescript
+import { codex, codexProvider } from 'vibegram/codex';
 ```
 
 ## Server Setup
@@ -116,7 +96,7 @@ Then copy it to your server secret path by your normal deployment method. Exampl
 
 ## Device Code Login From Telegram
 
-`@vibegram/codex` also exports a Device Authorization Grant helper based on OAuth 2.0 Device Code flow (RFC 8628). Use it when you want a trusted Telegram admin to create or refresh `auth.json` from chat without installing the Codex CLI on that machine.
+`vibegram/codex` also exports a Device Authorization Grant helper based on OAuth 2.0 Device Code flow (RFC 8628). Use it when you want a trusted Telegram admin to create or refresh `auth.json` from chat without installing the Codex CLI on that machine.
 
 Keep this command admin-only. The flow writes ChatGPT/Codex tokens to disk, so never expose it to normal bot users or group members.
 
@@ -146,7 +126,7 @@ If you need a custom command outside the plugin middleware, use the helper direc
 
 ```typescript
 import { Bot } from 'vibegram';
-import { deviceLogin } from '@vibegram/codex';
+import { deviceLogin } from 'vibegram/codex';
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -290,7 +270,7 @@ Make the mounted file writable if you want token auto-refresh to persist refresh
 
 ```typescript
 import { Bot } from 'vibegram';
-import { codex, codexProvider } from '@vibegram/codex';
+import { codex, codexProvider } from 'vibegram/codex';
 
 function parseNumberList(value: string | undefined): number[] {
     if (!value) return [];
@@ -378,15 +358,14 @@ export CODEX_MODEL="gpt-5.3-codex"
 The live smoke-test example is intentionally local and lives at:
 
 ```text
-plugins/codex/examples/live-telegram-bot.ts
+examples/codex-live-telegram-bot.ts
 ```
 
-Run it from the plugin package:
+Run it from the repository root:
 
 ```bash
-cd plugins/codex
 npm run build
-npm run test:live
+npx ts-node examples/codex-live-telegram-bot.ts
 ```
 
 ## Built-in Commands
@@ -475,7 +454,7 @@ By default, the plugin uses an in-memory store. That is fine for local testing a
 For long-running server bots, pass a custom `memoryStore` backed by your own database or cache.
 
 ```typescript
-import type { CodexMemoryStore, CodexMessage } from '@vibegram/codex';
+import type { CodexMemoryStore, CodexMessage } from 'vibegram/codex';
 
 class DatabaseCodexStore implements CodexMemoryStore {
     async append(key: string, message: CodexMessage): Promise<void> {
@@ -509,7 +488,7 @@ Use `authJsonPath` for most server deployments because it gives the provider acc
 If your platform stores secrets as JSON objects rather than files, you can build the provider with `codexProviderFromJson()`:
 
 ```typescript
-import { codexProviderFromJson } from '@vibegram/codex';
+import { codexProviderFromJson } from 'vibegram/codex';
 
 const authJson = JSON.parse(process.env.CODEX_AUTH_JSON_JSON ?? '{}');
 
