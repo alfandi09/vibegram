@@ -128,6 +128,33 @@ describe('rateLimit() middleware', () => {
         expect(customKey).toHaveBeenCalledWith(ctx);
     });
 
+    it('should share counters through a custom store when middleware instances are separate', async () => {
+        const records = new Map<string, { count: number; resetTime: number }>();
+        const store = {
+            get: vi.fn((key: string) => records.get(key)),
+            set: vi.fn((key: string, value: { count: number; resetTime: number }) => {
+                records.set(key, value);
+            }),
+            delete: vi.fn((key: string) => {
+                records.delete(key);
+            }),
+        };
+        const firstWorker = rateLimit({ windowMs: 5000, limit: 1, store });
+        const secondWorker = rateLimit({ windowMs: 5000, limit: 1, store });
+        const { ctx } = createContext(makeMessageUpdate('hi'));
+
+        const first = createNext();
+        await firstWorker(ctx, first.next);
+        expect(first.called()).toBe(true);
+
+        const second = createNext();
+        await secondWorker(ctx, second.next);
+
+        expect(second.called()).toBe(false);
+        expect(store.get).toHaveBeenCalled();
+        expect(store.set).toHaveBeenCalled();
+    });
+
     it('applies higher default limits for group chats (20 per 60s)', async () => {
         // Default group limit is 20; we push 21 requests
         const mw = rateLimit(); // defaults apply

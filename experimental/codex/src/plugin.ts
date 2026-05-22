@@ -3,6 +3,8 @@
  *
  * Attaches ctx.codex to every update and registers bot commands:
  *   /codex help | status | reset | models | ask <text> | personality <text>
+ *   /codex login  — OAuth Device Code login (get token via Telegram)
+ *   /codex logout — Clear saved auth tokens
  */
 
 import { Context } from 'vibegram';
@@ -14,6 +16,9 @@ import {
     CodexAuditEvent,
 } from './types.js';
 import { MemoryCodexStore } from './memory.js';
+import { deviceLogin } from './auth/device-code.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // ---------------------------------------------------------------------------
 // Session usage tracker
@@ -128,6 +133,15 @@ export function codex<C extends Context = Context>(
     } = options;
 
     const memoryStore = options.memoryStore ?? new MemoryCodexStore(maxHistory);
+
+    // Track active login flows to prevent duplicates
+    const activeLogins = new Set<number>();
+
+    // Helper: get auth.json path
+    function getAuthJsonPath(): string {
+        const home = process.env.USERPROFILE ?? process.env.HOME ?? '~';
+        return path.join(home, '.codex', 'auth.json');
+    }
 
     // Session-wide usage tracker
     const sessionUsage: SessionUsage = {
@@ -322,13 +336,18 @@ export function codex<C extends Context = Context>(
             case 'help': {
                 await ctx.reply(
                     `🤖 *Codex Bot Commands*\n\n` +
-                    `\`/${commandPrefix} help\` — Show this help\n` +
-                    `\`/${commandPrefix} status\` — Provider, session & usage info\n` +
-                    `\`/${commandPrefix} reset\` — Clear conversation memory\n` +
-                    `\`/${commandPrefix} models\` — List available models\n` +
+                    `*Authentication:*\n` +
+                    `\`/${commandPrefix} login\` — Login via browser (Device Code Flow)\n` +
+                    `\`/${commandPrefix} logout\` — Clear saved auth tokens\n\n` +
+                    `*Chat:*\n` +
                     `\`/${commandPrefix} ask <text>\` — Ask explicitly\n` +
+                    `\`/${commandPrefix} reset\` — Clear conversation memory\n` +
                     `\`/${commandPrefix} personality <text>\` — Set custom instructions\n` +
                     `\`/${commandPrefix} personality reset\` — Reset to default\n\n` +
+                    `*Info:*\n` +
+                    `\`/${commandPrefix} status\` — Provider, session & usage info\n` +
+                    `\`/${commandPrefix} models\` — List available models\n` +
+                    `\`/${commandPrefix} help\` — Show this help\n\n` +
                     `💬 Or just send any message${isGroupChat(ctx) ? ' (mention the bot)' : ''}!`,
                     { parse_mode: 'Markdown' }
                 );
@@ -444,6 +463,125 @@ export function codex<C extends Context = Context>(
                     `This will apply to all your future messages.`,
                     { parse_mode: 'Markdown' }
                 );
+                return true;
+            }
+
+            case 'login': {
+                const userId = ctx.from?.id;
+                if (!userId) {
+                    await ctx.reply('⚠️ Could not determine your user ID.');
+                    return true;
+                }
+
+                // Prevent multiple simultaneous login flows
+                if (activeLogins.has(userId)) {
+                    await ctx.reply('⏳ Login already in progress. Please complete the previous one first.');
+                    return true;
+                }
+
+                activeLogins.add(userId);
+
+                try {
+                    const authJsonPath = getAuthJsonPath();
+
+                    await ctx.reply(
+                        '🔐 *Codex Login — Device Code Flow*\n\n' +
+                        'Requesting authorization code from OpenAI...\n' +
+                        'Please wait...',
+                        { parse_mode: 'Markdown' }
+                    );
+
+                    await deviceLogin(
+                        {
+                            onCode: async ({ userCode, verificationUri, verificationUriComplete, expiresIn }) => {
+                                const url = verificationUriComplete ?? verificationUri;
+                                const expiresMin = Math.floor(expiresIn / 60);
+                                await ctx.reply(
+                                    `🔑 *Login Step*\n\n` +
+                                    `1️⃣ Open this link in your browser:\n` +
+                                    `${url}\n\n` +
+                                    `2️⃣ Sign in with your ChatGPT account\n\n` +
+                                    `3️⃣ Enter this code:\n` +
+                                    `\`${userCode}\`\n\n` +
+                                    `⏱ Code expires in ${expiresMin} minutes.\n` +
+                                    `💡 _I will check automatically when you're done._`,
+                                    { parse_mode: 'Markdown' }
+                                );
+                            },
+
+                            onPoll: async (attempt, elapsed) => {
+                                // Send a progress update every ~30 seconds
+                                if (attempt % 6 === 0) {
+                                    const secs = Math.floor(elapsed / 1000);
+                                    await ctx.reply(
+                                        `⏳ Waiting for authorization... (${secs}s elapsed)`
+                                    ).catch(() => {});
+                                }
+                                return true; // continue polling
+                            },
+
+                            onSuccess: async (tokens) => {
+                                // Try to extract plan info from the token
+                                let planInfo = '';
+                                try {
+                                    const parts = tokens.access_token.split('.');
+                                    if (parts.length >= 2) {
+                                        const payload = JSON.parse(
+                                            Buffer.from(parts[1], 'base64url').toString('utf-8')
+                                        );
+                                        const auth = payload['https://api.openai.com/auth'];
+                                        if (auth?.chatgpt_plan_type) {
+                                            planInfo = `\nPlan: \`${auth.chatgpt_plan_type}\``;
+                                        }
+                                    }
+                                } catch { /* skip */ }
+
+                                await ctx.reply(
+                                    `✅ *Login Successful!*\n\n` +
+                                    `Token saved to \`${authJsonPath}\`${planInfo}\n\n` +
+                                    `⚠️ *Important:* Restart the bot to use the new token.\n` +
+                                    `Or use \`/${commandPrefix} status\` to check the current session.`,
+                                    { parse_mode: 'Markdown' }
+                                );
+                            },
+
+                            onError: async (error) => {
+                                await ctx.reply(
+                                    `❌ *Login Failed*\n\n${error.message}`,
+                                    { parse_mode: 'Markdown' }
+                                );
+                            },
+                        },
+                        {
+                            authJsonPath,
+                            timeoutMs: 300_000, // 5 min
+                        }
+                    );
+                } catch {
+                    // Error already reported via onError callback
+                } finally {
+                    activeLogins.delete(userId);
+                }
+                return true;
+            }
+
+            case 'logout': {
+                const authPath = getAuthJsonPath();
+                try {
+                    if (fs.existsSync(authPath)) {
+                        fs.unlinkSync(authPath);
+                        await ctx.reply(
+                            `🔓 *Logged Out*\n\n` +
+                            `Auth tokens removed from \`${authPath}\`.\n` +
+                            `Use \`/${commandPrefix} login\` to authenticate again.`,
+                            { parse_mode: 'Markdown' }
+                        );
+                    } else {
+                        await ctx.reply('ℹ️ No auth.json found — already logged out.');
+                    }
+                } catch (err) {
+                    await ctx.reply(`⚠️ Failed to remove auth: ${(err as Error).message}`);
+                }
                 return true;
             }
 

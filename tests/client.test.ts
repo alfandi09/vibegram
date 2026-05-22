@@ -146,6 +146,39 @@ describe('TelegramClient', () => {
         );
     });
 
+    it('allows request transformers to wrap API calls and override retry counts', async () => {
+        const client = new TelegramClient('test-token', {
+            networkRetries: 2,
+            networkRetryBaseDelayMs: 0,
+        });
+        const post = vi.fn().mockRejectedValue({
+            response: {
+                status: 429,
+                data: {
+                    error_code: 429,
+                    description: 'Too Many Requests',
+                    parameters: { retry_after: 1 },
+                },
+            },
+        });
+        const seenRetries: number[] = [];
+        const seenNetworkRetries: number[] = [];
+
+        (client as any).http = { post };
+
+        client.use(next => async request => {
+            seenRetries.push(request.retries);
+            seenNetworkRetries.push(request.networkRetries);
+            return next({ ...request, retries: 0, networkRetries: 0 });
+        });
+
+        await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(RateLimitError);
+
+        expect(seenRetries).toEqual([3]);
+        expect(seenNetworkRetries).toEqual([2]);
+        expect(post).toHaveBeenCalledOnce();
+    });
+
     it('rejects non-plain root payloads before sending', async () => {
         const client = new TelegramClient('test-token');
         const post = vi.fn();

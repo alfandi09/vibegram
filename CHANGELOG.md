@@ -5,6 +5,37 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [Unreleased]
+
+---
+
+## [2.2.0] - 2026-05-22
+
+### Added
+
+- Added Phase 0 official plugin infrastructure with a `plugins/` workspace convention, package template, root plugin validation scripts, and English/Indonesian plugin development documentation.
+- Added the official `@vibegram/runner` plugin package for concurrent long polling with configurable concurrency, per-chat ordering, queue backpressure, graceful shutdown, lifecycle hooks, metrics-friendly counters, tests, and English/Indonesian documentation.
+- Added `TelegramClient.use()` request transformers plus the official `@vibegram/auto-retry` plugin for retrying Telegram API 429, network, and HTTP 5xx failures with bounded backoff, method filters, safe retry hooks, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/throttler` plugin package for outgoing Telegram API flood control with global, per-chat, and per-method buckets, priority scheduling, bounded queues, optional oldest-drop behavior, graceful drain controls, tests, and English/Indonesian documentation.
+- Added `rateLimit({ store })` plus the official `@vibegram/storage-redis` plugin package with Redis-backed session, rate-limit, and Codex memory stores, TTL/prefix support, predictable corrupt JSON errors, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/parse-mode` plugin package with safe HTML and MarkdownV2 builders, escaping helpers, safe links, default parse-mode middleware, `ctx.replyFmt()`, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/files` plugin package with `ctx.file()`, Telegram `getFile` metadata resolution, buffer/stream/local file downloads, safe filename handling, file size/type guards, storage adapter support, tests, and English/Indonesian documentation based on official Telegram Bot API file rules.
+- Added the official `@vibegram/hydrate` plugin package with non-enumerable helpers for messages, callback queries, chats, users, and API message results, including `message.reply()`, `message.editText()`, `message.delete()`, `message.pin()`, `callbackQuery.answer()`, typed `HydrateFlavor`, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/commands` plugin package with a central command registry, Telegram `setMyCommands` sync, scoped command sets, localized descriptions, generated `/help`, duplicate validation, typed `CommandsFlavor`, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/router` plugin package with declarative route-key middleware, session/chat/update type helpers, async resolver support, fallback routes, composer-like route handlers, typed route keys, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/chat-members` plugin package with cached `getChatMember` lookups, `chat_member`/`my_chat_member` invalidation, admin/owner/membership guards, typed `ChatMembersFlavor`, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/devtools` plugin package with sanitized update snapshots, middleware timing spans, outgoing Telegram API debug logs, JSONL sinks, replay fixtures, production-safe capture defaults, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/deploy` plugin package with native webhook launch, Express/Fastify/Hono presets, health/readiness endpoints, environment validation, reverse-proxy webhook URL helpers, graceful shutdown wiring, Docker/systemd recipes, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/security` plugin package with user/chat allowlists, Telegram `getChatMember` admin guards, webhook secret verification, spam burst protection, safe error replies, reusable redaction helpers, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/observability` plugin package with update duration metrics, Telegram API request metrics, error counters, redacted structured logging, optional OpenTelemetry/Sentry hooks, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/webapp-kit` plugin package with Telegram Mini App `initData` validation, typed launch payload parsing, safe `web_app_data` JSON parsing, WebApp reply helpers, normalized HMAC errors, tests, and English/Indonesian documentation.
+- Added the official `@vibegram/stars` plugin package with Telegram Stars invoice building, pre-checkout approval/decline helpers, successful payment validation, refund wrappers, gift/business Stars workflows, paid update fixtures, tests, and English/Indonesian documentation.
+- Added experimental Codex device-code login/logout support so Telegram bot operators can start a browser login flow from `/codex login`, persist Codex-compatible auth JSON, and clear it with `/codex logout`.
+
+### Changed
+
+- Updated the English and Indonesian plugin docs landing pages into a current official plugin catalog with install guidance and an explicit rule to follow official Telegram Bot API references for Bot API-backed plugins.
+
 ## [2.1.0] - 2026-04-29
 
 ### Added

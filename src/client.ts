@@ -367,6 +367,16 @@ export interface TelegramClientHooks {
     onNetworkRetry?: (event: TelegramClientNetworkRetryEvent) => void | Promise<void>;
 }
 
+export interface TelegramClientRequest {
+    method: string;
+    data?: unknown;
+    retries: number;
+    networkRetries: number;
+}
+
+export type TelegramClientNext = (request: TelegramClientRequest) => Promise<unknown>;
+export type TelegramClientTransformer = (next: TelegramClientNext) => TelegramClientNext;
+
 export interface TelegramClientOptions {
     hooks?: TelegramClientHooks;
     /**
@@ -401,6 +411,7 @@ export class TelegramClient {
     private readonly networkRetries: number;
     private readonly networkRetryBaseDelayMs: number;
     private readonly networkRetryMaxDelayMs: number;
+    private requestTransformers: TelegramClientTransformer[] = [];
 
     constructor(token: string, options?: TelegramClientOptions) {
         this._token = token;
@@ -440,6 +451,30 @@ export class TelegramClient {
      */
     get token(): string {
         return this._token;
+    }
+
+    /**
+     * Registers an outgoing Telegram API request transformer.
+     *
+     * Transformers wrap `callApi()` requests and can retry, throttle, log, or
+     * short-circuit requests before they reach the HTTP transport.
+     */
+    use(transformer: TelegramClientTransformer): this {
+        if (typeof transformer !== 'function') {
+            throw new TypeError('TelegramClient transformer must be a function.');
+        }
+
+        this.ensureOwnTransformers();
+        this.requestTransformers.push(transformer);
+        return this;
+    }
+
+    private ensureOwnTransformers(): void {
+        if (Object.prototype.hasOwnProperty.call(this, 'requestTransformers')) {
+            return;
+        }
+
+        this.requestTransformers = [...this.requestTransformers];
     }
 
     private async invokeHook(name: string, hook?: () => void | Promise<void>): Promise<void> {
@@ -621,12 +656,35 @@ export class TelegramClient {
         }
     }
 
+    private createRequestPipeline(): TelegramClientNext {
+        const transport: TelegramClientNext = request =>
+            this.callApiAttempt(
+                request.method,
+                request.data,
+                request.retries,
+                request.networkRetries,
+                1
+            );
+
+        return this.requestTransformers.reduceRight(
+            (next, transformer) => transformer(next),
+            transport
+        );
+    }
+
     /**
      * Calls a Telegram Bot API method with automatic multipart/form-data delegation
      * plus rate-limit and optional network retry handling.
      */
     async callApi(method: string, data?: any, retries: number = 3): Promise<any> {
-        return this.callApiAttempt(method, data, retries, this.networkRetries, 1);
+        validateNonNegativeIntegerOption('retries', retries);
+
+        return this.createRequestPipeline()({
+            method,
+            data,
+            retries,
+            networkRetries: this.networkRetries,
+        });
     }
 
     /**

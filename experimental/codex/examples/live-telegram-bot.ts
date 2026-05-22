@@ -102,6 +102,10 @@ async function main() {
             [
                 'Codex live test aktif!',
                 '',
+                'Auth:',
+                '/codex login - Login via browser (OAuth Device Code)',
+                '/codex logout - Hapus auth token',
+                '',
                 'Commands:',
                 '/codex status - Cek status provider & usage',
                 '/codex models - List model tersedia',

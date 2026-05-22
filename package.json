@@ -1,6 +1,6 @@
 {
     "name": "vibegram",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "description": "Modern, production-ready Telegram Bot Framework for Node.js — Broad Bot API v9.6 coverage with built-in middleware, sessions, and webhook adapters",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -158,7 +158,11 @@
         "docs:dev": "vitepress dev docs",
         "docs:build": "vitepress build docs",
         "docs:preview": "vitepress preview docs",
-        "pack:dry": "npm pack --dry-run"
+        "pack:dry": "npm pack --dry-run",
+        "plugins:typecheck": "node scripts/validate-plugins.js typecheck",
+        "plugins:test": "node scripts/validate-plugins.js test",
+        "plugins:build": "node scripts/validate-plugins.js build",
+        "plugins:validate": "node scripts/validate-plugins.js validate"
     },
     "keywords": [
         "telegram",

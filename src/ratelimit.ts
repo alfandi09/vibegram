@@ -18,15 +18,28 @@ export interface RateLimitOptions {
     /** Callback invoked when a request exceeds the rate limit. */
     onLimitExceeded?: (ctx: Context, next: () => Promise<void>) => void | Promise<void>;
     /**
+     * External store for sharing counters across processes or middleware instances.
+     * Defaults to an in-memory store scoped to this middleware instance.
+     */
+    store?: RateLimitStore;
+    /**
      * When true, updates without a resolvable key are blocked instead of passed through.
      * Defaults to false.
      */
     strictMode?: boolean;
 }
 
-interface RateLimitRecord {
+/** Serializable rate-limit counter stored per generated rate-limit key. */
+export interface RateLimitRecord {
     count: number;
     resetTime: number;
+}
+
+/** External store contract for sharing rate-limit counters across workers. */
+export interface RateLimitStore {
+    get(key: string): Promise<RateLimitRecord | undefined> | RateLimitRecord | undefined;
+    set(key: string, value: RateLimitRecord, ttlMs: number): Promise<void> | void;
+    delete(key: string): Promise<void> | void;
 }
 
 function defaultKeyGenerator(ctx: Context): string | undefined {
@@ -47,18 +60,30 @@ function defaultKeyGenerator(ctx: Context): string | undefined {
  */
 export function rateLimit(options?: RateLimitOptions): Middleware<any> {
     const memoryStore = new Map<string, RateLimitRecord>();
+    const store: RateLimitStore =
+        options?.store ?? {
+            get: key => memoryStore.get(key),
+            set: (key, value) => {
+                memoryStore.set(key, value);
+            },
+            delete: key => {
+                memoryStore.delete(key);
+            },
+        };
 
     // Periodic cleanup every 60s to prevent memory leaks from expired records.
-    const cleaner = setInterval(() => {
-        const now = Date.now();
-        for (const [key, record] of memoryStore.entries()) {
-            if (now > record.resetTime) {
-                memoryStore.delete(key);
+    if (!options?.store) {
+        const cleaner = setInterval(() => {
+            const now = Date.now();
+            for (const [key, record] of memoryStore.entries()) {
+                if (now > record.resetTime) {
+                    memoryStore.delete(key);
+                }
             }
-        }
-    }, 60000);
-    // unref() allows the Node.js process to exit without waiting for the interval.
-    cleaner.unref();
+        }, 60000);
+        // unref() allows the Node.js process to exit without waiting for the interval.
+        cleaner.unref();
+    }
 
     return async (ctx: Context, next: () => Promise<void>) => {
         // 1. Build a stable key from the best identity available on the update.
@@ -87,7 +112,7 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
         const limitCount = options?.limit ?? defaultLimit;
 
         const now = Date.now();
-        let record = memoryStore.get(key);
+        let record = await store.get(key);
 
         // 3. Initialize or reset the record if the window has expired.
         if (!record || now > record.resetTime) {
@@ -95,12 +120,16 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
                 count: 1,
                 resetTime: now + windowMsDuration,
             };
-            memoryStore.set(key, record);
+            await store.set(key, record, windowMsDuration);
             return next();
         }
 
         // 4. Increment and evaluate against the limit.
-        record.count++;
+        record = {
+            ...record,
+            count: record.count + 1,
+        };
+        await store.set(key, record, Math.max(0, record.resetTime - now));
 
         if (record.count > limitCount) {
             if (options?.onLimitExceeded) {
