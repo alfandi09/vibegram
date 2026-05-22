@@ -3,7 +3,7 @@
 Plugin `@vibegram/codex` menambahkan `ctx.codex` ke handler VibeGram agar bot Telegram bisa berkomunikasi dengan ChatGPT melalui session token Codex.
 
 ::: warning Status Experimental
-Paket ini masih berada di `experimental/codex`. API, environment variable, dan endpoint internal ChatGPT dapat berubah sebelum rilis stabil.
+Plugin ini berada di `plugins/codex`. API, environment variable, dan endpoint internal ChatGPT dapat berubah sebelum rilis stabil.
 :::
 
 ## Rekomendasi Penggunaan
@@ -26,13 +26,13 @@ Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 
 ## Instalasi
 
-Saat package experimental ini sudah dipublish, install dari npm:
+Saat package plugin ini sudah dipublish, install dari npm:
 
 ```bash
 npm install vibegram @vibegram/codex
 ```
 
-Sampai saat itu, gunakan package experimental langsung dari repository ini:
+Sampai saat itu, gunakan package plugin langsung dari repository ini:
 
 ```bash
 git clone https://github.com/alfandi09/vibegram.git
@@ -40,7 +40,7 @@ cd vibegram
 npm install
 npm run build
 
-cd experimental/codex
+cd plugins/codex
 npm install
 npm run build
 ```
@@ -51,7 +51,7 @@ Lalu gunakan dari project bot Anda dengan local file dependency:
 {
   "dependencies": {
     "vibegram": "^2.1.0",
-    "@vibegram/codex": "file:../vibegram/experimental/codex"
+    "@vibegram/codex": "file:../vibegram/plugins/codex"
   }
 }
 ```
@@ -378,13 +378,13 @@ export CODEX_MODEL="gpt-5.3-codex"
 Contoh live smoke test memang khusus local dan berada di:
 
 ```text
-experimental/codex/examples/live-telegram-bot.ts
+plugins/codex/examples/live-telegram-bot.ts
 ```
 
-Jalankan dari package experimental:
+Jalankan dari package plugin:
 
 ```bash
-cd experimental/codex
+cd plugins/codex
 npm run build
 npm run test:live
 ```

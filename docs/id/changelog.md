@@ -10,7 +10,7 @@ Dirilis pada 2026-04-29.
 
 ### Sorotan
 
-- Menambahkan package experimental `@vibegram/codex` untuk menghubungkan bot VibeGram ke session ChatGPT/Codex.
+- Menambahkan plugin package `@vibegram/codex` untuk menghubungkan bot VibeGram ke session ChatGPT/Codex.
 - Menambahkan helper `ctx.codex` untuk prompt, status provider, daftar model, reset percakapan, tracking penggunaan, dan personality per-user.
 - Menambahkan command bawaan `/codex` untuk help, status, models, prompt eksplisit, reset, dan manajemen personality.
 - Menambahkan dokumentasi Codex bahasa Inggris dan Indonesia dengan setup secret server-first, penanganan `auth.json`, langkah smoke test lokal, opsi provider, troubleshooting, dan panduan keamanan.

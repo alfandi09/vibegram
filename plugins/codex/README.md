@@ -249,7 +249,7 @@ This does not persist refreshed tokens back to the original secret source. For l
 ## File Structure
 
 ```text
-experimental/codex/
+plugins/codex/
   src/
     index.ts
     types.ts
