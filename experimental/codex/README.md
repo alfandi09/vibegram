@@ -26,6 +26,7 @@ Runtime environment:
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 TELEGRAM_BOT_USERNAME=my_bot
 ```
@@ -46,6 +47,7 @@ For VPS deployments, keep the auth file outside the app directory and load confi
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 TELEGRAM_BOT_USERNAME=my_bot
 ```
@@ -96,6 +98,8 @@ bot.use(codex({
     accountId: process.env.CODEX_ACCOUNT_ID,
     deviceId: process.env.CODEX_DEVICE_ID,
   }),
+  authJsonPath,
+  authAdminUserIds: parseNumberList(process.env.CODEX_AUTH_ADMIN_USER_IDS),
   systemPrompt: process.env.CODEX_SYSTEM_PROMPT ?? 'You are a concise Telegram assistant.',
   allowedUserIds: parseNumberList(process.env.CODEX_ALLOWED_USER_IDS),
   allowedChatIds: parseNumberList(process.env.CODEX_ALLOWED_CHAT_IDS),
@@ -141,6 +145,9 @@ The plugin registers `/codex` commands:
 | Command | Description |
 | --- | --- |
 | `/codex help` | Show available commands |
+| `/codex login` | Start OAuth Device Code login from Telegram |
+| `/codex auth export` | Download saved `auth.json` in an admin private chat |
+| `/codex logout` | Remove saved auth tokens |
 | `/codex status` | Check provider, model, token expiry, usage, and personality |
 | `/codex reset` | Clear conversation history |
 | `/codex models` | List available models |
@@ -148,6 +155,28 @@ The plugin registers `/codex` commands:
 | `/codex personality <text>` | Set per-user custom instructions |
 | `/codex personality` | View current personality |
 | `/codex personality reset` | Reset personality |
+
+Auth management commands are sensitive. Configure `authAdminUserIds`; otherwise the effective auth admin list defaults to `allowedUserIds`. If both lists are empty, `/codex login`, `/codex logout`, and `/codex auth export` are disabled.
+
+`/codex auth export` only works in a private chat with the bot and sends the file with Telegram `protect_content` enabled. The file still contains live tokens, so download it only on trusted devices and delete the Telegram message after use.
+
+## Plugin Options
+
+```ts
+codex({
+  provider,          // Required. Provider returned by codexProvider().
+  authJsonPath,      // Path used by built-in auth commands.
+  authAdminUserIds,  // User IDs allowed to manage auth.
+  allowedUserIds,    // User IDs allowed to ask Codex.
+  allowedChatIds,    // Chat IDs where Codex can respond.
+  commandPrefix,     // Default: codex
+  autoReply,         // Default: true
+  groupMentionOnly,  // Default: true
+  botUsername,       // Required for precise group mentions.
+  memoryStore,       // Defaults to in-memory store.
+  onAudit,           // Metadata-only audit callback.
+});
+```
 
 ## Provider Options
 
