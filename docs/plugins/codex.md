@@ -75,6 +75,7 @@ Example environment:
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 CODEX_ALLOWED_CHAT_IDS=123456,-1001234567890
 TELEGRAM_BOT_USERNAME=my_bot
@@ -119,6 +120,30 @@ Then copy it to your server secret path by your normal deployment method. Exampl
 
 Keep this command admin-only. The flow writes ChatGPT/Codex tokens to disk, so never expose it to normal bot users or group members.
 
+The built-in plugin commands cover the normal admin flow:
+
+```text
+/codex login
+/codex auth export
+/codex logout
+```
+
+Configure `authJsonPath` and `authAdminUserIds` when installing the plugin:
+
+```typescript
+bot.use(
+    codex({
+        provider,
+        authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
+        authAdminUserIds: parseNumberList(process.env.CODEX_AUTH_ADMIN_USER_IDS),
+    })
+);
+```
+
+`/codex auth export` only works for auth admins and only in a private chat with the bot. The exported file is sent with Telegram `protect_content` enabled, but it still contains live tokens. Download it only on trusted devices and delete the Telegram message after use.
+
+If you need a custom command outside the plugin middleware, use the helper directly:
+
 ```typescript
 import { Bot } from 'vibegram';
 import { deviceLogin } from '@vibegram/codex';
@@ -126,7 +151,7 @@ import { deviceLogin } from '@vibegram/codex';
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 const adminUserIds = new Set(
-    (process.env.CODEX_ADMIN_USER_IDS ?? '')
+    (process.env.CODEX_AUTH_ADMIN_USER_IDS ?? '')
         .split(',')
         .map(value => Number(value.trim()))
         .filter(Number.isFinite)
@@ -185,7 +210,7 @@ bot.command('codex-login', async ctx => {
 Set the admin allowlist and destination auth file before running the bot:
 
 ```bash
-CODEX_ADMIN_USER_IDS=123456
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 ```
 
@@ -217,6 +242,7 @@ sudo chmod 600 /opt/my-telegram-bot/secrets/codex-auth.json
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 TELEGRAM_BOT_USERNAME=my_bot
 ```
@@ -302,6 +328,8 @@ bot.use(
                 | 'xhigh'
                 | undefined,
         }),
+        authJsonPath,
+        authAdminUserIds: parseNumberList(process.env.CODEX_AUTH_ADMIN_USER_IDS),
         systemPrompt: process.env.CODEX_SYSTEM_PROMPT ?? 'You are a concise Telegram assistant.',
         allowedUserIds: parseNumberList(process.env.CODEX_ALLOWED_USER_IDS),
         allowedChatIds: parseNumberList(process.env.CODEX_ALLOWED_CHAT_IDS),
@@ -368,6 +396,9 @@ The plugin automatically provides commands with the default `/codex` prefix.
 | Command | Purpose |
 | --- | --- |
 | `/codex help` | Show help |
+| `/codex login` | Start OAuth Device Code login |
+| `/codex auth export` | Download saved `auth.json` in an admin private chat |
+| `/codex logout` | Remove saved auth tokens |
 | `/codex status` | Check provider, model, token expiry, usage stats, and personality |
 | `/codex models` | List provider models |
 | `/codex reset` | Clear the current user/chat conversation history |
@@ -496,6 +527,8 @@ This is useful for secret managers or test environments, but it does not persist
 | Option | Default | Description |
 | --- | --- | --- |
 | `provider` | required | Codex provider returned by `codexProvider()` |
+| `authJsonPath` | `~/.codex/auth.json` | Path used by built-in `/codex login`, `/codex logout`, and `/codex auth export` |
+| `authAdminUserIds` | `allowedUserIds` when omitted | Telegram user IDs allowed to manage Codex auth. If the effective list is empty, auth management commands are disabled |
 | `systemPrompt` | `You are a helpful assistant.` | System instruction for every conversation |
 | `maxPromptLength` | `4000` | Maximum user prompt length |
 | `maxResponseLength` | `4096` | Maximum reply length before truncation |

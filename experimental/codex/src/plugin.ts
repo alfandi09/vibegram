@@ -5,6 +5,7 @@
  *   /codex help | status | reset | models | ask <text> | personality <text>
  *   /codex login  — OAuth Device Code login (get token via Telegram)
  *   /codex logout — Clear saved auth tokens
+ *   /codex auth export — Download saved auth.json in a private admin chat
  */
 
 import { Context } from 'vibegram';
@@ -130,17 +131,43 @@ export function codex<C extends Context = Context>(
         groupMentionOnly = true,
         botUsername,
         onAudit,
+        authAdminUserIds,
+        authJsonPath,
     } = options;
 
     const memoryStore = options.memoryStore ?? new MemoryCodexStore(maxHistory);
+    const authManagers = authAdminUserIds ?? allowedUserIds;
 
     // Track active login flows to prevent duplicates
     const activeLogins = new Set<number>();
 
     // Helper: get auth.json path
     function getAuthJsonPath(): string {
+        if (authJsonPath) return authJsonPath;
+
         const home = process.env.USERPROFILE ?? process.env.HOME ?? '~';
         return path.join(home, '.codex', 'auth.json');
+    }
+
+    function isAuthAdmin(ctx: C): boolean {
+        const userId = ctx.from?.id;
+        if (userId === undefined) return false;
+        if (authManagers.length === 0) return false;
+        return authManagers.includes(userId);
+    }
+
+    async function ensureAuthAdmin(ctx: C): Promise<boolean> {
+        if (isAuthAdmin(ctx)) return true;
+
+        await ctx.reply(
+            '⚠️ You are not authorized to manage Codex auth. Configure authAdminUserIds for this bot.'
+        );
+        return false;
+    }
+
+    function isPrivateChat(ctx: C): boolean {
+        if (ctx.chat?.type) return ctx.chat.type === 'private';
+        return ctx.chat?.id !== undefined && ctx.chat.id > 0;
     }
 
     // Session-wide usage tracker
@@ -338,7 +365,8 @@ export function codex<C extends Context = Context>(
                     `🤖 *Codex Bot Commands*\n\n` +
                     `*Authentication:*\n` +
                     `\`/${commandPrefix} login\` — Login via browser (Device Code Flow)\n` +
-                    `\`/${commandPrefix} logout\` — Clear saved auth tokens\n\n` +
+                    `\`/${commandPrefix} logout\` — Clear saved auth tokens\n` +
+                    `\`/${commandPrefix} auth export\` — Download saved auth.json\n\n` +
                     `*Chat:*\n` +
                     `\`/${commandPrefix} ask <text>\` — Ask explicitly\n` +
                     `\`/${commandPrefix} reset\` — Clear conversation memory\n` +
@@ -466,7 +494,47 @@ export function codex<C extends Context = Context>(
                 return true;
             }
 
+            case 'auth': {
+                const action = args[0]?.toLowerCase();
+                if (action !== 'export') {
+                    await ctx.reply(`Usage: /${commandPrefix} auth export`);
+                    return true;
+                }
+
+                if (!(await ensureAuthAdmin(ctx))) return true;
+
+                if (!isPrivateChat(ctx)) {
+                    await ctx.reply(
+                        '⚠️ For safety, auth.json can only be exported in a private chat with the bot.'
+                    );
+                    return true;
+                }
+
+                const authPath = getAuthJsonPath();
+                try {
+                    if (!fs.existsSync(authPath) || !fs.statSync(authPath).isFile()) {
+                        await ctx.reply(
+                            `ℹ️ No auth.json found at ${authPath}. Use /${commandPrefix} login first.`
+                        );
+                        return true;
+                    }
+
+                    await ctx.sendChatAction('upload_document').catch(() => {});
+                    await ctx.replyWithDocument(fs.createReadStream(authPath), {
+                        caption:
+                            'Codex auth.json export. Store this file securely and delete this Telegram message after downloading.',
+                        protect_content: true,
+                    });
+                } catch (err) {
+                    await ctx.reply(`⚠️ Failed to export auth.json: ${(err as Error).message}`);
+                }
+
+                return true;
+            }
+
             case 'login': {
+                if (!(await ensureAuthAdmin(ctx))) return true;
+
                 const userId = ctx.from?.id;
                 if (!userId) {
                     await ctx.reply('⚠️ Could not determine your user ID.');
@@ -566,6 +634,8 @@ export function codex<C extends Context = Context>(
             }
 
             case 'logout': {
+                if (!(await ensureAuthAdmin(ctx))) return true;
+
                 const authPath = getAuthJsonPath();
                 try {
                     if (fs.existsSync(authPath)) {

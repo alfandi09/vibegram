@@ -75,6 +75,7 @@ Contoh environment:
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 CODEX_ALLOWED_CHAT_IDS=123456,-1001234567890
 TELEGRAM_BOT_USERNAME=my_bot
@@ -119,6 +120,30 @@ Setelah itu salin file ke secret path server dengan metode deployment Anda. Cont
 
 Command ini harus admin-only. Flow ini menulis token ChatGPT/Codex ke disk, jadi jangan pernah buka command ini untuk user bot biasa atau member group.
 
+Command bawaan plugin sudah mencakup flow admin normal:
+
+```text
+/codex login
+/codex auth export
+/codex logout
+```
+
+Konfigurasikan `authJsonPath` dan `authAdminUserIds` saat memasang plugin:
+
+```typescript
+bot.use(
+    codex({
+        provider,
+        authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
+        authAdminUserIds: parseNumberList(process.env.CODEX_AUTH_ADMIN_USER_IDS),
+    })
+);
+```
+
+`/codex auth export` hanya bisa dipakai oleh auth admin dan hanya di private chat dengan bot. File dikirim dengan Telegram `protect_content`, tapi tetap berisi token aktif. Download hanya di perangkat terpercaya dan hapus pesan Telegram setelah digunakan.
+
+Jika Anda perlu command custom di luar middleware plugin, gunakan helper secara langsung:
+
 ```typescript
 import { Bot } from 'vibegram';
 import { deviceLogin } from '@vibegram/codex';
@@ -126,7 +151,7 @@ import { deviceLogin } from '@vibegram/codex';
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 const adminUserIds = new Set(
-    (process.env.CODEX_ADMIN_USER_IDS ?? '')
+    (process.env.CODEX_AUTH_ADMIN_USER_IDS ?? '')
         .split(',')
         .map(value => Number(value.trim()))
         .filter(Number.isFinite)
@@ -185,7 +210,7 @@ bot.command('codex-login', async ctx => {
 Set allowlist admin dan tujuan file auth sebelum menjalankan bot:
 
 ```bash
-CODEX_ADMIN_USER_IDS=123456
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 ```
 
@@ -217,6 +242,7 @@ sudo chmod 600 /opt/my-telegram-bot/secrets/codex-auth.json
 TELEGRAM_BOT_TOKEN=123456:replace-me
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 CODEX_MODEL=gpt-5.3-codex
+CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_ALLOWED_USER_IDS=123456,789012
 TELEGRAM_BOT_USERNAME=my_bot
 ```
@@ -302,6 +328,8 @@ bot.use(
                 | 'xhigh'
                 | undefined,
         }),
+        authJsonPath,
+        authAdminUserIds: parseNumberList(process.env.CODEX_AUTH_ADMIN_USER_IDS),
         systemPrompt: process.env.CODEX_SYSTEM_PROMPT ?? 'Kamu adalah asisten Telegram yang ringkas.',
         allowedUserIds: parseNumberList(process.env.CODEX_ALLOWED_USER_IDS),
         allowedChatIds: parseNumberList(process.env.CODEX_ALLOWED_CHAT_IDS),
@@ -368,6 +396,9 @@ Plugin otomatis menyediakan command dengan prefix default `/codex`.
 | Command | Fungsi |
 | --- | --- |
 | `/codex help` | Menampilkan bantuan |
+| `/codex login` | Memulai login OAuth Device Code |
+| `/codex auth export` | Download `auth.json` tersimpan di private chat admin |
+| `/codex logout` | Menghapus token auth tersimpan |
 | `/codex status` | Mengecek provider, model, expiry token, usage, dan personality |
 | `/codex models` | Menampilkan daftar model provider |
 | `/codex reset` | Menghapus riwayat percakapan user/chat |
@@ -496,6 +527,8 @@ Ini berguna untuk secret manager atau test environment, tapi token hasil refresh
 | Opsi | Default | Deskripsi |
 | --- | --- | --- |
 | `provider` | wajib | Provider Codex dari `codexProvider()` |
+| `authJsonPath` | `~/.codex/auth.json` | Path yang dipakai `/codex login`, `/codex logout`, dan `/codex auth export` bawaan |
+| `authAdminUserIds` | `allowedUserIds` jika tidak diisi | ID user Telegram yang boleh mengelola auth Codex. Jika daftar efektif kosong, command auth management dimatikan |
 | `systemPrompt` | `You are a helpful assistant.` | Instruksi sistem untuk setiap percakapan |
 | `maxPromptLength` | `4000` | Panjang maksimal prompt user |
 | `maxResponseLength` | `4096` | Panjang maksimal balasan sebelum dipotong |
