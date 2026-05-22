@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { codex } from '../src/plugin.js';
 import { MemoryCodexStore } from '../src/memory.js';
 import type { CodexProvider } from '../src/types.js';
@@ -12,6 +15,7 @@ type FakeCtx = {
         entities?: Array<{ type: string; offset: number; length: number }>;
     };
     reply: ReturnType<typeof vi.fn>;
+    replyWithDocument: ReturnType<typeof vi.fn>;
     sendChatAction: ReturnType<typeof vi.fn>;
     codex?: {
         ask: (text: string) => Promise<{ text: string }>;
@@ -25,12 +29,31 @@ type FakeCtx = {
     };
 };
 
+async function consumeDocumentInput(input: unknown): Promise<void> {
+    if (
+        typeof input === 'object' &&
+        input !== null &&
+        typeof (input as NodeJS.ReadableStream).pipe === 'function'
+    ) {
+        await new Promise<void>((resolve, reject) => {
+            const stream = input as NodeJS.ReadableStream;
+            stream.on('end', resolve);
+            stream.on('error', reject);
+            stream.resume();
+        });
+    }
+}
+
 function createCtx(text = 'hello', overrides: Partial<FakeCtx> = {}): FakeCtx {
     return {
         chat: { id: 99, type: 'private' },
         from: { id: 42 },
         message: { text },
         reply: vi.fn(async () => ({ message_id: 1 })),
+        replyWithDocument: vi.fn(async document => {
+            await consumeDocumentInput(document);
+            return { message_id: 2 };
+        }),
         sendChatAction: vi.fn(async () => true),
         ...overrides,
     };
@@ -199,5 +222,77 @@ describe('@vibegram/codex plugin', () => {
             expect.stringContaining('Codex Status'),
             { parse_mode: 'Markdown' }
         );
+    });
+
+    it('should export auth.json only for auth admins in private chats', async () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vibegram-codex-'));
+        const authJsonPath = path.join(tmpDir, 'auth.json');
+        fs.writeFileSync(authJsonPath, JSON.stringify({
+            auth_mode: 'chatgpt',
+            tokens: { access_token: 'secret-access-token' },
+        }));
+
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex auth export');
+
+        try {
+            await runMiddleware(ctx, provider, {
+                authAdminUserIds: [42],
+                authJsonPath,
+            });
+
+            expect(provider.ask).not.toHaveBeenCalled();
+            expect(ctx.replyWithDocument).toHaveBeenCalledOnce();
+
+            const [document, extra] = ctx.replyWithDocument.mock.calls[0];
+            expect(document).toHaveProperty('path', authJsonPath);
+            expect(extra).toMatchObject({
+                caption: expect.stringContaining('auth.json'),
+                protect_content: true,
+            });
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it('should reject auth export for non-admin users', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex auth export', { from: { id: 7 } });
+
+        await runMiddleware(ctx, provider, {
+            authAdminUserIds: [42],
+            authJsonPath: 'unused-auth.json',
+        });
+
+        expect(ctx.replyWithDocument).not.toHaveBeenCalled();
+        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('authorized'));
+    });
+
+    it('should reject auth export outside private chats', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex auth export', {
+            chat: { id: -100, type: 'supergroup' },
+        });
+
+        await runMiddleware(ctx, provider, {
+            authAdminUserIds: [42],
+            authJsonPath: 'unused-auth.json',
+        });
+
+        expect(ctx.replyWithDocument).not.toHaveBeenCalled();
+        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('private chat'));
+    });
+
+    it('should report when auth export has no auth.json file', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex auth export');
+
+        await runMiddleware(ctx, provider, {
+            authAdminUserIds: [42],
+            authJsonPath: path.join(os.tmpdir(), 'missing-codex-auth.json'),
+        });
+
+        expect(ctx.replyWithDocument).not.toHaveBeenCalled();
+        expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('No auth.json found'));
     });
 });
