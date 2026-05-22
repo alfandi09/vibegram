@@ -113,6 +113,91 @@ test -f "$HOME/.codex/auth.json"
 
 Setelah itu salin file ke secret path server dengan metode deployment Anda. Contohnya `scp`, Docker/Kubernetes secrets, private CI secret artifact, atau file manual di VPS.
 
+## Login Device Code dari Telegram
+
+`@vibegram/codex` juga mengekspor helper Device Authorization Grant berbasis OAuth 2.0 Device Code flow (RFC 8628). Gunakan ini jika admin Telegram terpercaya perlu membuat atau refresh `auth.json` langsung dari chat tanpa menginstall Codex CLI di mesin tersebut.
+
+Command ini harus admin-only. Flow ini menulis token ChatGPT/Codex ke disk, jadi jangan pernah buka command ini untuk user bot biasa atau member group.
+
+```typescript
+import { Bot } from 'vibegram';
+import { deviceLogin } from '@vibegram/codex';
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+
+const adminUserIds = new Set(
+    (process.env.CODEX_ADMIN_USER_IDS ?? '')
+        .split(',')
+        .map(value => Number(value.trim()))
+        .filter(Number.isFinite)
+);
+
+bot.command('codex-login', async ctx => {
+    const userId = ctx.from?.id;
+
+    if (!userId || !adminUserIds.has(userId)) {
+        await ctx.reply('Command ini hanya tersedia untuk admin bot.');
+        return;
+    }
+
+    await ctx.reply('Memulai login Codex. Ikuti link di pesan berikutnya.');
+
+    try {
+        await deviceLogin(
+            {
+                async onCode({ userCode, verificationUri, verificationUriComplete, expiresIn }) {
+                    const url = verificationUriComplete ?? verificationUri;
+
+                    await ctx.reply(
+                        [
+                            'Buka URL ini untuk authorize Codex:',
+                            url,
+                            '',
+                            `Kode: ${userCode}`,
+                            `Expired dalam: ${Math.floor(expiresIn / 60)} menit`,
+                        ].join('\n')
+                    );
+                },
+                async onPoll(attempt) {
+                    if (attempt % 4 === 0) {
+                        await ctx.reply('Masih menunggu authorization...');
+                    }
+
+                    return true;
+                },
+                async onSuccess() {
+                    await ctx.reply(
+                        'Login Codex selesai. Restart bot jika provider sudah terlanjur diinisialisasi.'
+                    );
+                },
+            },
+            {
+                authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
+                timeoutMs: 300_000,
+            }
+        );
+    } catch (error) {
+        await ctx.reply(`Login Codex gagal: ${(error as Error).message}`);
+    }
+});
+```
+
+Set allowlist admin dan tujuan file auth sebelum menjalankan bot:
+
+```bash
+CODEX_ADMIN_USER_IDS=123456
+CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
+```
+
+Helper ini menangani flow lengkap:
+
+1. Meminta device code ke `auth.openai.com/oauth/device/code`
+2. Mengirim verification URL dan user code melalui callback Anda
+3. Polling `auth.openai.com/oauth/token` dengan `urn:ietf:params:oauth:grant-type:device_code`
+4. Menyimpan token sebagai `auth.json` yang kompatibel dengan Codex
+
+Untuk deployment webhook, jalankan ini hanya dari flow admin terpercaya yang bisa hidup beberapa menit. Jika host Anda punya request timeout pendek, pindahkan proses login ke background job dan langsung acknowledge update Telegram.
+
 ## Resep Deployment
 
 Contoh berikut mengasumsikan bot Anda sudah dibuild menjadi aplikasi Node.js yang siap deploy.

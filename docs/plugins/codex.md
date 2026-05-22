@@ -113,6 +113,91 @@ test -f "$HOME/.codex/auth.json"
 
 Then copy it to your server secret path by your normal deployment method. Examples include `scp`, Docker/Kubernetes secrets, a private CI secret artifact, or a manually provisioned file on a VPS.
 
+## Device Code Login From Telegram
+
+`@vibegram/codex` also exports a Device Authorization Grant helper based on OAuth 2.0 Device Code flow (RFC 8628). Use it when you want a trusted Telegram admin to create or refresh `auth.json` from chat without installing the Codex CLI on that machine.
+
+Keep this command admin-only. The flow writes ChatGPT/Codex tokens to disk, so never expose it to normal bot users or group members.
+
+```typescript
+import { Bot } from 'vibegram';
+import { deviceLogin } from '@vibegram/codex';
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+
+const adminUserIds = new Set(
+    (process.env.CODEX_ADMIN_USER_IDS ?? '')
+        .split(',')
+        .map(value => Number(value.trim()))
+        .filter(Number.isFinite)
+);
+
+bot.command('codex-login', async ctx => {
+    const userId = ctx.from?.id;
+
+    if (!userId || !adminUserIds.has(userId)) {
+        await ctx.reply('This command is only available to bot admins.');
+        return;
+    }
+
+    await ctx.reply('Starting Codex login. Follow the link in the next message.');
+
+    try {
+        await deviceLogin(
+            {
+                async onCode({ userCode, verificationUri, verificationUriComplete, expiresIn }) {
+                    const url = verificationUriComplete ?? verificationUri;
+
+                    await ctx.reply(
+                        [
+                            'Open this URL to authorize Codex:',
+                            url,
+                            '',
+                            `Code: ${userCode}`,
+                            `Expires in: ${Math.floor(expiresIn / 60)} minutes`,
+                        ].join('\n')
+                    );
+                },
+                async onPoll(attempt) {
+                    if (attempt % 4 === 0) {
+                        await ctx.reply('Still waiting for authorization...');
+                    }
+
+                    return true;
+                },
+                async onSuccess() {
+                    await ctx.reply(
+                        'Codex login complete. Restart the bot if the provider was already initialized.'
+                    );
+                },
+            },
+            {
+                authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
+                timeoutMs: 300_000,
+            }
+        );
+    } catch (error) {
+        await ctx.reply(`Codex login failed: ${(error as Error).message}`);
+    }
+});
+```
+
+Set the admin allowlist and destination auth file before running the bot:
+
+```bash
+CODEX_ADMIN_USER_IDS=123456
+CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
+```
+
+The helper handles the full flow:
+
+1. Requests a device code from `auth.openai.com/oauth/device/code`
+2. Sends the verification URL and user code through your callback
+3. Polls `auth.openai.com/oauth/token` with `urn:ietf:params:oauth:grant-type:device_code`
+4. Saves the returned tokens as a Codex-compatible `auth.json`
+
+For webhook deployments, run this only from a trusted admin flow that can stay alive for several minutes. If your host enforces short request timeouts, move the login work into a background job and immediately acknowledge the Telegram update.
+
 ## Deployment Recipes
 
 These examples assume your bot has already been built into a deployable Node.js app.
