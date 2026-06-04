@@ -6,7 +6,7 @@ export default async () => {
     return {
         title: 'VibeGram',
         description:
-            'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API v9.6 support',
+            'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API v10.0 support',
         base: '/vibegram/',
 
         vite: {
@@ -22,8 +22,17 @@ export default async () => {
         },
 
         head: [
+            ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+            ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+            [
+                'link',
+                {
+                    rel: 'stylesheet',
+                    href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap',
+                },
+            ],
             ['link', { rel: 'icon', href: '/vibegram/logo.svg', type: 'image/svg+xml' }],
-            ['meta', { name: 'theme-color', content: '#0D1422' }],
+            ['meta', { name: 'theme-color', content: '#0C0D12' }],
             ['meta', { property: 'og:type', content: 'website' }],
             ['meta', { property: 'og:title', content: 'VibeGram — Telegram Bot Framework' }],
             [
@@ -31,7 +40,28 @@ export default async () => {
                 {
                     property: 'og:description',
                     content:
-                        'Modern, production-ready Telegram Bot Framework for Node.js with broad Bot API v9.6 support.',
+                        'Modern, production-ready Telegram Bot Framework for Node.js with broad Bot API v10.0 support.',
+                },
+            ],
+            [
+                'meta',
+                {
+                    property: 'og:image',
+                    content: 'https://alfandi09.github.io/vibegram/og-image.png',
+                },
+            ],
+            [
+                'meta',
+                {
+                    name: 'twitter:card',
+                    content: 'summary_large_image',
+                },
+            ],
+            [
+                'meta',
+                {
+                    name: 'twitter:image',
+                    content: 'https://alfandi09.github.io/vibegram/og-image.png',
                 },
             ],
         ],
@@ -75,7 +105,7 @@ export default async () => {
                         },
                         {
                             text: '⚙️ Konsep Inti',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Pipeline Middleware', link: '/id/core/middleware' },
                                 { text: 'Routing & Listeners', link: '/id/core/handling' },
@@ -86,7 +116,7 @@ export default async () => {
                         },
                         {
                             text: '📨 Referensi API',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Context (ctx)', link: '/id/api/context' },
                                 { text: 'Metode Bot', link: '/id/api/bot-methods' },
@@ -96,7 +126,7 @@ export default async () => {
                         },
                         {
                             text: '🧠 Manajemen State',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Session', link: '/id/state/session' },
                                 { text: 'Scene', link: '/id/state/scenes' },
@@ -106,7 +136,7 @@ export default async () => {
                         },
                         {
                             text: '🖥️ UI & Interaksi',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Keyboard', link: '/id/ui/keyboards' },
                                 { text: 'Menu Builder', link: '/id/ui/menu' },
@@ -115,7 +145,7 @@ export default async () => {
                         },
                         {
                             text: '🛡️ Keamanan & Utilitas',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Rate Limiter', link: '/id/security/rate-limit' },
                                 { text: 'Validasi WebApp', link: '/id/security/webapp' },
@@ -126,7 +156,7 @@ export default async () => {
                         },
                         {
                             text: '🌐 Fitur Lanjutan',
-                            collapsed: false,
+                            collapsed: true,
                             items: [
                                 { text: 'Sistem Plugin', link: '/id/advanced/plugins' },
                                 { text: 'Queue & Broadcasting', link: '/id/advanced/queue' },
@@ -142,8 +172,8 @@ export default async () => {
                             ],
                         },
                         {
-                            text: '🔌 Adapters',
-                            collapsed: false,
+                            text: '🔌 Framework Adapters',
+                            collapsed: true,
                             items: [
                                 { text: 'Express.js', link: '/id/adapters/express' },
                                 { text: 'Fastify', link: '/id/adapters/fastify' },
@@ -152,7 +182,7 @@ export default async () => {
                             ],
                         },
                         {
-                            text: '🔌 Plugin',
+                            text: '🧩 Plugin',
                             collapsed: true,
                             items: [
                                 { text: 'Pengembangan Plugin', link: '/id/plugins/development' },
@@ -185,6 +215,9 @@ export default async () => {
                     sidebarMenuLabel: 'Menu',
                     returnToTopLabel: 'Kembali ke Atas',
                     langMenuLabel: 'Ubah Bahasa',
+                    search: {
+                        placeholder: 'Cari dokumentasi...',
+                    },
                 },
             },
         },
@@ -215,7 +248,7 @@ export default async () => {
                 },
                 {
                     text: '⚙️ Core Concepts',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Middleware Pipeline', link: '/core/middleware' },
                         { text: 'Routing & Listeners', link: '/core/handling' },
@@ -226,7 +259,7 @@ export default async () => {
                 },
                 {
                     text: '📨 API Reference',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Context (ctx)', link: '/api/context' },
                         { text: 'Bot Methods', link: '/api/bot-methods' },
@@ -236,7 +269,7 @@ export default async () => {
                 },
                 {
                     text: '🧠 State Management',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Sessions', link: '/state/session' },
                         { text: 'Scenes', link: '/state/scenes' },
@@ -246,7 +279,7 @@ export default async () => {
                 },
                 {
                     text: '🖥️ UI & Interactions',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Keyboards', link: '/ui/keyboards' },
                         { text: 'Menu Builder', link: '/ui/menu' },
@@ -255,7 +288,7 @@ export default async () => {
                 },
                 {
                     text: '🛡️ Security & Utilities',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Rate Limiter', link: '/security/rate-limit' },
                         { text: 'WebApp Validation', link: '/security/webapp' },
@@ -266,7 +299,7 @@ export default async () => {
                 },
                 {
                     text: '🌐 Advanced Features',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Plugin System', link: '/advanced/plugins' },
                         { text: 'Job Queue & Broadcasting', link: '/advanced/queue' },
@@ -280,7 +313,7 @@ export default async () => {
                 },
                 {
                     text: '🔌 Framework Adapters',
-                    collapsed: false,
+                    collapsed: true,
                     items: [
                         { text: 'Express.js', link: '/adapters/express' },
                         { text: 'Fastify', link: '/adapters/fastify' },
@@ -289,7 +322,7 @@ export default async () => {
                     ],
                 },
                 {
-                    text: '🔌 Plugins',
+                    text: '🧩 Plugins',
                     collapsed: true,
                     items: [
                         { text: 'Plugin Development', link: '/plugins/development' },

@@ -19,6 +19,7 @@ export interface User {
     can_join_groups?: boolean;
     can_read_all_group_messages?: boolean;
     supports_inline_queries?: boolean;
+    supports_guest_queries?: boolean;
     can_manage_bots?: boolean; // API 9.6 Managed Bots Flag
     can_connect_to_business?: boolean;
     has_main_web_app?: boolean;
@@ -247,6 +248,7 @@ export interface ExternalReplyInfo {
     sticker?: Sticker;
     story?: Story;
     video?: Video;
+    live_photo?: LivePhoto;
     video_note?: VideoNote;
     voice?: Voice;
     has_media_spoiler?: boolean;
@@ -340,6 +342,11 @@ export interface Animation {
     file_size?: number;
 }
 
+export interface LivePhoto {
+    photo: PhotoSize[];
+    animation: Animation;
+}
+
 export interface Sticker {
     file_id: string;
     file_unique_id: string;
@@ -418,6 +425,7 @@ export interface PollOption {
     text: string;
     text_entities?: MessageEntity[];
     voter_count: number;
+    media?: PollMedia;
     persistent_id?: string;
     added_by_user?: User;
     added_by_chat?: Chat;
@@ -428,6 +436,7 @@ export interface InputPollOption {
     text: string;
     text_parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
     text_entities?: MessageEntity[];
+    media?: InputPollOptionMedia;
 }
 
 export interface Poll {
@@ -445,6 +454,10 @@ export interface Poll {
     correct_option_ids?: number[];
     explanation?: string;
     explanation_entities?: MessageEntity[];
+    media?: PollMedia;
+    explanation_media?: PollMedia;
+    members_only?: boolean;
+    country_codes?: string[];
     open_period?: number;
     close_date?: number;
     allows_revoting?: boolean;
@@ -567,7 +580,12 @@ export interface PaidMediaVideo {
     video: Video;
 }
 
-export type PaidMedia = PaidMediaPreview | PaidMediaPhoto | PaidMediaVideo;
+export interface PaidMediaLivePhoto {
+    type: 'live_photo';
+    live_photo: LivePhoto;
+}
+
+export type PaidMedia = PaidMediaPreview | PaidMediaPhoto | PaidMediaVideo | PaidMediaLivePhoto;
 
 export interface PaidMediaInfo {
     star_count: number;
@@ -577,6 +595,16 @@ export interface PaidMediaInfo {
 export interface PaidMediaPurchased {
     from: User;
     paid_media_payload: string;
+}
+
+export interface BotAccessSettings {
+    is_access_restricted: boolean;
+    added_users?: User[];
+}
+
+export interface SentGuestMessage {
+    message_id: number;
+    date: number;
 }
 
 export interface ChosenInlineResult {
@@ -990,6 +1018,7 @@ export interface ChatPermissions {
     can_pin_messages?: boolean;
     can_manage_topics?: boolean;
     can_edit_tag?: boolean;
+    can_react_to_messages?: boolean;
 }
 
 export interface ChatInviteLink {
@@ -1102,6 +1131,7 @@ export interface ChatMember {
     can_send_polls?: boolean;
     can_send_other_messages?: boolean;
     can_add_web_page_previews?: boolean;
+    can_react_to_messages?: boolean;
     tag?: string;
 }
 
@@ -1395,6 +1425,9 @@ export interface Message {
     reply_to_checklist_task_id?: number;
     reply_to_poll_option_id?: string;
     via_bot?: User;
+    guest_bot_caller_user?: User;
+    guest_bot_caller_chat?: Chat;
+    guest_query_id?: string;
     edit_date?: number;
     has_protected_content?: boolean;
     is_from_offline?: boolean;
@@ -1416,6 +1449,7 @@ export interface Message {
     sticker?: Sticker;
     story?: Story;
     video?: Video;
+    live_photo?: LivePhoto;
     video_note?: VideoNote;
     voice?: Voice;
     caption?: string;
@@ -1529,6 +1563,7 @@ export interface Update {
     my_chat_member?: ChatMemberUpdated;
     chat_member?: ChatMemberUpdated;
     chat_join_request?: ChatJoinRequest;
+    guest_message?: Message;
     chat_boost?: ChatBoostUpdated;
     removed_chat_boost?: ChatBoostRemoved;
 
@@ -1789,12 +1824,69 @@ export interface InputMediaAudio extends InputMediaBase {
     title?: string;
 }
 
+export interface InputMediaLivePhoto extends InputMediaBase {
+    type: 'live_photo';
+    photo: InputFile;
+}
+
+export interface InputMediaSticker {
+    type: 'sticker';
+    media: InputFile;
+}
+
+export interface InputMediaLocation {
+    type: 'location';
+    latitude: number;
+    longitude: number;
+    horizontal_accuracy?: number;
+    live_period?: number;
+    heading?: number;
+    proximity_alert_radius?: number;
+}
+
+export interface InputMediaVenue {
+    type: 'venue';
+    latitude: number;
+    longitude: number;
+    title: string;
+    address: string;
+    foursquare_id?: string;
+    foursquare_type?: string;
+    google_place_id?: string;
+    google_place_type?: string;
+}
+
+export type PollMedia =
+    | InputMediaPhoto
+    | InputMediaAnimation
+    | InputMediaSticker
+    | InputMediaLocation
+    | InputMediaVenue;
+
+export type InputPollMedia = PollMedia;
+
+export interface InputPollOptionMedia {
+    type: PollMedia['type'];
+    media?: InputFile;
+    latitude?: number;
+    longitude?: number;
+    title?: string;
+    address?: string;
+}
+
 export type InputMedia =
     | InputMediaPhoto
     | InputMediaVideo
     | InputMediaAnimation
     | InputMediaDocument
-    | InputMediaAudio;
+    | InputMediaAudio
+    | InputMediaLivePhoto;
+
+export interface InputPaidMediaLivePhoto {
+    type: 'live_photo';
+    media: InputFile;
+    photo: InputFile;
+}
 
 export interface ExtraVideoNote {
     business_connection_id?: string;
@@ -1908,6 +2000,27 @@ export interface ExtraMedia {
     reply_markup?: ReplyMarkup;
 }
 
+export interface GetChatAdministratorsOptions {
+    return_bots?: boolean;
+}
+
+export interface DeleteMessageReactionOptions {
+    user_id?: number;
+    actor_chat_id?: number;
+}
+
+export interface DeleteAllMessageReactionsOptions {
+    user_id?: number;
+    actor_chat_id?: number;
+}
+
+export interface SetManagedBotAccessSettingsOptions {
+    is_access_restricted: boolean;
+    added_user_ids?: number[];
+}
+
+export type SendLivePhotoOptions = ExtraMedia;
+
 export interface ExtraEditMessage {
     business_connection_id?: string;
     parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
@@ -1931,9 +2044,13 @@ export interface ExtraPoll {
     explanation?: string;
     explanation_parse_mode?: string;
     explanation_entities?: MessageEntity[];
+    media?: InputPollMedia;
+    explanation_media?: InputPollMedia;
     description?: string;
     description_parse_mode?: string;
     description_entities?: MessageEntity[];
+    members_only?: boolean;
+    country_codes?: string[];
     shuffle_options?: boolean;
     allow_adding_options?: boolean;
     hide_results_until_closes?: boolean;

@@ -501,6 +501,83 @@ describe('Bot', () => {
         });
     });
 
+    it('exposes Bot API 10.0 guest and managed access wrappers', async () => {
+        const bot = new Bot('test-token');
+        bot.client.callApi = vi.fn().mockResolvedValue(true) as any;
+        const result = {
+            type: 'article',
+            id: 'guest-result-1',
+            title: 'Guest reply',
+            input_message_content: { message_text: 'Hello guest' },
+        };
+
+        await bot.answerGuestQuery('guest-query-1', result as any);
+        await bot.getManagedBotAccessSettings(123);
+        await bot.setManagedBotAccessSettings(123, {
+            is_access_restricted: true,
+            added_user_ids: [456, 789],
+        });
+        await bot.getUserPersonalChatMessages(123, 10);
+
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(1, 'answerGuestQuery', {
+            guest_query_id: 'guest-query-1',
+            result,
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(2, 'getManagedBotAccessSettings', {
+            user_id: 123,
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(3, 'setManagedBotAccessSettings', {
+            user_id: 123,
+            is_access_restricted: true,
+            added_user_ids: [456, 789],
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(4, 'getUserPersonalChatMessages', {
+            user_id: 123,
+            limit: 10,
+        });
+    });
+
+    it('exposes Bot API 10.0 chat reaction cleanup wrappers', async () => {
+        const bot = new Bot('test-token');
+        bot.client.callApi = vi.fn().mockResolvedValue(true) as any;
+
+        await bot.getChatAdministrators(100, { return_bots: true });
+        await bot.deleteMessageReaction(100, 5, { user_id: 42 });
+        await bot.deleteAllMessageReactions(100, { actor_chat_id: -1000 });
+
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(1, 'getChatAdministrators', {
+            chat_id: 100,
+            return_bots: true,
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(2, 'deleteMessageReaction', {
+            chat_id: 100,
+            message_id: 5,
+            user_id: 42,
+        });
+        expect(bot.client.callApi).toHaveBeenNthCalledWith(3, 'deleteAllMessageReactions', {
+            chat_id: 100,
+            actor_chat_id: -1000,
+        });
+    });
+
+    it('exposes Bot API 10.0 live photo wrapper', async () => {
+        const bot = new Bot('test-token');
+        bot.client.callApi = vi.fn().mockResolvedValue(true) as any;
+
+        await bot.sendLivePhoto(100, 'live-file-id', 'photo-file-id', {
+            caption: 'Live moment',
+            has_spoiler: true,
+        });
+
+        expect(bot.client.callApi).toHaveBeenCalledWith('sendLivePhoto', {
+            chat_id: 100,
+            live_photo: 'live-file-id',
+            photo: 'photo-file-id',
+            caption: 'Live moment',
+            has_spoiler: true,
+        });
+    });
+
     it('exposes gift and story wrappers with official payload keys', async () => {
         const bot = new Bot('test-token');
         bot.client.callApi = vi.fn().mockResolvedValue(true) as any;

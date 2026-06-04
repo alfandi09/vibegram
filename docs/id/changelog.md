@@ -4,6 +4,19 @@ Catatan rilis VibeGram. Halaman ini menyorot perubahan yang paling berguna untuk
 
 Untuk log rilis lengkap, lihat repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.3.0
+
+Dirilis pada 2026-06-05.
+
+### Added
+
+- Menambahkan cakupan type Bot API 10.0 untuk guest message, live photo, poll media, permission reaction chat, dan pengaturan akses managed bot.
+- Menambahkan wrapper Bot API 10.0 untuk guest reply, live photo, cleanup reaction, pengaturan akses managed bot, dan lookup personal chat message.
+
+### Security
+
+- Menghapus eksposur dependency runtime `axios`, `form-data`, dan `follow-redirects` dengan memakai transport HTTP native dan serializer multipart internal VibeGram.
+
 ## 2.2.1
 
 Dirilis pada 2026-05-22.
@@ -11,7 +24,7 @@ Dirilis pada 2026-05-22.
 ### Sorotan
 
 - Membundel plugin Telegram Codex ke package utama `vibegram`.
-- Menambahkan subpath publik `vibegram/codex` untuk `codex()`, `codexProvider()`, helper login Device Code, type memory store, dan helper provider.
+- Menambahkan subpath publik `vibegram/codex` untuk `codex()`, `codexProvider()`, helper manual auth JSON, type memory store, dan helper provider.
 - Publish tetap lewat alur rilis normal `vibegram`, bukan package terpisah `@vibegram/codex`.
 
 ### Penggunaan

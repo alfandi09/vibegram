@@ -1,7 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VibeGram">
-    <rect width="64" height="64" rx="18" fill="#60a5fa" />
-    <path
-        fill="#fff"
-        d="M18 20.5 47 10 37.6 50 29.8 35.7 18 20.5Zm8.7 2.1 4.6 5.9 9.7-10.1-14.3 4.2Zm6.5 9.2 3.2 5.9 3.9-16.3-7.1 10.4Z"
-    />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VibeGram Logo">
+  <defs>
+    <!-- Dark slate gradient for background -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="100%" stop-color="#1A2333" />
+    </linearGradient>
+
+    <!-- Top/Main Wing: White highlight to soft blue -->
+    <linearGradient id="mainWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#93C5FD" />
+    </linearGradient>
+
+    <!-- Bottom/Side Wing: Electric blue gradient -->
+    <linearGradient id="sideWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+
+    <!-- Shadow fold under the plane -->
+    <linearGradient id="shadowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+
+    <!-- Radial glow in the center -->
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#60A5FA" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Star Glow Gradient -->
+    <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="1" />
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="64" height="64" rx="14" fill="url(#bgGrad)"/>
+
+  <!-- Subtle border outline -->
+  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" stroke="#60A5FA" stroke-opacity="0.15" stroke-width="1" fill="none"/>
+
+  <!-- Soft radial glow behind the plane -->
+  <circle cx="32" cy="32" r="24" fill="url(#glow)"/>
+
+  <!-- Concentric vibe waves (Centered circles) -->
+  <circle cx="32" cy="32" r="14" stroke="#60A5FA" stroke-width="1.2" stroke-opacity="0.12" fill="none"/>
+  <circle cx="32" cy="32" r="22" stroke="#60A5FA" stroke-width="1" stroke-opacity="0.08" fill="none"/>
+  <circle cx="32" cy="32" r="30" stroke="#60A5FA" stroke-width="0.8" stroke-opacity="0.04" fill="none"/>
+
+  <!-- Paper Plane -->
+  <!-- Shadow Fold -->
+  <path d="M 31 37 L 27 46 L 34 40 Z" fill="url(#shadowGrad)"/>
+  <!-- Bottom/Side Wing -->
+  <path d="M 50 15 L 31 37 L 42 49 Z" fill="url(#sideWingGrad)"/>
+  <!-- Top/Main Wing -->
+  <path d="M 50 15 L 15 30 L 31 37 Z" fill="url(#mainWingGrad)"/>
+
+  <!-- Guiding Vibe-Coding Sparkle Star -->
+  <!-- Subtle star glow -->
+  <circle cx="53" cy="11" r="5" fill="url(#starGlow)" opacity="0.6"/>
+  <!-- Sparkle shape -->
+  <path d="M 53 7 Q 53 11 57 11 Q 53 11 53 15 Q 53 11 49 11 Q 53 11 53 7 Z" fill="#FFFFFF"/>
 </svg>

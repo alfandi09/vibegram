@@ -1,6 +1,6 @@
 # TypeScript Types
 
-VibeGram provides 32+ TypeScript interfaces for type-safe development. All types are exported from the main package.
+VibeGram provides 32+ TypeScript interfaces for type-safe development and targets Telegram Bot API v10.0. All types are exported from the main package.
 
 ```typescript
 import { Update, Message, User, Chat, ChatFullInfo, CallbackQuery, ... } from 'vibegram';
@@ -29,6 +29,7 @@ import { Update, Message, User, Chat, ChatFullInfo, CallbackQuery, ... } from 'v
 | `Voice`     | Voice note (OGG/Opus)           |
 | `VideoNote` | Circular video message          |
 | `Animation` | GIF or H.264 animation          |
+| `LivePhoto` | Bot API 10.0 live photo payload |
 | `Sticker`   | Sticker with emoji and set info |
 | `Contact`   | Phone contact                   |
 | `Location`  | Geographic coordinates          |
@@ -39,6 +40,7 @@ import { Update, Message, User, Chat, ChatFullInfo, CallbackQuery, ... } from 'v
 | ------------ | ---------------------------------- |
 | `Poll`       | Poll with options and settings     |
 | `PollOption` | Single poll option                 |
+| `PollMedia`  | Bot API 10.0 media attached to polls |
 | `Dice`       | Animated dice with emoji and value |
 | `Venue`      | Venue with location                |
 | `Game`       | Game object                        |
@@ -80,3 +82,16 @@ Supported entity types: `mention`, `hashtag`, `cashtag`, `bot_command`, `url`, `
 | `ExtraEditMessage`  | Options for editing messages     |
 | `BotOptions`        | Bot constructor options          |
 | `UpdateType`        | Union of all update type strings |
+
+## Bot API 10.0 Types
+
+| Type | Description |
+| --- | --- |
+| `SentGuestMessage` | Result returned by `answerGuestQuery` |
+| `BotAccessSettings` | Managed bot access settings |
+| `LivePhoto` | Live photo object returned in messages |
+| `InputMediaLivePhoto` | Live photo input media payload |
+| `PollMedia` | Media payload for polls and poll explanations |
+| `DeleteMessageReactionOptions` | Options for removing one message reaction |
+| `DeleteAllMessageReactionsOptions` | Options for removing recent reactions |
+| `SendLivePhotoOptions` | Extra options for `sendLivePhoto` |

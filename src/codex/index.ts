@@ -35,17 +35,12 @@ export type {
     CodexAuthJson,
 } from './providers/chatgpt-token';
 
-// Auth — Device Code login flow
+// Auth — manual auth.json helpers
 export {
-    deviceLogin,
-    requestDeviceCode,
-    pollDeviceToken,
-    saveDeviceTokens,
-} from './auth/device-code';
+    readCodexAuthSummary,
+    saveCodexAuthJson,
+    validateCodexAuthJson,
+} from './auth/manual';
 export type {
-    DeviceCodeResponse,
-    DeviceCodeTokenResult,
-    DeviceCodePollStatus,
-    DeviceLoginCallbacks,
-    DeviceLoginOptions,
-} from './auth/device-code';
+    CodexAuthSummary,
+} from './auth/manual';

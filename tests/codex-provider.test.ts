@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
-import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { codexProvider } from '../src/codex/providers/chatgpt-token';
 
 type CapturedRequest = {
@@ -45,6 +47,7 @@ async function startSseServer(
 }
 
 afterEach(async () => {
+    vi.restoreAllMocks();
     if (!server) return;
     await new Promise<void>(resolve => server!.close(() => resolve()));
     server = undefined;
@@ -52,6 +55,7 @@ afterEach(async () => {
 
 describe('codexProvider', () => {
     it('should call the ChatGPT responses endpoint and parse SSE output', async () => {
+        const fetchSpy = vi.spyOn(globalThis, 'fetch');
         let captured: CapturedRequest | undefined;
         const baseUrl = await startSseServer(async (req, res) => {
             const rawBody = await readRequestBody(req);
@@ -120,11 +124,28 @@ describe('codexProvider', () => {
         expect(captured?.headers.accept).toBe('text/event-stream');
         expect(captured?.headers['oai-device-id']).toBe('device-test');
         expect(captured?.headers['chatgpt-account-id']).toBe('acct_from_claim');
+        expect(fetchSpy).toHaveBeenCalledWith(
+            `${baseUrl}/responses`,
+            expect.objectContaining({
+                method: 'POST',
+                body: expect.any(String),
+            })
+        );
         expect(captured?.body).toMatchObject({
             model: 'gpt-5.3-codex',
             input: [{ role: 'user', content: 'Halo' }],
             store: false,
             stream: true,
         });
+    });
+
+    it('should not depend on the retired HTTP client in the provider source', () => {
+        const source = readFileSync(
+            join(__dirname, '..', 'src', 'codex', 'providers', 'chatgpt-token.ts'),
+            'utf8'
+        );
+        const retiredClientName = ['ax', 'ios'].join('');
+
+        expect(source.toLowerCase()).not.toContain(retiredClientName);
     });
 });

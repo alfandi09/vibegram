@@ -9,6 +9,7 @@
   <FeatureCard title="Lifecycle" description="Launch polling or webhook mode and stop gracefully." href="#instance-methods" />
   <FeatureCard title="Routing" description="Register middleware, commands, listeners, actions, and global error handlers." href="#routing-methods" />
   <FeatureCard title="Business APIs" description="Call business account, gifts, stories, and direct API wrappers." href="#business-account-methods" />
+  <FeatureCard title="Bot API 10.0" description="Use guest replies, live photos, reaction cleanup, and managed bot access settings." href="#bot-api-100-methods" />
 </FeatureGrid>
 
 Methods available directly on the `Bot` instance (no Context required).
@@ -60,6 +61,21 @@ These wrappers map directly to Telegram Bot API payload names.
 | `bot.setBusinessAccountProfilePhoto(id, photo, extra?)`             | `setBusinessAccountProfilePhoto`    |
 | `bot.removeBusinessAccountProfilePhoto(id, extra?)`                 | `removeBusinessAccountProfilePhoto` |
 | `bot.setBusinessAccountGiftSettings(id, showButton, acceptedTypes)` | `setBusinessAccountGiftSettings`    |
+
+## Bot API 10.0 Methods {#bot-api-100-methods}
+
+These wrappers expose the Bot API 10.0 additions while keeping Telegram's official payload names.
+
+| Method                                           | API                           |
+| ------------------------------------------------ | ----------------------------- |
+| `bot.answerGuestQuery(guestQueryId, result)`     | `answerGuestQuery`            |
+| `bot.sendLivePhoto(chatId, livePhoto, photo)`    | `sendLivePhoto`               |
+| `bot.getChatAdministrators(chatId, extra?)`      | `getChatAdministrators`       |
+| `bot.deleteMessageReaction(chatId, messageId)`   | `deleteMessageReaction`       |
+| `bot.deleteAllMessageReactions(chatId, extra?)`  | `deleteAllMessageReactions`   |
+| `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
+| `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
+| `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
 
 ## Gifts and Stories
 

@@ -42,6 +42,9 @@ await ctx.replyWithMarkdown('**Tebal** dan _miring_');
 
 ```typescript
 await ctx.replyWithPhoto('file_id_atau_url');
+await ctx.replyWithLivePhoto('live_photo_file_id', 'photo_file_id', {
+    caption: 'Live photo Bot API 10.0',
+});
 await ctx.replyWithVideo('file_id');
 await ctx.replyWithAudio('file_id');
 await ctx.replyWithDocument('file_id');
@@ -120,6 +123,8 @@ await ctx.sendChatAction('record_video');
 // Tambahkan reaksi emoji ke pesan
 await ctx.setReaction('👍');
 await ctx.setReaction('🔥', true); // ukuran besar
+await ctx.deleteMessageReaction(messageId, { user_id: userId });
+await ctx.deleteAllMessageReactions({ actor_chat_id: channelId });
 ```
 
 ## Forum Topic
@@ -148,6 +153,7 @@ await ctx.kickChatMember = ctx.banChatMember; // alias
 await ctx.getChatMember(userId);
 await ctx.getChatMembersCount();
 await ctx.getChatAdministrators();
+await ctx.getChatAdministrators({ return_bots: true });
 await ctx.leaveChat();
 await ctx.approveChatJoinRequest(userId);
 await ctx.declineChatJoinRequest(userId);

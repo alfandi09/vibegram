@@ -1,6 +1,6 @@
 # Tipe TypeScript
 
-VibeGram menyertakan 32+ interface TypeScript yang mencakup semua objek Bot API Telegram v9.6 utama.
+VibeGram menyertakan 32+ interface TypeScript yang mencakup semua objek Bot API Telegram v10.0 utama.
 
 ## Tipe Update & Pesan
 
@@ -63,6 +63,32 @@ import type {
     File, // Objek file Telegram
 } from 'vibegram';
 ```
+
+## Tipe Bot API 10.0
+
+```typescript
+import type {
+    SentGuestMessage,
+    BotAccessSettings,
+    LivePhoto,
+    InputMediaLivePhoto,
+    PollMedia,
+    SendLivePhotoOptions,
+    DeleteMessageReactionOptions,
+    DeleteAllMessageReactionsOptions,
+} from 'vibegram';
+```
+
+| Tipe | Deskripsi |
+| ---- | --------- |
+| `SentGuestMessage` | Hasil dari `answerGuestQuery` |
+| `BotAccessSettings` | Pengaturan akses managed bot |
+| `LivePhoto` | Objek live photo di message |
+| `InputMediaLivePhoto` | Payload input media live photo |
+| `PollMedia` | Media untuk poll dan explanation poll |
+| `SendLivePhotoOptions` | Opsi tambahan untuk `sendLivePhoto` |
+| `DeleteMessageReactionOptions` | Opsi menghapus satu reaction message |
+| `DeleteAllMessageReactionsOptions` | Opsi menghapus reaction terbaru |
 
 ## Interface Pagination
 

@@ -7,7 +7,7 @@
 <p align="center">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" />
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" />
-  <img alt="Bot API" src="https://img.shields.io/badge/Bot%20API-v9.6-blue?style=for-the-badge" />
+  <img alt="Bot API" src="https://img.shields.io/badge/Bot%20API-v10.0-blue?style=for-the-badge" />
   <img alt="Lightweight" src="https://img.shields.io/badge/Footprint-Lightweight-success?style=for-the-badge" />
   <img alt="Node.js version" src="https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=for-the-badge&logo=node.js&logoColor=white" />
   <a href="https://www.npmjs.com/package/vibegram"><img alt="npm version" src="https://img.shields.io/npm/v/vibegram?style=for-the-badge" /></a>
@@ -22,7 +22,7 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 ## Key Features
 
 - **Middleware Pipeline** - Koa.js-style async middleware with onion-model routing
-- **Broad Bot API v9.6 Support** - 60+ context methods and typed support for major Telegram Bot API objects
+- **Broad Bot API v10.0 Support** - 60+ context methods and typed support for major Telegram Bot API objects
 - **Scene, Wizard, and Conversation Flows** - Multiple approaches for structured multi-step interactions
 - **Auto Pagination and Menu Utilities** - Build interactive inline UIs with less boilerplate
 - **Built-in Security** - Rate limiting, HMAC-SHA256 WebApp validation, and webhook secret tokens

@@ -23,10 +23,10 @@
  *          Provider ini hanya untuk eksperimen pribadi.
  */
 
-import axios, { AxiosError } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { createHttpTransport, HttpRequestError, type HttpTransport } from '../../http';
 import {
     CodexProvider,
     CodexAskInput,
@@ -212,22 +212,102 @@ interface RefreshResult {
     expires_in?: number;
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
+interface SseUsage {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function joinUrl(baseUrl: string, endpoint: string): string {
+    return `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+}
+
+function getHttpStatus(error: unknown): number | undefined {
+    return error instanceof HttpRequestError ? error.status : undefined;
+}
+
+function getHttpResponseData(error: unknown): unknown {
+    return error instanceof HttpRequestError ? error.responseData : undefined;
+}
+
+function getHttpResponseHeaders(error: unknown): Record<string, string> | undefined {
+    return error instanceof HttpRequestError ? error.responseHeaders : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown request failure';
+}
+
+function readErrorDetail(data: unknown, fallback: string): string {
+    if (isRecord(data)) {
+        const record = data;
+        const nestedError = record.error;
+
+        if (typeof record.error_description === 'string') return record.error_description;
+        if (typeof record.detail === 'string') return record.detail;
+        if (typeof record.message === 'string') return record.message;
+        if (typeof nestedError === 'string') return nestedError;
+
+        if (isRecord(nestedError)) {
+            const nested = nestedError;
+            if (typeof nested.message === 'string') return nested.message;
+        }
+    }
+
+    return fallback;
+}
+
+function parseUsage(value: unknown): SseUsage | undefined {
+    if (!isRecord(value)) return undefined;
+
+    return {
+        input_tokens: typeof value.input_tokens === 'number' ? value.input_tokens : undefined,
+        output_tokens: typeof value.output_tokens === 'number' ? value.output_tokens : undefined,
+        total_tokens: typeof value.total_tokens === 'number' ? value.total_tokens : undefined,
+    };
+}
+
+function extractOutputText(output: unknown): string {
+    if (!Array.isArray(output)) return '';
+
+    const chunks: string[] = [];
+    for (const item of output) {
+        if (!isRecord(item) || !Array.isArray(item.content)) continue;
+
+        for (const content of item.content) {
+            if (isRecord(content) && typeof content.text === 'string') {
+                chunks.push(content.text);
+            }
+        }
+    }
+
+    return chunks.join('\n').trim();
+}
+
+async function refreshAccessToken(
+    refreshToken: string,
+    transport: HttpTransport
+): Promise<RefreshResult> {
     try {
-        const response = await axios.post(AUTH_TOKEN_URL, {
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
-            client_id: CHATGPT_CLIENT_ID,
-        }, {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 15_000,
-        });
+        const response = await transport.postJson<RefreshResult>(
+            AUTH_TOKEN_URL,
+            {
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                client_id: CHATGPT_CLIENT_ID,
+            },
+            {
+                timeoutMs: 15_000,
+            }
+        );
         return response.data as RefreshResult;
     } catch (err) {
-        const axiosErr = err as AxiosError;
-        const status = axiosErr.response?.status;
-        const data = axiosErr.response?.data as any;
-        const detail = data?.error_description ?? data?.error ?? axiosErr.message;
+        const status = getHttpStatus(err);
+        const detail = readErrorDetail(getHttpResponseData(err), getErrorMessage(err));
         throw new Error(
             `[vibegram/codex] Token refresh failed (${status ?? 'network'}): ${detail}. ` +
             'Try running `codex login` to re-authenticate.'
@@ -260,6 +340,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
     const maxRetries = opts.maxRetries ?? 2;
     const baseUrl = opts.baseUrl ?? CHATGPT_BACKEND_BASE_URL;
     const authJsonPath = opts.authJsonPath ?? defaultAuthJsonPath();
+    const transport = createHttpTransport();
 
     // Generate a stable device ID per provider instance (mimics Codex CLI behavior)
     const deviceId = opts.deviceId ?? crypto.randomUUID();
@@ -299,27 +380,22 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
         resolvedAccountId ??
         (authClaims?.chatgpt_account_id as string | undefined);
 
-    // -------------------------------------------------------------------------
-    // Build axios instance with ChatGPT backend headers
-    // -------------------------------------------------------------------------
+    function buildHeaders(extra: Record<string, string> = {}): Record<string, string> {
+        const headers: Record<string, string> = {
+            'Authorization': `Bearer ${resolvedToken}`,
+            'Content-Type': 'application/json',
+            'oai-device-id': deviceId,
+            'oai-language': 'en',
+            'User-Agent': 'vibegram-codex/0.1.0',
+            ...extra,
+        };
 
-    const headers: Record<string, string> = {
-        'Authorization': `Bearer ${resolvedToken}`,
-        'Content-Type': 'application/json',
-        'oai-device-id': deviceId,                              // device fingerprint
-        'oai-language': 'en',                                   // language hint
-        'User-Agent': 'vibegram-codex/0.1.0',                  // identify ourselves
-    };
+        if (accountId) {
+            headers['Chatgpt-Account-Id'] = accountId;
+        }
 
-    if (accountId) {
-        headers['Chatgpt-Account-Id'] = accountId;
+        return headers;
     }
-
-    const client = axios.create({
-        baseURL: baseUrl,
-        timeout: timeoutMs,
-        headers,
-    });
 
     // -------------------------------------------------------------------------
     // Auto-refresh logic
@@ -331,7 +407,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
         isRefreshing = true;
         try {
             console.log('[vibegram/codex] Access token expired, attempting auto-refresh...');
-            const result = await refreshAccessToken(resolvedRefreshToken);
+            const result = await refreshAccessToken(resolvedRefreshToken, transport);
 
             // Update in-memory token
             resolvedToken = result.access_token;
@@ -342,9 +418,6 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
             // Update JWT claims from new token
             jwtPayload = decodeJwtPayload(resolvedToken);
             authClaims = jwtPayload['https://api.openai.com/auth'] as Record<string, unknown> | undefined;
-
-            // Update axios headers with new token
-            client.defaults.headers.common['Authorization'] = `Bearer ${resolvedToken}`;
 
             // Persist to auth.json on disk
             try {
@@ -380,8 +453,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
     // -------------------------------------------------------------------------
 
     function normalizeError(err: unknown, input: CodexAskInput): Error {
-        const axiosErr = err as AxiosError;
-        const status = axiosErr.response?.status;
+        const status = getHttpStatus(err);
 
         if (status === 401) {
             if (!isTokenExpired(resolvedToken)) {
@@ -417,7 +489,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         // Cloudflare blocks (503 with challenge)
         if (status === 503) {
-            const body = String(axiosErr.response?.data ?? '');
+            const body = String(getHttpResponseData(err) ?? '').toLowerCase();
             if (body.includes('cloudflare') || body.includes('challenge')) {
                 return new Error(
                     '[vibegram/codex] ChatGPT backend is behind Cloudflare protection. ' +
@@ -426,9 +498,8 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
             }
         }
 
-        const data = axiosErr.response?.data as any;
-        const message = data?.detail ?? data?.error?.message ?? data?.message ?? axiosErr.message;
-        const requestId = axiosErr.response?.headers?.['x-request-id'];
+        const message = readErrorDetail(getHttpResponseData(err), getErrorMessage(err));
+        const requestId = getHttpResponseHeaders(err)?.['x-request-id'];
         const suffix = requestId ? ` request=${requestId}` : '';
         return new Error(
             `[vibegram/codex] ChatGPT backend error (${status ?? 'network'}): ${message}${suffix}`
@@ -446,19 +517,20 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
         attempt = 0
     ): Promise<string> {
         try {
-            const response = await client.post(endpoint, payload, {
+            const response = await transport.request<string>({
+                method: 'POST',
+                url: joinUrl(baseUrl, endpoint),
                 signal: input.signal,
+                timeoutMs,
                 responseType: 'text',
-                headers: {
+                headers: buildHeaders({
                     'Accept': 'text/event-stream',
-                },
-                // Prevent axios from parsing JSON — we need raw SSE text
-                transformResponse: [(data: any) => data],
+                }),
+                body: JSON.stringify(payload),
             });
             return response.data as string;
         } catch (err) {
-            const axiosErr = err as AxiosError;
-            const status = axiosErr.response?.status;
+            const status = getHttpStatus(err);
 
             // Retry on network errors and 5xx (except 503 cloudflare)
             if (
@@ -545,48 +617,47 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         let resultText = '';
         let resultModel: string | undefined;
-        let usage: any;
+        let usage: SseUsage | undefined;
 
         // Collect text from SSE events
         for (const evt of events) {
             if (evt.data === '[DONE]') continue;
 
-            let parsed: any;
+            let parsed: unknown;
             try {
                 parsed = JSON.parse(evt.data);
             } catch {
                 continue; // skip non-JSON lines
             }
 
+            if (!isRecord(parsed)) continue;
+
             // response.completed — final event with full response
-            if (evt.event === 'response.completed' && parsed.response) {
+            if (evt.event === 'response.completed' && isRecord(parsed.response)) {
                 const resp = parsed.response;
-                resultModel = resp.model;
-                usage = resp.usage;
+                resultModel = typeof resp.model === 'string' ? resp.model : undefined;
+                usage = parseUsage(resp.usage);
 
                 // Extract text from output
                 if (typeof resp.output_text === 'string') {
                     resultText = resp.output_text;
-                } else if (resp.output) {
-                    const chunks: string[] = [];
-                    for (const item of resp.output) {
-                        for (const content of item.content ?? []) {
-                            if (typeof content.text === 'string') chunks.push(content.text);
-                        }
-                    }
-                    resultText = chunks.join('\n').trim();
+                } else {
+                    resultText = extractOutputText(resp.output);
                 }
                 break; // response.completed is the final event
             }
 
             // response.output_text.delta — incremental text chunks
-            if (evt.event === 'response.output_text.delta' && parsed.delta) {
+            if (evt.event === 'response.output_text.delta' && typeof parsed.delta === 'string') {
                 resultText += parsed.delta;
             }
 
             // Track model from response.created
-            if (evt.event === 'response.created' && parsed.response?.model) {
-                resultModel = parsed.response.model;
+            if (evt.event === 'response.created' && isRecord(parsed.response)) {
+                const createdModel = parsed.response.model;
+                if (typeof createdModel === 'string') {
+                    resultModel = createdModel;
+                }
             }
         }
 
@@ -596,8 +667,9 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
                 if (evt.data === '[DONE]') continue;
                 try {
                     const parsed = JSON.parse(evt.data);
-                    if (parsed.text) { resultText = parsed.text; break; }
-                    if (parsed.content) { resultText = parsed.content; break; }
+                    if (!isRecord(parsed)) continue;
+                    if (typeof parsed.text === 'string') { resultText = parsed.text; break; }
+                    if (typeof parsed.content === 'string') { resultText = parsed.content; break; }
                 } catch { /* skip */ }
             }
         }

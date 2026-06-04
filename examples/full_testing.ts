@@ -79,8 +79,9 @@ bot.command('start', async ctx => {
 <b>Formatting</b>
 <code>/html</code> | <code>/markdown</code> | <code>/markdownv2</code>
 
-<b>Modern API (v7.0 - v9.6)</b>
+<b>Modern API (v7.0 - v10.0)</b>
 <code>/draft</code> | <code>/paid_media</code> | <code>/reaction</code> | <code>/chat_action</code>
+<code>/live_photo_example</code>
 
 <b>Admin & Utilities</b>
 <code>/ban_test</code> | <code>/mute_test</code> | <code>/promote_test</code>
@@ -276,7 +277,7 @@ bot.command('markdownv2', ctx =>
 );
 
 // ==========================================
-// 9. MODERN API (v7.0 - v9.6)
+// 9. MODERN API (v7.0 - v10.0)
 // ==========================================
 bot.command('chat_action', async ctx => {
     await ctx.sendChatAction('upload_video');
@@ -295,6 +296,19 @@ bot.command('draft', async ctx => {
 bot.command('paid_media', async ctx => {
     await ctx.replyWithPaidMedia(15, [{ type: 'photo', media: 'https://picsum.photos/400/400' }], {
         caption: 'Paid media content (15 Telegram Stars)',
+    });
+});
+
+const ENABLE_PLACEHOLDER_LIVE_PHOTO_EXAMPLE = false;
+
+bot.command('live_photo_example', async ctx => {
+    if (!ENABLE_PLACEHOLDER_LIVE_PHOTO_EXAMPLE) {
+        await ctx.reply('Set real live photo and photo file IDs before enabling this example.');
+        return;
+    }
+
+    await ctx.replyWithLivePhoto('LIVE_PHOTO_FILE_ID', 'PHOTO_FILE_ID', {
+        caption: 'Bot API 10.0 live photo example',
     });
 });
 

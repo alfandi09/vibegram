@@ -160,7 +160,7 @@ export interface CodexPluginOptions {
 
     /**
      * Telegram user IDs allowed to run sensitive auth commands such as
-     * `/codex login`, `/codex logout`, and `/codex auth export`.
+     * `/codex importjson`, `/codex logout`, and `/codex auth export`.
      * Defaults to `allowedUserIds` when omitted. If the effective list is
      * empty, auth management commands are disabled.
      */

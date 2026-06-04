@@ -4,6 +4,19 @@ Release notes for VibeGram. This page highlights the changes most useful for dev
 
 For the complete release log, see the repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.3.0
+
+Released on 2026-06-05.
+
+### Added
+
+- Added Bot API 10.0 type coverage for guest messages, live photos, poll media, chat reaction permissions, and managed bot access settings.
+- Added Bot API 10.0 wrappers for guest replies, live photos, reaction cleanup, managed bot access settings, and personal chat message lookup.
+
+### Security
+
+- Removed runtime `axios`, `form-data`, and `follow-redirects` dependency exposure by using VibeGram's internal native HTTP transport and multipart serializer.
+
 ## 2.2.1
 
 Released on 2026-05-22.
@@ -11,7 +24,7 @@ Released on 2026-05-22.
 ### Highlights
 
 - Bundled the Codex Telegram plugin into the main `vibegram` package.
-- Added the public `vibegram/codex` subpath for `codex()`, `codexProvider()`, Device Code login helpers, memory store types, and provider helpers.
+- Added the public `vibegram/codex` subpath for `codex()`, `codexProvider()`, manual auth JSON helpers, memory store types, and provider helpers.
 - Kept publishing on the normal `vibegram` release flow instead of publishing a separate `@vibegram/codex` package.
 
 ### Usage

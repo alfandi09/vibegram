@@ -1,7 +1,80 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import axios from 'axios';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { Readable } from 'stream';
 import { TelegramClient } from '../src/client';
 import { NetworkError, RateLimitError, TelegramApiError } from '../src/errors';
+import { HttpRequestError, type HttpResponse, type HttpTransport } from '../src/http';
+
+const MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
+
+function createByteStream(totalBytes: number): NodeJS.ReadableStream {
+    let remaining = totalBytes;
+
+    return new Readable({
+        read() {
+            if (remaining <= 0) {
+                this.push(null);
+                return;
+            }
+
+            const chunkSize = Math.min(remaining, 64 * 1024);
+            remaining -= chunkSize;
+            this.push(Buffer.alloc(chunkSize));
+        },
+    });
+}
+
+function makeResponse<T>(data: T, headers: Record<string, string> = {}): HttpResponse<T> {
+    return { data, headers, status: 200 };
+}
+
+function createMockTransport(
+    request: ReturnType<typeof vi.fn> = vi.fn()
+): HttpTransport & { request: ReturnType<typeof vi.fn>; postJson: ReturnType<typeof vi.fn> } {
+    return {
+        request,
+        postJson: vi.fn(),
+    };
+}
+
+function setMockTransport(
+    client: TelegramClient,
+    request: ReturnType<typeof vi.fn> = vi.fn()
+): ReturnType<typeof createMockTransport> {
+    const transport = createMockTransport(request);
+    (client as unknown as { http: HttpTransport }).http = transport;
+    return transport;
+}
+
+function createTelegramHttpError(
+    status: number,
+    data: Record<string, unknown>,
+    url = 'https://api.telegram.org/bottest-token/sendMessage'
+): HttpRequestError {
+    return new HttpRequestError(`HTTP Error: ${status}`, url, status, data, {});
+}
+
+async function readMultipartBody(body: unknown): Promise<string> {
+    if (
+        typeof body === 'object' &&
+        body !== null &&
+        typeof (body as { getBuffer?: unknown }).getBuffer === 'function'
+    ) {
+        return (body as { getBuffer(): Buffer }).getBuffer().toString('utf8');
+    }
+
+    if (typeof body === 'object' && body !== null && Symbol.asyncIterator in body) {
+        const chunks: Buffer[] = [];
+        for await (const chunk of body as AsyncIterable<Uint8Array | string>) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        return Buffer.concat(chunks).toString('utf8');
+    }
+
+    throw new TypeError('Unsupported multipart body in test.');
+}
 
 describe('TelegramClient', () => {
     afterEach(() => {
@@ -10,29 +83,28 @@ describe('TelegramClient', () => {
 
     it('throws TelegramApiError when Telegram returns ok=false', async () => {
         const client = new TelegramClient('test-token');
-        (client as any).http = {
-            post: vi.fn().mockResolvedValue({
-                data: { ok: false, error_code: 400, description: 'Bad Request' },
-            }),
-        };
+        setMockTransport(
+            client,
+            vi.fn().mockResolvedValue(
+                makeResponse({ ok: false, error_code: 400, description: 'Bad Request' })
+            )
+        );
 
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(TelegramApiError);
     });
 
     it('throws RateLimitError when 429 retries are exhausted', async () => {
         const client = new TelegramClient('test-token');
-        (client as any).http = {
-            post: vi.fn().mockRejectedValue({
-                response: {
-                    status: 429,
-                    data: {
-                        error_code: 429,
-                        description: 'Too Many Requests',
-                        parameters: { retry_after: 2 },
-                    },
-                },
-            }),
-        };
+        setMockTransport(
+            client,
+            vi.fn().mockRejectedValue(
+                createTelegramHttpError(429, {
+                    error_code: 429,
+                    description: 'Too Many Requests',
+                    parameters: { retry_after: 2 },
+                })
+            )
+        );
 
         await expect(client.callApi('sendMessage', {}, 0)).rejects.toEqual(
             expect.any(RateLimitError)
@@ -41,9 +113,15 @@ describe('TelegramClient', () => {
 
     it('throws NetworkError when request fails before receiving a response', async () => {
         const client = new TelegramClient('test-token');
-        (client as any).http = {
-            post: vi.fn().mockRejectedValue(new Error('socket hang up')),
-        };
+        setMockTransport(
+            client,
+            vi.fn().mockRejectedValue(
+                new HttpRequestError(
+                    'Network Error: socket hang up',
+                    'https://api.telegram.org/bottest-token/sendMessage'
+                )
+            )
+        );
 
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
     });
@@ -59,13 +137,23 @@ describe('TelegramClient', () => {
             networkRetryBaseDelayMs: 100,
             networkRetryMaxDelayMs: 1000,
         });
-        const post = vi
+        const request = vi
             .fn()
-            .mockRejectedValueOnce(new Error('socket hang up'))
-            .mockRejectedValueOnce(new Error('timeout'))
-            .mockResolvedValueOnce({ data: { ok: true, result: true } });
+            .mockRejectedValueOnce(
+                new HttpRequestError(
+                    'Network Error: socket hang up',
+                    'https://api.telegram.org/bottest-token/sendMessage'
+                )
+            )
+            .mockRejectedValueOnce(
+                new HttpRequestError(
+                    'Network Error: timeout',
+                    'https://api.telegram.org/bottest-token/sendMessage'
+                )
+            )
+            .mockResolvedValueOnce(makeResponse({ ok: true, result: true }));
         const delays: number[] = [];
-        (client as any).http = { post };
+        setMockTransport(client, request);
 
         vi.spyOn(global, 'setTimeout').mockImplementation(((fn: any, delay?: number) => {
             delays.push(delay ?? 0);
@@ -75,7 +163,7 @@ describe('TelegramClient', () => {
 
         await expect(client.callApi('sendMessage')).resolves.toBe(true);
 
-        expect(post).toHaveBeenCalledTimes(3);
+        expect(request).toHaveBeenCalledTimes(3);
         expect(delays).toEqual([100, 200]);
         expect(hooks.onNetworkRetry).toHaveBeenCalledTimes(2);
         expect(hooks.onNetworkRetry).toHaveBeenLastCalledWith(
@@ -93,42 +181,36 @@ describe('TelegramClient', () => {
             networkRetries: 1,
             networkRetryBaseDelayMs: 0,
         });
-        const serverErrorPost = vi
+        const serverErrorRequest = vi
             .fn()
-            .mockRejectedValueOnce({
-                response: {
-                    status: 502,
-                    data: {
-                        error_code: 502,
-                        description: 'Bad Gateway',
-                    },
-                },
-            })
-            .mockResolvedValueOnce({ data: { ok: true, result: true } });
-        (serverErrorClient as any).http = { post: serverErrorPost };
+            .mockRejectedValueOnce(
+                createTelegramHttpError(502, {
+                    error_code: 502,
+                    description: 'Bad Gateway',
+                })
+            )
+            .mockResolvedValueOnce(makeResponse({ ok: true, result: true }));
+        setMockTransport(serverErrorClient, serverErrorRequest);
 
         await expect(serverErrorClient.callApi('sendMessage')).resolves.toBe(true);
-        expect(serverErrorPost).toHaveBeenCalledTimes(2);
+        expect(serverErrorRequest).toHaveBeenCalledTimes(2);
 
         const clientErrorClient = new TelegramClient('test-token', {
             networkRetries: 2,
             networkRetryBaseDelayMs: 0,
         });
-        const clientErrorPost = vi.fn().mockRejectedValue({
-            response: {
-                status: 400,
-                data: {
-                    error_code: 400,
-                    description: 'Bad Request',
-                },
-            },
-        });
-        (clientErrorClient as any).http = { post: clientErrorPost };
+        const clientErrorRequest = vi.fn().mockRejectedValue(
+            createTelegramHttpError(400, {
+                error_code: 400,
+                description: 'Bad Request',
+            })
+        );
+        setMockTransport(clientErrorClient, clientErrorRequest);
 
         await expect(clientErrorClient.callApi('sendMessage')).rejects.toBeInstanceOf(
             TelegramApiError
         );
-        expect(clientErrorPost).toHaveBeenCalledOnce();
+        expect(clientErrorRequest).toHaveBeenCalledOnce();
     });
 
     it('validates network retry options', () => {
@@ -151,20 +233,17 @@ describe('TelegramClient', () => {
             networkRetries: 2,
             networkRetryBaseDelayMs: 0,
         });
-        const post = vi.fn().mockRejectedValue({
-            response: {
-                status: 429,
-                data: {
-                    error_code: 429,
-                    description: 'Too Many Requests',
-                    parameters: { retry_after: 1 },
-                },
-            },
-        });
+        const request = vi.fn().mockRejectedValue(
+            createTelegramHttpError(429, {
+                error_code: 429,
+                description: 'Too Many Requests',
+                parameters: { retry_after: 1 },
+            })
+        );
         const seenRetries: number[] = [];
         const seenNetworkRetries: number[] = [];
 
-        (client as any).http = { post };
+        setMockTransport(client, request);
 
         client.use(next => async request => {
             seenRetries.push(request.retries);
@@ -176,63 +255,51 @@ describe('TelegramClient', () => {
 
         expect(seenRetries).toEqual([3]);
         expect(seenNetworkRetries).toEqual([2]);
-        expect(post).toHaveBeenCalledOnce();
+        expect(request).toHaveBeenCalledOnce();
     });
 
     it('rejects non-plain root payloads before sending', async () => {
         const client = new TelegramClient('test-token');
-        const post = vi.fn();
-        (client as any).http = { post };
+        const request = vi.fn();
+        setMockTransport(client, request);
 
         await expect(client.callApi('sendMessage', new URLSearchParams())).rejects.toThrow(
             'plain object'
         );
-        expect(post).not.toHaveBeenCalled();
+        expect(request).not.toHaveBeenCalled();
     });
 
     it('rejects oversized JSON payloads before sending', async () => {
         const client = new TelegramClient('test-token', { maxJsonPayloadBytes: 20 });
-        const post = vi.fn();
-        (client as any).http = { post };
+        const request = vi.fn();
+        setMockTransport(client, request);
 
         await expect(client.callApi('sendMessage', { text: 'x'.repeat(100) })).rejects.toThrow(
             'exceeds maximum size'
         );
-        expect(post).not.toHaveBeenCalled();
+        expect(request).not.toHaveBeenCalled();
     });
 
     it('does not apply JSON size limits to multipart uploads', async () => {
         const client = new TelegramClient('test-token', { maxJsonPayloadBytes: 1 });
-        const post = vi.fn().mockResolvedValue({
-            data: { ok: true, result: true },
-        });
-        (client as any).http = { post };
+        const request = vi.fn().mockResolvedValue(makeResponse({ ok: true, result: true }));
+        setMockTransport(client, request);
 
         await expect(
             client.callApi('sendPhoto', { chat_id: 99, photo: Buffer.from('large-upload') })
         ).resolves.toBe(true);
-        expect(post).toHaveBeenCalledOnce();
+        expect(request).toHaveBeenCalledOnce();
     });
 
-    it('redacts bot tokens from axios errors before wrapping them', async () => {
+    it('redacts bot tokens from HTTP transport errors before wrapping them', async () => {
         const token = '123456:secret-token';
         const client = new TelegramClient(token);
-        const axiosError = Object.assign(new Error(`socket hang up for bot ${token}`), {
-            config: {
-                baseURL: `https://api.telegram.org/bot${token}/`,
-                url: `sendMessage?token=${token}`,
-            },
-            response: {
-                config: {
-                    baseURL: `https://api.telegram.org/bot${token}/`,
-                    url: `getMe?token=${token}`,
-                },
-            },
-        });
+        const httpError = new HttpRequestError(
+            `Network Error: socket hang up for bot ${token}`,
+            `https://api.telegram.org/bot${token}/sendMessage?token=${token}`
+        );
 
-        (client as any).http = {
-            post: vi.fn().mockRejectedValue(axiosError),
-        };
+        setMockTransport(client, vi.fn().mockRejectedValue(httpError));
 
         let thrown: unknown;
         try {
@@ -245,32 +312,86 @@ describe('TelegramClient', () => {
         const originalError = (thrown as NetworkError).originalError as any;
         expect((thrown as NetworkError).message).not.toContain(token);
         expect(originalError.message).not.toContain(token);
-        expect(originalError.config.baseURL).not.toContain(token);
-        expect(originalError.config.url).not.toContain(token);
-        expect(originalError.response.config.baseURL).not.toContain(token);
-        expect(originalError.response.config.url).not.toContain(token);
+        expect(originalError.requestUrl).not.toContain(token);
         expect(JSON.stringify(originalError)).not.toContain(token);
     });
 
     it('applies timeout and size limits when downloading files', async () => {
         const client = new TelegramClient('test-token');
         vi.spyOn(client, 'getFileLink').mockResolvedValue('https://example.com/file');
-        const getSpy = vi.spyOn(axios, 'get').mockResolvedValue({
-            data: new Uint8Array([1, 2, 3]),
-            headers: {},
-        } as any);
+        const request = vi.fn().mockResolvedValue(makeResponse(Buffer.from([1, 2, 3])));
+        setMockTransport(client, request);
 
         const buffer = await client.downloadFile('file-1');
 
         expect(Buffer.isBuffer(buffer)).toBe(true);
-        expect(getSpy).toHaveBeenCalledWith(
-            'https://example.com/file',
+        expect(request).toHaveBeenCalledWith(
             expect.objectContaining({
-                timeout: 30000,
-                maxContentLength: 20 * 1024 * 1024,
-                maxBodyLength: 20 * 1024 * 1024,
+                method: 'GET',
+                url: 'https://example.com/file',
+                timeoutMs: 30000,
+                responseType: 'buffer',
             })
         );
+    });
+
+    it('rejects downloads when content-length exceeds the maximum', async () => {
+        const client = new TelegramClient('test-token');
+        vi.spyOn(client, 'getFileLink').mockResolvedValue('https://example.com/file');
+        setMockTransport(
+            client,
+            vi
+                .fn()
+                .mockResolvedValue(
+                    makeResponse(Buffer.from([1, 2, 3]), {
+                        'content-length': String(MAX_DOWNLOAD_BYTES + 1),
+                    })
+                )
+        );
+
+        await expect(client.downloadFile('file-1')).rejects.toBeInstanceOf(NetworkError);
+    });
+
+    it('rejects buffer downloads when bytes exceed the maximum without content-length', async () => {
+        const client = new TelegramClient('test-token');
+        vi.spyOn(client, 'getFileLink').mockResolvedValue('https://example.com/file');
+        setMockTransport(
+            client,
+            vi.fn().mockResolvedValue(makeResponse(Buffer.alloc(MAX_DOWNLOAD_BYTES + 1)))
+        );
+
+        let thrown: unknown;
+        try {
+            await client.downloadFile('file-1');
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(NetworkError);
+    });
+
+    it('rejects and cleans up partial files when streamed bytes exceed the maximum', async () => {
+        const client = new TelegramClient('test-token');
+        const destPath = path.join(os.tmpdir(), `vibegram-download-${Date.now()}.bin`);
+        vi.spyOn(client, 'getFileLink').mockResolvedValue('https://example.com/file');
+        setMockTransport(
+            client,
+            vi.fn().mockResolvedValue(makeResponse(createByteStream(MAX_DOWNLOAD_BYTES + 1)))
+        );
+
+        let thrown: unknown;
+        try {
+            await client.downloadFile('file-1', destPath);
+        } catch (error) {
+            thrown = error;
+        }
+
+        try {
+            expect(thrown).toBeInstanceOf(NetworkError);
+            await expect(fs.promises.access(destPath)).rejects.toThrow();
+        } finally {
+            await fs.promises.unlink(destPath).catch(() => undefined);
+        }
     });
 
     it('emits request lifecycle hooks on success and retry', async () => {
@@ -281,17 +402,15 @@ describe('TelegramClient', () => {
             onRateLimitRetry: vi.fn(),
         };
         const client = new TelegramClient('test-token', { hooks });
-        (client as any).http = {
-            post: vi
+        setMockTransport(
+            client,
+            vi
                 .fn()
-                .mockRejectedValueOnce({
-                    response: {
-                        status: 429,
-                        data: { parameters: { retry_after: 1 } },
-                    },
-                })
-                .mockResolvedValueOnce({ data: { ok: true, result: { ok: true } } }),
-        };
+                .mockRejectedValueOnce(
+                    createTelegramHttpError(429, { parameters: { retry_after: 1 } })
+                )
+                .mockResolvedValueOnce(makeResponse({ ok: true, result: { ok: true } }))
+        );
 
         vi.spyOn(global, 'setTimeout').mockImplementation(((fn: any) => {
             fn();
@@ -311,9 +430,15 @@ describe('TelegramClient', () => {
             onRequestError: vi.fn(),
         };
         const client = new TelegramClient('test-token', { hooks });
-        (client as any).http = {
-            post: vi.fn().mockRejectedValue(new Error('socket hang up')),
-        };
+        setMockTransport(
+            client,
+            vi.fn().mockRejectedValue(
+                new HttpRequestError(
+                    'Network Error: socket hang up',
+                    'https://api.telegram.org/bottest-token/sendMessage'
+                )
+            )
+        );
 
         await expect(client.callApi('sendMessage')).rejects.toBeInstanceOf(NetworkError);
         expect(hooks.onRequestError).toHaveBeenCalledTimes(1);
@@ -321,10 +446,8 @@ describe('TelegramClient', () => {
 
     it('serializes nested uploads using attach syntax for media groups', async () => {
         const client = new TelegramClient('test-token');
-        const postSpy = vi.fn().mockResolvedValue({
-            data: { ok: true, result: [] },
-        });
-        (client as any).http = { post: postSpy };
+        const request = vi.fn().mockResolvedValue(makeResponse({ ok: true, result: [] }));
+        setMockTransport(client, request);
 
         await client.callApi('sendMediaGroup', {
             chat_id: 99,
@@ -342,10 +465,10 @@ describe('TelegramClient', () => {
             ],
         });
 
-        const [, form, config] = postSpy.mock.calls[0];
-        const payload = form.getBuffer().toString('utf8');
+        const [requestOptions] = request.mock.calls[0];
+        const payload = await readMultipartBody(requestOptions.body);
 
-        expect(config.headers).toEqual(
+        expect(requestOptions.headers).toEqual(
             expect.objectContaining({ 'content-type': expect.any(String) })
         );
         expect(payload).toContain('"media":"attach://media_0_media"');
@@ -358,10 +481,8 @@ describe('TelegramClient', () => {
 
     it('serializes nested sticker uploads using attach syntax for InputSticker payloads', async () => {
         const client = new TelegramClient('test-token');
-        const postSpy = vi.fn().mockResolvedValue({
-            data: { ok: true, result: true },
-        });
-        (client as any).http = { post: postSpy };
+        const request = vi.fn().mockResolvedValue(makeResponse({ ok: true, result: true }));
+        setMockTransport(client, request);
 
         await client.callApi('createNewStickerSet', {
             user_id: 42,
@@ -376,8 +497,8 @@ describe('TelegramClient', () => {
             ],
         });
 
-        const [, form] = postSpy.mock.calls[0];
-        const payload = form.getBuffer().toString('utf8');
+        const [requestOptions] = request.mock.calls[0];
+        const payload = await readMultipartBody(requestOptions.body);
 
         expect(payload).toContain('"sticker":"attach://stickers_0_sticker"');
         expect(payload).toContain('name="stickers_0_sticker"');

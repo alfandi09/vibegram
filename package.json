@@ -1,7 +1,7 @@
 {
     "name": "vibegram",
-    "version": "2.2.1",
-    "description": "Modern, production-ready Telegram Bot Framework for Node.js — Broad Bot API v9.6 coverage with built-in middleware, sessions, and webhook adapters",
+    "version": "2.3.0",
+    "description": "Modern, production-ready Telegram Bot Framework for Node.js — Broad Bot API v10.0 coverage with built-in middleware, sessions, and webhook adapters",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
     "types": "./dist/types/index.d.ts",
@@ -186,13 +186,6 @@
     ],
     "author": "Alfa",
     "license": "ISC",
-    "dependencies": {
-        "axios": "1.15.2",
-        "form-data": "^4.0.5"
-    },
-    "overrides": {
-        "follow-redirects": "1.16.0"
-    },
     "devDependencies": {
         "@tailwindcss/vite": "^4.2.4",
         "@types/node": "^25.5.2",

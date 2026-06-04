@@ -9,6 +9,7 @@
   <FeatureCard title="Lifecycle" description="Mulai polling atau webhook dan hentikan proses secara graceful." href="#metode-instance" cta="Buka lifecycle" />
   <FeatureCard title="Routing" description="Daftarkan middleware, command, listener, action, dan error handler global." href="#metode-routing" cta="Buka routing" />
   <FeatureCard title="API bisnis" description="Panggil akun bisnis, hadiah, stories, dan wrapper API langsung." href="#metode-akun-bisnis" cta="Buka bisnis" />
+  <FeatureCard title="Bot API 10.0" description="Gunakan guest reply, live photo, cleanup reaction, dan pengaturan akses managed bot." href="#metode-bot-api-100" cta="Buka Bot API 10.0" />
 </FeatureGrid>
 
 Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
@@ -60,6 +61,21 @@ Wrapper ini memakai nama payload resmi Telegram Bot API.
 | `bot.setBusinessAccountProfilePhoto(id, photo, extra?)`             | `setBusinessAccountProfilePhoto`    |
 | `bot.removeBusinessAccountProfilePhoto(id, extra?)`                 | `removeBusinessAccountProfilePhoto` |
 | `bot.setBusinessAccountGiftSettings(id, showButton, acceptedTypes)` | `setBusinessAccountGiftSettings`    |
+
+## Metode Bot API 10.0 {#metode-bot-api-100}
+
+Wrapper ini mengekspos tambahan Bot API 10.0 dengan nama payload resmi Telegram.
+
+| Metode                                           | API                           |
+| ------------------------------------------------ | ----------------------------- |
+| `bot.answerGuestQuery(guestQueryId, result)`     | `answerGuestQuery`            |
+| `bot.sendLivePhoto(chatId, livePhoto, photo)`    | `sendLivePhoto`               |
+| `bot.getChatAdministrators(chatId, extra?)`      | `getChatAdministrators`       |
+| `bot.deleteMessageReaction(chatId, messageId)`   | `deleteMessageReaction`       |
+| `bot.deleteAllMessageReactions(chatId, extra?)`  | `deleteAllMessageReactions`   |
+| `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
+| `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
+| `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
 
 ## Hadiah dan Stories
 

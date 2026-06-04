@@ -8,18 +8,25 @@ import {
     BotDescription,
     BotName,
     BotShortDescription,
+    BotAccessSettings,
     BusinessConnection,
     ChatAdministratorRights,
+    ChatMember,
+    DeleteAllMessageReactionsOptions,
+    DeleteMessageReactionOptions,
     GameHighScore,
     GetBusinessAccountGiftsOptions,
     GetChatGiftsOptions,
+    GetChatAdministratorsOptions,
     GetUserGiftsOptions,
     GiftPremiumSubscriptionOptions,
     Gifts,
     InlineQueryResult,
+    InputFile,
     InputProfilePhoto,
     InputStoryContent,
     LabeledPrice,
+    Message,
     MenuButton,
     OwnedGifts,
     PassportElementError,
@@ -27,7 +34,10 @@ import {
     PostStoryOptions,
     RepostStoryOptions,
     SendGiftOptions,
+    SendLivePhotoOptions,
+    SentGuestMessage,
     SentWebAppMessage,
+    SetManagedBotAccessSettingsOptions,
     SetWebhookOptions,
     Story,
     AcceptedGiftTypes,
@@ -748,6 +758,107 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number
     ): Promise<PreparedKeyboardButton> {
         return this.client.callApi('savePreparedKeyboardButton', { button, user_id: userId });
+    }
+
+    /**
+     * Reply to a received guest message (Bot API 10.0).
+     */
+    async answerGuestQuery(
+        guestQueryId: string,
+        result: InlineQueryResult
+    ): Promise<SentGuestMessage> {
+        return this.client.callApi('answerGuestQuery', {
+            guest_query_id: guestQueryId,
+            result,
+        });
+    }
+
+    /**
+     * Get managed bot access settings (Bot API 10.0).
+     */
+    async getManagedBotAccessSettings(userId: number): Promise<BotAccessSettings> {
+        return this.client.callApi('getManagedBotAccessSettings', { user_id: userId });
+    }
+
+    /**
+     * Change managed bot access settings (Bot API 10.0).
+     */
+    async setManagedBotAccessSettings(
+        userId: number,
+        settings: SetManagedBotAccessSettingsOptions
+    ): Promise<boolean> {
+        return this.client.callApi('setManagedBotAccessSettings', {
+            user_id: userId,
+            ...settings,
+        });
+    }
+
+    /**
+     * Get recent personal chat messages from a user's profile chat (Bot API 10.0).
+     */
+    async getUserPersonalChatMessages(userId: number, limit: number): Promise<Message[]> {
+        return this.client.callApi('getUserPersonalChatMessages', {
+            user_id: userId,
+            limit,
+        });
+    }
+
+    /**
+     * Get chat administrators, optionally including administrator bots (Bot API 10.0).
+     */
+    async getChatAdministrators(
+        chatId: number | string,
+        extra?: GetChatAdministratorsOptions
+    ): Promise<ChatMember[]> {
+        return this.client.callApi('getChatAdministrators', {
+            chat_id: chatId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Remove a reaction from a message in a group or supergroup (Bot API 10.0).
+     */
+    async deleteMessageReaction(
+        chatId: number | string,
+        messageId: number,
+        extra?: DeleteMessageReactionOptions
+    ): Promise<boolean> {
+        return this.client.callApi('deleteMessageReaction', {
+            chat_id: chatId,
+            message_id: messageId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Remove recent reactions from a group or supergroup by user or chat (Bot API 10.0).
+     */
+    async deleteAllMessageReactions(
+        chatId: number | string,
+        extra?: DeleteAllMessageReactionsOptions
+    ): Promise<boolean> {
+        return this.client.callApi('deleteAllMessageReactions', {
+            chat_id: chatId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Send a live photo (Bot API 10.0).
+     */
+    async sendLivePhoto(
+        chatId: number | string,
+        livePhoto: InputFile,
+        photo: InputFile,
+        extra?: SendLivePhotoOptions
+    ): Promise<Message> {
+        return this.client.callApi('sendLivePhoto', {
+            chat_id: chatId,
+            live_photo: livePhoto,
+            photo,
+            ...extra,
+        });
     }
 
     /**

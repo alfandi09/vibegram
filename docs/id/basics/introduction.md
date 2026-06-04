@@ -68,7 +68,7 @@ Instansi Bot
 | `WebAppUtils` | Validasi Mini App HMAC-SHA256 |
 | `I18n` | Internasionalisasi dengan deteksi lokal otomatis |
 | `logger` | Timing request dan klasifikasi update |
-| `Types` | 32+ interface TypeScript untuk Bot API v9.6 |
+| `Types` | 32+ interface TypeScript untuk Bot API v10.0 |
 
 ## Adapters Framework
 
@@ -84,7 +84,8 @@ VibeGram menyediakan adapter kelas satu untuk framework Node.js populer:
 
 ## Cakupan Bot API
 
-VibeGram menargetkan **Telegram Bot API v9.6** (April 2026) dengan:
+VibeGram menargetkan **Telegram Bot API v10.0** (Mei 2026) dengan:
 - **60+ metode Context** untuk pesan, media, dan konten interaktif
 - **32 interface TypeScript** mencakup semua objek API utama
 - Dukungan Telegram Stars, Pesan Draft, Managed Bot, Forum Topic, dan lainnya
+- Guest Mode, live photo, poll media, method cleanup reaction, dan pengaturan akses managed bot

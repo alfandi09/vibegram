@@ -3,7 +3,11 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
     exports: Record<string, { import: string; require: string; types: string }>;
+    optionalDependencies?: Record<string, string>;
+    overrides?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
 };
 
 const publicSubpaths = [
@@ -40,6 +44,22 @@ describe('package exports', () => {
                 require: `./dist/cjs/${distPath}.js`,
                 types: `./dist/types/${distPath}.d.ts`,
             });
+        }
+    });
+
+    it('does not publish retired HTTP client packages as runtime dependencies', () => {
+        const retiredPackages = ['axios', 'form-data', 'follow-redirects'];
+        const runtimeDependencySections = [
+            packageJson.dependencies,
+            packageJson.optionalDependencies,
+            packageJson.peerDependencies,
+            packageJson.overrides,
+        ];
+
+        for (const dependencySection of runtimeDependencySections) {
+            for (const retiredPackage of retiredPackages) {
+                expect(dependencySection ?? {}).not.toHaveProperty(retiredPackage);
+            }
         }
     });
 });

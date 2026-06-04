@@ -29,7 +29,7 @@ Usage counts against the Codex quota available to the signed-in ChatGPT account.
 Install the latest VibeGram release. Codex is included in the main `vibegram` package and is imported from the `vibegram/codex` subpath:
 
 ```bash
-npm install vibegram@^2.2.1
+npm install vibegram@^2.3.0
 ```
 
 ```typescript
@@ -94,16 +94,17 @@ test -f "$HOME/.codex/auth.json"
 
 Then copy it to your server secret path by your normal deployment method. Examples include `scp`, Docker/Kubernetes secrets, a private CI secret artifact, or a manually provisioned file on a VPS.
 
-## Device Code Login From Telegram
+## Manual auth.json Import From Telegram
 
-`vibegram/codex` also exports a Device Authorization Grant helper based on OAuth 2.0 Device Code flow (RFC 8628). Use it when you want a trusted Telegram admin to create or refresh `auth.json` from chat without installing the Codex CLI on that machine.
+Server-side OAuth login from Telegram is not supported because `auth.openai.com` can block non-browser automation. The supported Telegram admin flow is manual `auth.json` import.
 
-Keep this command admin-only. The flow writes ChatGPT/Codex tokens to disk, so never expose it to normal bot users or group members.
+Keep these commands admin-only. `auth.json` contains live ChatGPT/Codex tokens, so never expose import/export commands to normal bot users or group members.
 
 The built-in plugin commands cover the normal admin flow:
 
 ```text
 /codex login
+/codex importjson
 /codex auth export
 /codex logout
 ```
@@ -122,70 +123,7 @@ bot.use(
 
 `/codex auth export` only works for auth admins and only in a private chat with the bot. The exported file is sent with Telegram `protect_content` enabled, but it still contains live tokens. Download it only on trusted devices and delete the Telegram message after use.
 
-If you need a custom command outside the plugin middleware, use the helper directly:
-
-```typescript
-import { Bot } from 'vibegram';
-import { deviceLogin } from 'vibegram/codex';
-
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
-
-const adminUserIds = new Set(
-    (process.env.CODEX_AUTH_ADMIN_USER_IDS ?? '')
-        .split(',')
-        .map(value => Number(value.trim()))
-        .filter(Number.isFinite)
-);
-
-bot.command('codex-login', async ctx => {
-    const userId = ctx.from?.id;
-
-    if (!userId || !adminUserIds.has(userId)) {
-        await ctx.reply('This command is only available to bot admins.');
-        return;
-    }
-
-    await ctx.reply('Starting Codex login. Follow the link in the next message.');
-
-    try {
-        await deviceLogin(
-            {
-                async onCode({ userCode, verificationUri, verificationUriComplete, expiresIn }) {
-                    const url = verificationUriComplete ?? verificationUri;
-
-                    await ctx.reply(
-                        [
-                            'Open this URL to authorize Codex:',
-                            url,
-                            '',
-                            `Code: ${userCode}`,
-                            `Expires in: ${Math.floor(expiresIn / 60)} minutes`,
-                        ].join('\n')
-                    );
-                },
-                async onPoll(attempt) {
-                    if (attempt % 4 === 0) {
-                        await ctx.reply('Still waiting for authorization...');
-                    }
-
-                    return true;
-                },
-                async onSuccess() {
-                    await ctx.reply(
-                        'Codex login complete. Restart the bot if the provider was already initialized.'
-                    );
-                },
-            },
-            {
-                authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
-                timeoutMs: 300_000,
-            }
-        );
-    } catch (error) {
-        await ctx.reply(`Codex login failed: ${(error as Error).message}`);
-    }
-});
-```
+`/codex login` only shows manual setup instructions. To import a token file through Telegram, run `/codex importjson` in a private chat with the bot, then paste the full `auth.json` content in the next message. The plugin validates `auth_mode`, requires `tokens.access_token`, rejects expired access tokens when the JWT has an `exp` claim, writes to `authJsonPath`, and attempts to delete the pasted token message.
 
 Set the admin allowlist and destination auth file before running the bot:
 
@@ -193,15 +131,6 @@ Set the admin allowlist and destination auth file before running the bot:
 CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 ```
-
-The helper handles the full flow:
-
-1. Requests a device code from `auth.openai.com/oauth/device/code`
-2. Sends the verification URL and user code through your callback
-3. Polls `auth.openai.com/oauth/token` with `urn:ietf:params:oauth:grant-type:device_code`
-4. Saves the returned tokens as a Codex-compatible `auth.json`
-
-For webhook deployments, run this only from a trusted admin flow that can stay alive for several minutes. If your host enforces short request timeouts, move the login work into a background job and immediately acknowledge the Telegram update.
 
 ## Deployment Recipes
 
@@ -375,7 +304,8 @@ The plugin automatically provides commands with the default `/codex` prefix.
 | Command | Purpose |
 | --- | --- |
 | `/codex help` | Show help |
-| `/codex login` | Start OAuth Device Code login |
+| `/codex login` | Show manual `auth.json` import instructions |
+| `/codex importjson` | Import pasted `auth.json` in an admin private chat |
 | `/codex auth export` | Download saved `auth.json` in an admin private chat |
 | `/codex logout` | Remove saved auth tokens |
 | `/codex status` | Check provider, model, token expiry, usage stats, and personality |
@@ -506,7 +436,7 @@ This is useful for secret managers or test environments, but it does not persist
 | Option | Default | Description |
 | --- | --- | --- |
 | `provider` | required | Codex provider returned by `codexProvider()` |
-| `authJsonPath` | `~/.codex/auth.json` | Path used by built-in `/codex login`, `/codex logout`, and `/codex auth export` |
+| `authJsonPath` | `~/.codex/auth.json` | Path used by built-in `/codex importjson`, `/codex logout`, and `/codex auth export` |
 | `authAdminUserIds` | `allowedUserIds` when omitted | Telegram user IDs allowed to manage Codex auth. If the effective list is empty, auth management commands are disabled |
 | `systemPrompt` | `You are a helpful assistant.` | System instruction for every conversation |
 | `maxPromptLength` | `4000` | Maximum user prompt length |

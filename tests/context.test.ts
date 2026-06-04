@@ -502,6 +502,41 @@ describe('Context.getChatMember()', () => {
     });
 });
 
+describe('Context Bot API 10.0 helpers', () => {
+    it('exposes chat-scoped reaction cleanup and live photo helpers', async () => {
+        const { ctx, client } = createContext(makeMessageUpdate('hello'));
+
+        await ctx.getChatAdministrators({ return_bots: true });
+        await ctx.deleteMessageReaction(100, { user_id: 42 });
+        await ctx.deleteAllMessageReactions({ actor_chat_id: -1000 });
+        await ctx.replyWithLivePhoto('live-file-id', 'photo-file-id', {
+            caption: 'Live',
+        });
+
+        expect(client.callApi).toHaveBeenNthCalledWith(1, 'getChatAdministrators', {
+            chat_id: 99,
+            return_bots: true,
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(2, 'deleteMessageReaction', {
+            chat_id: 99,
+            message_id: 100,
+            user_id: 42,
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(3, 'deleteAllMessageReactions', {
+            chat_id: 99,
+            actor_chat_id: -1000,
+        });
+        expect(client.callApi).toHaveBeenNthCalledWith(4, 'sendLivePhoto', {
+            chat_id: 99,
+            business_connection_id: undefined,
+            message_thread_id: undefined,
+            live_photo: 'live-file-id',
+            photo: 'photo-file-id',
+            caption: 'Live',
+        });
+    });
+});
+
 describe('Context modern send helpers', () => {
     it('replyWithGame sends a game and replyWithInvoice includes business connection metadata', async () => {
         const { ctx, client } = createContext(

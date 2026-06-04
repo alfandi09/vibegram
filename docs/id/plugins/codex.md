@@ -29,7 +29,7 @@ Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 Install rilis VibeGram terbaru. Codex sudah termasuk di package utama `vibegram` dan diimport dari subpath `vibegram/codex`:
 
 ```bash
-npm install vibegram@^2.2.1
+npm install vibegram@^2.3.0
 ```
 
 ```typescript
@@ -94,16 +94,17 @@ test -f "$HOME/.codex/auth.json"
 
 Setelah itu salin file ke secret path server dengan metode deployment Anda. Contohnya `scp`, Docker/Kubernetes secrets, private CI secret artifact, atau file manual di VPS.
 
-## Login Device Code dari Telegram
+## Import auth.json Manual dari Telegram
 
-`vibegram/codex` juga mengekspor helper Device Authorization Grant berbasis OAuth 2.0 Device Code flow (RFC 8628). Gunakan ini jika admin Telegram terpercaya perlu membuat atau refresh `auth.json` langsung dari chat tanpa menginstall Codex CLI di mesin tersebut.
+Login OAuth dari Telegram di sisi server tidak didukung karena `auth.openai.com` dapat memblokir automasi non-browser. Flow admin Telegram yang didukung adalah import `auth.json` manual.
 
-Command ini harus admin-only. Flow ini menulis token ChatGPT/Codex ke disk, jadi jangan pernah buka command ini untuk user bot biasa atau member group.
+Command ini harus admin-only. `auth.json` berisi token ChatGPT/Codex aktif, jadi jangan pernah buka command import/export untuk user bot biasa atau member group.
 
 Command bawaan plugin sudah mencakup flow admin normal:
 
 ```text
 /codex login
+/codex importjson
 /codex auth export
 /codex logout
 ```
@@ -122,70 +123,7 @@ bot.use(
 
 `/codex auth export` hanya bisa dipakai oleh auth admin dan hanya di private chat dengan bot. File dikirim dengan Telegram `protect_content`, tapi tetap berisi token aktif. Download hanya di perangkat terpercaya dan hapus pesan Telegram setelah digunakan.
 
-Jika Anda perlu command custom di luar middleware plugin, gunakan helper secara langsung:
-
-```typescript
-import { Bot } from 'vibegram';
-import { deviceLogin } from 'vibegram/codex';
-
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
-
-const adminUserIds = new Set(
-    (process.env.CODEX_AUTH_ADMIN_USER_IDS ?? '')
-        .split(',')
-        .map(value => Number(value.trim()))
-        .filter(Number.isFinite)
-);
-
-bot.command('codex-login', async ctx => {
-    const userId = ctx.from?.id;
-
-    if (!userId || !adminUserIds.has(userId)) {
-        await ctx.reply('Command ini hanya tersedia untuk admin bot.');
-        return;
-    }
-
-    await ctx.reply('Memulai login Codex. Ikuti link di pesan berikutnya.');
-
-    try {
-        await deviceLogin(
-            {
-                async onCode({ userCode, verificationUri, verificationUriComplete, expiresIn }) {
-                    const url = verificationUriComplete ?? verificationUri;
-
-                    await ctx.reply(
-                        [
-                            'Buka URL ini untuk authorize Codex:',
-                            url,
-                            '',
-                            `Kode: ${userCode}`,
-                            `Expired dalam: ${Math.floor(expiresIn / 60)} menit`,
-                        ].join('\n')
-                    );
-                },
-                async onPoll(attempt) {
-                    if (attempt % 4 === 0) {
-                        await ctx.reply('Masih menunggu authorization...');
-                    }
-
-                    return true;
-                },
-                async onSuccess() {
-                    await ctx.reply(
-                        'Login Codex selesai. Restart bot jika provider sudah terlanjur diinisialisasi.'
-                    );
-                },
-            },
-            {
-                authJsonPath: process.env.CODEX_AUTH_JSON_PATH,
-                timeoutMs: 300_000,
-            }
-        );
-    } catch (error) {
-        await ctx.reply(`Login Codex gagal: ${(error as Error).message}`);
-    }
-});
-```
+`/codex login` hanya menampilkan instruksi setup manual. Untuk import token melalui Telegram, jalankan `/codex importjson` di private chat dengan bot, lalu paste isi lengkap `auth.json` di pesan berikutnya. Plugin memvalidasi `auth_mode`, mewajibkan `tokens.access_token`, menolak access token expired saat JWT punya claim `exp`, menulis ke `authJsonPath`, dan mencoba menghapus pesan yang berisi token.
 
 Set allowlist admin dan tujuan file auth sebelum menjalankan bot:
 
@@ -193,15 +131,6 @@ Set allowlist admin dan tujuan file auth sebelum menjalankan bot:
 CODEX_AUTH_ADMIN_USER_IDS=123456
 CODEX_AUTH_JSON_PATH=/opt/my-telegram-bot/secrets/codex-auth.json
 ```
-
-Helper ini menangani flow lengkap:
-
-1. Meminta device code ke `auth.openai.com/oauth/device/code`
-2. Mengirim verification URL dan user code melalui callback Anda
-3. Polling `auth.openai.com/oauth/token` dengan `urn:ietf:params:oauth:grant-type:device_code`
-4. Menyimpan token sebagai `auth.json` yang kompatibel dengan Codex
-
-Untuk deployment webhook, jalankan ini hanya dari flow admin terpercaya yang bisa hidup beberapa menit. Jika host Anda punya request timeout pendek, pindahkan proses login ke background job dan langsung acknowledge update Telegram.
 
 ## Resep Deployment
 
@@ -375,7 +304,8 @@ Plugin otomatis menyediakan command dengan prefix default `/codex`.
 | Command | Fungsi |
 | --- | --- |
 | `/codex help` | Menampilkan bantuan |
-| `/codex login` | Memulai login OAuth Device Code |
+| `/codex login` | Menampilkan instruksi import `auth.json` manual |
+| `/codex importjson` | Import `auth.json` yang dipaste di private chat admin |
 | `/codex auth export` | Download `auth.json` tersimpan di private chat admin |
 | `/codex logout` | Menghapus token auth tersimpan |
 | `/codex status` | Mengecek provider, model, expiry token, usage, dan personality |
@@ -506,7 +436,7 @@ Ini berguna untuk secret manager atau test environment, tapi token hasil refresh
 | Opsi | Default | Deskripsi |
 | --- | --- | --- |
 | `provider` | wajib | Provider Codex dari `codexProvider()` |
-| `authJsonPath` | `~/.codex/auth.json` | Path yang dipakai `/codex login`, `/codex logout`, dan `/codex auth export` bawaan |
+| `authJsonPath` | `~/.codex/auth.json` | Path yang dipakai `/codex importjson`, `/codex logout`, dan `/codex auth export` bawaan |
 | `authAdminUserIds` | `allowedUserIds` jika tidak diisi | ID user Telegram yang boleh mengelola auth Codex. Jika daftar efektif kosong, command auth management dimatikan |
 | `systemPrompt` | `You are a helpful assistant.` | Instruksi sistem untuk setiap percakapan |
 | `maxPromptLength` | `4000` | Panjang maksimal prompt user |

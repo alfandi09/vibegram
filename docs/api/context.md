@@ -15,18 +15,22 @@ The `Context` object is created for every incoming update and provides shortcuts
 
 ## Properties
 
-| Property       | Type             | Description                                |
-| -------------- | ---------------- | ------------------------------------------ |
-| `ctx.update`   | `Update`         | Raw update object from Telegram            |
-| `ctx.message`  | `Message`        | The incoming message (if any)              |
-| `ctx.from`     | `User`           | The user who sent the update               |
-| `ctx.chat`     | `Chat`           | The chat where the update occurred         |
-| `ctx.command`  | `object`         | Parsed command data (`{ command, args }`)  |
-| `ctx.session`  | `any`            | Session data (requires session middleware) |
-| `ctx.scene`    | `object`         | Scene navigation controls                  |
-| `ctx.wizard`   | `object`         | Wizard step controls                       |
-| `ctx.i18n`     | `object`         | Internationalization helper                |
-| `ctx.telegram` | `TelegramClient` | Scoped direct Telegram API client          |
+<div role="region" aria-label="Context Properties">
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `ctx.update` | `Update` | Raw update object from Telegram |
+| `ctx.message` | `Message` | The incoming message (if any) |
+| `ctx.from` | `User` | The user who sent the update |
+| `ctx.chat` | `Chat` | The chat where the update occurred |
+| `ctx.command` | `object` | Parsed command data (`{ command, args }`) |
+| `ctx.session` | `any` | Session data (requires session middleware) |
+| `ctx.scene` | `object` | Scene navigation controls |
+| `ctx.wizard` | `object` | Wizard step controls |
+| `ctx.i18n` | `object` | Internationalization helper |
+| `ctx.telegram` | `TelegramClient` | Scoped direct Telegram API client |
+
+</div>
 
 ## Messaging Methods
 
@@ -40,19 +44,20 @@ The `Context` object is created for every incoming update and provides shortcuts
 
 ## Media Methods
 
-| Method                                         | API              | Description                |
-| ---------------------------------------------- | ---------------- | -------------------------- |
-| `ctx.replyWithPhoto(photo, extra?)`            | `sendPhoto`      | Send a photo               |
-| `ctx.replyWithVideo(video, extra?)`            | `sendVideo`      | Send a video               |
-| `ctx.replyWithAudio(audio, extra?)`            | `sendAudio`      | Send an audio file         |
-| `ctx.replyWithDocument(doc, extra?)`           | `sendDocument`   | Send a document            |
-| `ctx.replyWithVoice(voice, extra?)`            | `sendVoice`      | Send a voice note          |
-| `ctx.replyWithVideoNote(note, extra?)`         | `sendVideoNote`  | Send a circular video note |
-| `ctx.replyWithAnimation(anim, extra?)`         | `sendAnimation`  | Send a GIF/animation       |
-| `ctx.replyWithSticker(sticker, extra?)`        | `sendSticker`    | Send a sticker             |
-| `ctx.replyWithMediaGroup(media, extra?)`       | `sendMediaGroup` | Send an album              |
-| `ctx.replyWithPaidMedia(stars, media, extra?)` | `sendPaidMedia`  | Send paid media (Stars)    |
-| `ctx.replyWithGame(gameShortName, extra?)`     | `sendGame`       | Send a game                |
+| Method                                             | API              | Description                |
+| -------------------------------------------------- | ---------------- | -------------------------- |
+| `ctx.replyWithPhoto(photo, extra?)`                | `sendPhoto`      | Send a photo               |
+| `ctx.replyWithLivePhoto(livePhoto, photo, extra?)` | `sendLivePhoto`  | Send a live photo          |
+| `ctx.replyWithVideo(video, extra?)`                | `sendVideo`      | Send a video               |
+| `ctx.replyWithAudio(audio, extra?)`                | `sendAudio`      | Send an audio file         |
+| `ctx.replyWithDocument(doc, extra?)`               | `sendDocument`   | Send a document            |
+| `ctx.replyWithVoice(voice, extra?)`                | `sendVoice`      | Send a voice note          |
+| `ctx.replyWithVideoNote(note, extra?)`             | `sendVideoNote`  | Send a circular video note |
+| `ctx.replyWithAnimation(anim, extra?)`             | `sendAnimation`  | Send a GIF/animation       |
+| `ctx.replyWithSticker(sticker, extra?)`            | `sendSticker`    | Send a sticker             |
+| `ctx.replyWithMediaGroup(media, extra?)`           | `sendMediaGroup` | Send an album              |
+| `ctx.replyWithPaidMedia(stars, media, extra?)`     | `sendPaidMedia`  | Send paid media (Stars)    |
+| `ctx.replyWithGame(gameShortName, extra?)`         | `sendGame`       | Send a game                |
 
 ## Interactive Methods
 
@@ -69,19 +74,21 @@ The `Context` object is created for every incoming update and provides shortcuts
 
 ## Message Manipulation
 
-| Method                                          | API                       | Description          |
-| ----------------------------------------------- | ------------------------- | -------------------- |
-| `ctx.editMessageText(text, extra?)`             | `editMessageText`         | Edit message text    |
-| `ctx.editMessageCaption(caption, extra?)`       | `editMessageCaption`      | Edit message caption |
-| `ctx.editMessageMedia(media, extra?)`           | `editMessageMedia`        | Edit message media   |
-| `ctx.editMessageLiveLocation(lat, lon, extra?)` | `editMessageLiveLocation` | Edit a live location |
-| `ctx.stopMessageLiveLocation(extra?)`           | `stopMessageLiveLocation` | Stop a live location |
-| `ctx.editMessageReplyMarkup(markup)`            | `editMessageReplyMarkup`  | Edit inline keyboard |
-| `ctx.deleteMessage(messageId?)`                 | `deleteMessage`           | Delete a message     |
-| `ctx.copyMessage(toChatId, extra?)`             | `copyMessage`             | Copy a message       |
-| `ctx.forwardMessage(toChatId, extra?)`          | `forwardMessage`          | Forward a message    |
-| `ctx.pinChatMessage(messageId?, notify?)`       | `pinChatMessage`          | Pin a message        |
-| `ctx.unpinChatMessage(messageId?)`              | `unpinChatMessage`        | Unpin a message      |
+| Method                                          | API                         | Description             |
+| ----------------------------------------------- | --------------------------- | ----------------------- |
+| `ctx.editMessageText(text, extra?)`             | `editMessageText`           | Edit message text       |
+| `ctx.editMessageCaption(caption, extra?)`       | `editMessageCaption`        | Edit message caption    |
+| `ctx.editMessageMedia(media, extra?)`           | `editMessageMedia`          | Edit message media      |
+| `ctx.editMessageLiveLocation(lat, lon, extra?)` | `editMessageLiveLocation`   | Edit a live location    |
+| `ctx.stopMessageLiveLocation(extra?)`           | `stopMessageLiveLocation`   | Stop a live location    |
+| `ctx.editMessageReplyMarkup(markup)`            | `editMessageReplyMarkup`    | Edit inline keyboard    |
+| `ctx.deleteMessage(messageId?)`                 | `deleteMessage`             | Delete a message        |
+| `ctx.deleteMessageReaction(messageId?, extra?)` | `deleteMessageReaction`     | Remove one reaction     |
+| `ctx.deleteAllMessageReactions(extra?)`         | `deleteAllMessageReactions` | Remove recent reactions |
+| `ctx.copyMessage(toChatId, extra?)`             | `copyMessage`               | Copy a message          |
+| `ctx.forwardMessage(toChatId, extra?)`          | `forwardMessage`            | Forward a message       |
+| `ctx.pinChatMessage(messageId?, notify?)`       | `pinChatMessage`            | Pin a message           |
+| `ctx.unpinChatMessage(messageId?)`              | `unpinChatMessage`          | Unpin a message         |
 
 ## Callback & Query Responses
 
@@ -101,6 +108,7 @@ The `Context` object is created for every incoming update and provides shortcuts
 | `ctx.promoteChatMember(userId, perms?)`         | `promoteChatMember`      | Promote to admin        |
 | `ctx.setChatPermissions(perms, extra?)`         | `setChatPermissions`     | Set default permissions |
 | `ctx.getChatMember(userId)`                     | `getChatMember`          | Get member info         |
+| `ctx.getChatAdministrators(extra?)`             | `getChatAdministrators`  | List administrators     |
 | `ctx.getChatMembersCount()`                     | `getChatMemberCount`     | Get member count        |
 | `ctx.approveChatJoinRequest(userId)`            | `approveChatJoinRequest` | Approve join request    |
 | `ctx.declineChatJoinRequest(userId)`            | `declineChatJoinRequest` | Decline join request    |
@@ -144,6 +152,11 @@ await ctx.replyWithPoll('Favorite color?', [{ text: 'Red' }, { text: 'Blue' }, {
 await ctx.replyWithChecklist({
     title: 'Launch tasks',
     tasks: [{ text: 'Update changelog' }, { text: 'Run release checklist' }],
+});
+
+// Send a Bot API 10.0 live photo
+await ctx.replyWithLivePhoto('LIVE_PHOTO_FILE_ID', 'PHOTO_FILE_ID', {
+    caption: 'Bot API 10.0 live photo',
 });
 
 // Edit a message after delay

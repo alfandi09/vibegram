@@ -41,12 +41,19 @@ interface StepItem {
     title: string;
     description: string;
     command: string;
+    href?: string;
 }
 
 const route = useRoute();
-const { lang } = useData();
+const { lang, site } = useData();
 const copiedCommandId = ref<string | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Extract version from package data, fallback to '1.2.x'
+const versionBadge = computed(() => {
+    const v = (site.value as { themeConfig?: { version?: string } }).themeConfig?.version;
+    return v ?? '1.2.x';
+});
 
 const isIndonesian = computed(
     () => lang.value === 'id' || route.path === '/id/' || route.path.startsWith('/id/')
@@ -60,7 +67,7 @@ const copy = computed(() =>
               title: 'VibeGram',
               subtitle: 'Framework Bot Telegram',
               description:
-                  'Bangun bot Telegram siap produksi dengan middleware, webhook, conversation, session, adapter framework, dan cakupan Bot API v9.6 yang kuat.',
+                  'Bangun bot Telegram siap produksi dengan middleware, webhook, conversation, session, adapter framework, dan cakupan Bot API v10.0 yang kuat.',
               primary: { label: 'Mulai dari Quickstart', href: '/id/basics/quickstart' },
               secondary: { label: 'Referensi API', href: '/id/api/context' },
               github: 'Lihat GitHub',
@@ -92,7 +99,7 @@ const copy = computed(() =>
               title: 'VibeGram',
               subtitle: 'Telegram Bot Framework',
               description:
-                  'Build production-ready Telegram bots with middleware, webhooks, conversations, sessions, framework adapters, and broad Bot API v9.6 coverage.',
+                  'Build production-ready Telegram bots with middleware, webhooks, conversations, sessions, framework adapters, and broad Bot API v10.0 coverage.',
               primary: { label: 'Get Started', href: '/basics/quickstart' },
               secondary: { label: 'API Reference', href: '/api/context' },
               github: 'View GitHub',
@@ -133,13 +140,13 @@ const proofItems = computed(() =>
         ? [
               { value: 'Node.js 18+', label: 'runtime modern' },
               { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 9.6', label: 'cakupan luas' },
+              { value: 'Bot API 10.0', label: 'cakupan luas' },
               { value: 'Strict TS', label: 'DX bertipe' },
           ]
         : [
               { value: 'Node.js 18+', label: 'modern runtime' },
               { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 9.6', label: 'broad coverage' },
+              { value: 'Bot API 10.0', label: 'broad coverage' },
               { value: 'Strict TS', label: 'typed DX' },
           ]
 );
@@ -248,24 +255,28 @@ const quickPath = computed<StepItem[]>(() =>
                   title: 'Install',
                   description: 'Tambahkan package ke project Node.js.',
                   command: 'npm install vibegram',
+                  href: '/id/basics/installation',
               },
               {
                   label: '02',
                   title: 'Create bot',
                   description: 'Buat instance Bot dengan token dari env.',
                   command: 'const bot = new Bot(process.env.BOT_TOKEN!)',
+                  href: '/id/basics/quickstart',
               },
               {
                   label: '03',
                   title: 'Add handlers',
                   description: 'Susun command, filter, middleware, dan scene.',
                   command: "bot.command('start', ctx => ctx.reply('Ready'))",
+                  href: '/id/core/middleware',
               },
               {
                   label: '04',
                   title: 'Launch',
                   description: 'Pilih polling lokal atau webhook production.',
                   command: 'await bot.launch()',
+                  href: '/id/basics/instance',
               },
           ]
         : [
@@ -274,24 +285,28 @@ const quickPath = computed<StepItem[]>(() =>
                   title: 'Install',
                   description: 'Add the package to a Node.js project.',
                   command: 'npm install vibegram',
+                  href: '/basics/installation',
               },
               {
                   label: '02',
                   title: 'Create bot',
                   description: 'Create a Bot instance with a token from env.',
                   command: 'const bot = new Bot(process.env.BOT_TOKEN!)',
+                  href: '/basics/quickstart',
               },
               {
                   label: '03',
                   title: 'Add handlers',
                   description: 'Compose commands, filters, middleware, and scenes.',
                   command: "bot.command('start', ctx => ctx.reply('Ready'))",
+                  href: '/core/middleware',
               },
               {
                   label: '04',
                   title: 'Launch',
                   description: 'Choose local polling or production webhooks.',
                   command: 'await bot.launch()',
+                  href: '/basics/instance',
               },
           ]
 );
@@ -473,6 +488,33 @@ onBeforeUnmount(() => {
                             </span>
                         </div>
                     </div>
+
+                    <!-- Social proof badges -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a
+                            href="https://www.npmjs.com/package/vibegram"
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+                            aria-label="View vibegram on npm"
+                        >
+                            <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 0v24h24V0H0zm6.6 19.2V7.2h4.8V19.2H6.6zm5.4 0V7.2h6v7.2h-3.6v4.8H12z"/></svg>
+                            npm · vibegram
+                        </a>
+                        <a
+                            href="https://github.com/alfandi09/vibegram"
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+                            aria-label="View vibegram on GitHub"
+                        >
+                            <Github class="size-3 shrink-0" aria-hidden="true" />
+                            alfandi09/vibegram
+                        </a>
+                        <span class="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                            ISC License
+                        </span>
+                    </div>
                 </div>
 
                 <aside class="vg-console min-w-0" aria-label="VibeGram workflow preview">
@@ -484,7 +526,7 @@ onBeforeUnmount(() => {
                                 <p class="text-xs text-muted-foreground">bot runtime surface</p>
                             </div>
                         </div>
-                        <Badge variant="outline">v1.2.x</Badge>
+                        <Badge variant="outline">v{{ versionBadge }}</Badge>
                     </div>
 
                     <div class="flex flex-col gap-4 p-4">
@@ -548,7 +590,7 @@ await bot.launch()</code></pre>
                     </p>
                 </div>
 
-                <div class="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <div class="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <Card
                         v-for="item in featureItems"
                         :key="item.title"
@@ -640,6 +682,16 @@ await bot.launch()</code></pre>
                         <code class="block truncate font-mono text-xs text-muted-foreground">
                             {{ step.command }}
                         </code>
+                        <Button
+                            v-if="step.href"
+                            as="a"
+                            :href="localHref(step.href)"
+                            variant="link"
+                            class="mt-3 h-auto px-0 py-0 text-xs"
+                        >
+                            {{ copy.learnMore }}
+                            <ArrowRight data-icon="inline-end" class="size-3" />
+                        </Button>
                     </div>
                 </div>
             </div>

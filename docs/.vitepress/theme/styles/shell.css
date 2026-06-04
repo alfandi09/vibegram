@@ -10,6 +10,15 @@
     pointer-events: none;
 }
 
+/* Smooth global transitions for interactive elements */
+a, button, .link, .caret, .VPNavBarMenuLink, .VPSidebarItem .link, .VPMenuLink .link, .VPFlyout .button, .VPSocialLink, .VPSwitchAppearance {
+    transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .VPNav {
     border-bottom: 1px solid var(--vg-border);
     background: color-mix(in srgb, var(--vg-surface) 88%, transparent);
@@ -51,31 +60,22 @@
     background: var(--vg-surface-subtle);
 }
 
+/* Logo icon — purely decorative, aria-hidden on the container handles a11y */
 .VPNavBarTitle .title::before {
     display: inline-block;
     flex: 0 0 auto;
     width: 28px;
     height: 28px;
     margin-right: 9px;
-    border-radius: 50%;
-    background: var(--vg-brand);
-    color: white;
+    border-radius: 6px;
+    background: url('/vibegram/logo.svg') center / cover no-repeat, var(--vg-brand);
     content: '';
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
     vertical-align: -8px;
 }
 
+/* Remove the checkmark pseudo-element — logo SVG provides the icon */
 .VPNavBarTitle .title::after {
-    position: absolute;
-    top: 50%;
-    left: 8px;
-    width: 11px;
-    height: 8px;
-    border-top: 2px solid #fff;
-    border-right: 2px solid #fff;
-    content: '';
-    transform: translateY(-50%) rotate(35deg) skewX(-16deg);
-    transform-origin: center;
+    display: none;
 }
 
 .VPNavBarMenuLink,
@@ -91,14 +91,14 @@
 
 .VPNavBarMenuLink:hover,
 .VPNavBarMenuGroup .button:hover {
-    color: var(--vg-text);
-    background: var(--vg-surface-subtle);
+    color: var(--vg-brand);
+    background: transparent;
 }
 
 .VPNavBarMenuLink.active,
 .VPNavBarMenuLink[aria-current='page'] {
     color: var(--vg-brand);
-    background: var(--vg-brand-soft);
+    background: transparent;
 }
 
 .VPNavBarTranslations,
@@ -277,7 +277,8 @@
 }
 
 .VPSidebarItem .text {
-    font-size: 13px;
+    font-size: 13.5px;
+    font-weight: 500;
 }
 
 .VPSidebarItem.level-0 > .item > .link > .text,
@@ -301,9 +302,9 @@
 
 .VPSidebarItem.level-1 .link {
     position: relative;
-    min-height: 34px;
+    min-height: 38px;
     border-radius: var(--vg-radius);
-    padding: 0 10px;
+    padding: 6px 12px;
 }
 
 .VPSidebarItem.level-1 .link:hover {
@@ -312,7 +313,7 @@
 
 .VPSidebarItem.is-active > .item .link {
     border-radius: var(--vg-radius);
-    background: var(--vg-brand-soft);
+    background: transparent;
 }
 
 .VPSidebarItem.is-active > .item .link::before {
@@ -328,7 +329,7 @@
 
 .VPSidebarItem.is-active > .item .text {
     color: var(--vg-brand);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .VPLocalNav {

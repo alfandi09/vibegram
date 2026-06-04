@@ -37,8 +37,12 @@ import {
     Gifts,
     OwnedGifts,
     SendGiftOptions,
+    SendLivePhotoOptions,
     StarAmount,
     StarTransactions,
+    GetChatAdministratorsOptions,
+    DeleteAllMessageReactionsOptions,
+    DeleteMessageReactionOptions,
 } from './types';
 import * as crypto from 'crypto';
 
@@ -314,6 +318,25 @@ export class Context {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             message_thread_id: this.getThreadId(),
+            photo,
+            ...extra,
+        });
+    }
+
+    /**
+     * Send a live photo to the current chat.
+     */
+    async replyWithLivePhoto(
+        livePhoto: InputFile,
+        photo: InputFile,
+        extra?: SendLivePhotoOptions
+    ): Promise<Message> {
+        if (!this.chat) throw new Error('Cannot send live photo: Chat ID is not available');
+        return this.client.callApi('sendLivePhoto', {
+            chat_id: this.chat.id,
+            business_connection_id: this.businessConnectionId,
+            message_thread_id: this.getThreadId(),
+            live_photo: livePhoto,
             photo,
             ...extra,
         });
@@ -1685,9 +1708,42 @@ export class Context {
     /**
      * Get the list of administrators in the current chat.
      */
-    async getChatAdministrators(): Promise<ChatMember[]> {
+    async getChatAdministrators(extra?: GetChatAdministratorsOptions): Promise<ChatMember[]> {
         if (!this.chat) throw new Error('Cannot get administrators: Chat ID is not available');
-        return this.client.callApi('getChatAdministrators', { chat_id: this.chat.id });
+        return this.client.callApi('getChatAdministrators', { chat_id: this.chat.id, ...extra });
+    }
+
+    /**
+     * Remove a reaction from a message in the current chat.
+     */
+    async deleteMessageReaction(
+        messageId?: number,
+        extra?: DeleteMessageReactionOptions
+    ): Promise<boolean> {
+        if (!this.chat) throw new Error('Cannot delete reaction: Chat ID is not available');
+        const targetMessageId = messageId ?? this.message?.message_id;
+        if (!targetMessageId) {
+            throw new Error('Cannot delete reaction: Message ID is not available');
+        }
+
+        return this.client.callApi('deleteMessageReaction', {
+            chat_id: this.chat.id,
+            message_id: targetMessageId,
+            ...extra,
+        });
+    }
+
+    /**
+     * Remove recent reactions in the current chat by user or chat.
+     */
+    async deleteAllMessageReactions(
+        extra?: DeleteAllMessageReactionsOptions
+    ): Promise<boolean> {
+        if (!this.chat) throw new Error('Cannot delete reactions: Chat ID is not available');
+        return this.client.callApi('deleteAllMessageReactions', {
+            chat_id: this.chat.id,
+            ...extra,
+        });
     }
 
     /**

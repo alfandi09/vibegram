@@ -9,6 +9,19 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.3.0] - 2026-06-05
+
+### Added
+
+- Added Bot API 10.0 type coverage for guest messages, live photos, poll media, chat reaction permissions, and managed bot access settings.
+- Added Bot API 10.0 wrappers for guest replies, live photos, reaction cleanup, managed bot access settings, and personal chat message lookup.
+
+### Security
+
+- Removed runtime `axios`, `form-data`, and `follow-redirects` dependency exposure by moving Telegram and Codex HTTP calls to the internal native transport and multipart serializer.
+
+---
+
 ## [2.2.1] - 2026-05-22
 
 ### Changed

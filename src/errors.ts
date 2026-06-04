@@ -45,7 +45,7 @@ export class TelegramApiError extends VibeGramError {
 
 /**
  * Thrown when a network-level failure occurs (timeout, DNS, connection refused).
- * Wraps the original axios/fetch error for inspection.
+ * Wraps the original transport error for inspection.
  */
 export class NetworkError extends VibeGramError {
     constructor(

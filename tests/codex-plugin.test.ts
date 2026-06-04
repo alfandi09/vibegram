@@ -17,6 +17,7 @@ type FakeCtx = {
     reply: ReturnType<typeof vi.fn>;
     replyWithDocument: ReturnType<typeof vi.fn>;
     sendChatAction: ReturnType<typeof vi.fn>;
+    deleteMessage: ReturnType<typeof vi.fn>;
     codex?: {
         ask: (text: string) => Promise<{ text: string }>;
         status: () => Promise<unknown>;
@@ -55,8 +56,15 @@ function createCtx(text = 'hello', overrides: Partial<FakeCtx> = {}): FakeCtx {
             return { message_id: 2 };
         }),
         sendChatAction: vi.fn(async () => true),
+        deleteMessage: vi.fn(async () => true),
         ...overrides,
     };
+}
+
+function createJwt(payload: Record<string, unknown>): string {
+    const encode = (value: unknown) =>
+        Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+    return `${encode({ alg: 'none', typ: 'JWT' })}.${encode(payload)}.signature`;
 }
 
 function createProvider(reply = 'ok'): CodexProvider {
@@ -294,5 +302,75 @@ describe('vibegram/codex plugin', () => {
 
         expect(ctx.replyWithDocument).not.toHaveBeenCalled();
         expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('No auth.json found'));
+    });
+
+    it('should explain manual auth.json import instead of starting device login', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex login');
+
+        await runMiddleware(ctx, provider, {
+            authAdminUserIds: [42],
+            authJsonPath: path.join(os.tmpdir(), 'manual-auth.json'),
+        });
+
+        expect(provider.ask).not.toHaveBeenCalled();
+        expect(ctx.reply).toHaveBeenCalledWith(
+            expect.stringContaining('/codex importjson'),
+            expect.objectContaining({ parse_mode: 'Markdown' })
+        );
+    });
+
+    it('should import pasted auth.json for auth admins in private chats', async () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vibegram-codex-'));
+        const authJsonPath = path.join(tmpDir, 'auth.json');
+        const provider = createProvider('reply');
+        const middleware = codex({
+            provider,
+            authAdminUserIds: [42],
+            authJsonPath,
+        });
+        const accessToken = createJwt({
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            'https://api.openai.com/auth': {
+                chatgpt_plan_type: 'plus',
+            },
+        });
+
+        try {
+            const requestCtx = createCtx('/codex importjson');
+            await middleware(requestCtx as never, vi.fn(async () => undefined));
+
+            expect(requestCtx.reply).toHaveBeenCalledWith(
+                expect.stringContaining('Paste'),
+                expect.objectContaining({ parse_mode: 'Markdown' })
+            );
+
+            const importCtx = createCtx(
+                JSON.stringify({
+                    auth_mode: 'chatgpt',
+                    tokens: {
+                        access_token: accessToken,
+                        refresh_token: 'refresh-token',
+                    },
+                })
+            );
+            const next = vi.fn(async () => undefined);
+            await middleware(importCtx as never, next);
+
+            expect(next).not.toHaveBeenCalled();
+            expect(provider.ask).not.toHaveBeenCalled();
+            expect(importCtx.deleteMessage).toHaveBeenCalledOnce();
+            expect(importCtx.reply).toHaveBeenCalledWith(expect.stringContaining('auth.json'));
+
+            const saved = JSON.parse(fs.readFileSync(authJsonPath, 'utf8')) as {
+                tokens?: { access_token?: string; refresh_token?: string };
+            };
+            expect(saved.tokens).toMatchObject({
+                access_token: accessToken,
+                refresh_token: 'refresh-token',
+            });
+        } finally {
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
     });
 });

@@ -186,7 +186,7 @@ src/webapp.ts     → Telegram Web App HMAC validation
 - **TypeScript strict mode** aktif — jangan tambahkan `@ts-ignore` atau `@ts-nocheck`
 - **Hindari `any`** sebisa mungkin. Jika terpaksa, gunakan `unknown` dan narrow secara eksplisit
 - **Semua export harus melalui `src/index.ts`** — tambahkan `export * from './module'` jika buat module baru
-- **Jangan tambah dependency runtime** tanpa alasan kuat. Library ini hanya punya 2 deps: `axios` dan `form-data`
+- **Jangan tambah dependency runtime** tanpa alasan kuat. Library utama harus tetap zero-runtime-dependency; HTTP dan multipart memakai implementasi internal berbasis Node.js >=18.
 - **Middleware harus mengikuti signature**: `(ctx: Context, next: NextFunction) => Promise<void> | void`
 - **Jangan mutasi `ctx.client` secara global** — setiap update mendapat scoped client via `Object.create()`
 - **Regex trigger**: selalu clone regex sebelum exec untuk hindari `lastIndex` leakage (lihat `Composer.cloneTriggerRegex`)

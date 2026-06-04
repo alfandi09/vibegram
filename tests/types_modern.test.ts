@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type {
+    BotAccessSettings,
     Chat,
     ChatBackground,
     ChatFullInfo,
+    ChatMember,
+    ChatPermissions,
     ChatShared,
     ChatOwnerChanged,
     ChatOwnerLeft,
@@ -14,6 +17,7 @@ import type {
     Giveaway,
     GiveawayCompleted,
     InputProfilePhoto,
+    LivePhoto,
     MessageOriginChannel,
     MessageOriginHiddenUser,
     MessageOriginUser,
@@ -21,16 +25,22 @@ import type {
     ManagedBotUpdated,
     Message,
     PaidMessagePriceChanged,
+    Poll,
+    PollMedia,
+    PollOption,
     PollOptionAdded,
     PollOptionDeleted,
     ProximityAlertTriggered,
     RefundedPayment,
+    SentGuestMessage,
     SharedUser,
     StarTransactions,
     SuggestedPostApproved,
     SuggestedPostInfo,
     SuccessfulPayment,
+    Update,
     UsersShared,
+    User,
     UserProfileAudios,
     VideoChatEnded,
     VideoQuality,
@@ -302,5 +312,105 @@ describe('modern Telegram types', () => {
             type: 'supergroup',
             permissions: {},
         });
+    });
+
+    it('accepts Bot API 10.0 guest mode payloads', () => {
+        const guestCaller = {
+            id: 9001,
+            is_bot: false,
+            first_name: 'Guest Caller',
+            supports_guest_queries: true,
+        } satisfies User;
+
+        const message = {
+            message_id: 10,
+            date: 1,
+            chat: { id: 1, type: 'private' },
+            guest_bot_caller_user: guestCaller,
+            guest_bot_caller_chat: { id: -100, type: 'supergroup', title: 'Group' },
+            guest_query_id: 'guest-query-1',
+        } satisfies Message;
+
+        const update = {
+            update_id: 1,
+            guest_message: message,
+        } satisfies Update;
+
+        expect(update.guest_message.guest_query_id).toBe('guest-query-1');
+    });
+
+    it('accepts Bot API 10.0 chat reaction permissions', () => {
+        const permissions = {
+            can_send_messages: true,
+            can_react_to_messages: true,
+        } satisfies ChatPermissions;
+
+        const restrictedMember = {
+            status: 'restricted',
+            user: { id: 42, is_bot: false, first_name: 'Member' },
+            is_member: true,
+            can_send_messages: true,
+            can_react_to_messages: true,
+        } satisfies ChatMember;
+
+        expect(permissions.can_react_to_messages).toBe(true);
+        expect(restrictedMember.can_react_to_messages).toBe(true);
+    });
+
+    it('accepts Bot API 10.0 poll media payloads', () => {
+        const pollMedia = {
+            type: 'photo',
+            media: 'file-id',
+        } satisfies PollMedia;
+
+        const option = {
+            text: 'Option A',
+            voter_count: 1,
+            media: pollMedia,
+        } satisfies PollOption;
+
+        const poll = {
+            id: 'poll-1',
+            question: 'Question',
+            options: [option],
+            total_voter_count: 1,
+            is_closed: false,
+            is_anonymous: true,
+            type: 'regular',
+            allows_multiple_answers: false,
+            media: pollMedia,
+            explanation_media: pollMedia,
+            members_only: true,
+            country_codes: ['ID', 'US'],
+        } satisfies Poll;
+
+        expect(poll.options[0]?.media?.type).toBe('photo');
+    });
+
+    it('exports Bot API 10.0 live photo and bot access setting types', () => {
+        const livePhoto = {
+            photo: [{ file_id: 'photo', file_unique_id: 'photo-u', width: 10, height: 10 }],
+            animation: {
+                file_id: 'anim',
+                file_unique_id: 'anim-u',
+                width: 10,
+                height: 10,
+                duration: 1,
+            },
+        } satisfies LivePhoto;
+
+        const settings = {
+            is_access_restricted: true,
+            added_users: [{ id: 1, is_bot: false, first_name: 'Allowed' }],
+        } satisfies BotAccessSettings;
+
+        const sentGuestMessage = {
+            message_id: 99,
+            date: 1,
+        } satisfies SentGuestMessage;
+
+        expect(livePhoto.photo[0]?.file_id).toBe('photo');
+        expect(settings.added_users?.[0]?.id).toBe(1);
+        expect(sentGuestMessage.message_id).toBe(99);
     });
 });

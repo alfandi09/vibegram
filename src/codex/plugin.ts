@@ -3,7 +3,8 @@
  *
  * Attaches ctx.codex to every update and registers bot commands:
  *   /codex help | status | reset | models | ask <text> | personality <text>
- *   /codex login  — OAuth Device Code login (get token via Telegram)
+ *   /codex login  — Show manual auth.json import instructions
+ *   /codex importjson — Import a pasted Codex auth.json
  *   /codex logout — Clear saved auth tokens
  *   /codex auth export — Download saved auth.json in a private admin chat
  */
@@ -16,7 +17,7 @@ import {
     CodexMessage,
 } from './types';
 import { MemoryCodexStore } from './memory';
-import { deviceLogin } from './auth/device-code';
+import { saveCodexAuthJson } from './auth/manual';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -137,8 +138,8 @@ export function codex<C extends Context = Context>(
     const memoryStore = options.memoryStore ?? new MemoryCodexStore(maxHistory);
     const authManagers = authAdminUserIds ?? allowedUserIds;
 
-    // Track active login flows to prevent duplicates
-    const activeLogins = new Set<number>();
+    const pendingAuthJsonImports = new Set<number>();
+    const pendingAuthJsonImportTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
     // Helper: get auth.json path
     function getAuthJsonPath(): string {
@@ -167,6 +168,104 @@ export function codex<C extends Context = Context>(
     function isPrivateChat(ctx: C): boolean {
         if (ctx.chat?.type) return ctx.chat.type === 'private';
         return ctx.chat?.id !== undefined && ctx.chat.id > 0;
+    }
+
+    function clearPendingAuthJsonImport(userId: number): void {
+        pendingAuthJsonImports.delete(userId);
+        const timeout = pendingAuthJsonImportTimeouts.get(userId);
+        if (timeout) clearTimeout(timeout);
+        pendingAuthJsonImportTimeouts.delete(userId);
+    }
+
+    function waitForAuthJsonImport(userId: number): void {
+        clearPendingAuthJsonImport(userId);
+        pendingAuthJsonImports.add(userId);
+
+        const timeout = setTimeout(() => {
+            clearPendingAuthJsonImport(userId);
+        }, 120_000);
+        timeout.unref?.();
+        pendingAuthJsonImportTimeouts.set(userId, timeout);
+    }
+
+    async function sendManualAuthInstructions(ctx: C): Promise<void> {
+        const authPath = getAuthJsonPath();
+        await ctx.reply(
+            [
+                '*Codex Auth Manual*',
+                '',
+                'Telegram-based OAuth login is no longer supported from this bot.',
+                '',
+                'Use this flow:',
+                '1. Run `codex login` on a trusted local machine.',
+                '2. Open the generated `~/.codex/auth.json` file.',
+                `3. Send \`/${commandPrefix} importjson\` here, then paste the full auth.json content.`,
+                '',
+                `Target path: \`${authPath}\``,
+            ].join('\n'),
+            { parse_mode: 'Markdown' }
+        );
+    }
+
+    async function requestAuthJsonImport(ctx: C): Promise<void> {
+        if (!(await ensureAuthAdmin(ctx))) return;
+
+        if (!isPrivateChat(ctx)) {
+            await ctx.reply('For safety, auth.json can only be imported in a private chat.');
+            return;
+        }
+
+        const userId = ctx.from?.id;
+        if (!userId) {
+            await ctx.reply('Could not determine your user ID.');
+            return;
+        }
+
+        waitForAuthJsonImport(userId);
+        await ctx.reply(
+            [
+                '*Import Codex auth.json*',
+                '',
+                'Paste the full auth.json content in your next message.',
+                '',
+                'Expected shape:',
+                '```json',
+                '{',
+                '  "auth_mode": "chatgpt",',
+                '  "tokens": {',
+                '    "access_token": "eyJ...",',
+                '    "refresh_token": "rt_..."',
+                '  }',
+                '}',
+                '```',
+                '',
+                'Send `/cancel` to stop. This import window expires in 2 minutes.',
+            ].join('\n'),
+            { parse_mode: 'Markdown' }
+        );
+    }
+
+    async function importPastedAuthJson(ctx: C, text: string): Promise<void> {
+        const userId = ctx.from?.id;
+        if (userId !== undefined) clearPendingAuthJsonImport(userId);
+
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(text);
+        } catch {
+            await ctx.reply('Invalid JSON. Send /codex importjson and paste a valid auth.json.');
+            await ctx.deleteMessage().catch(() => {});
+            return;
+        }
+
+        try {
+            const savedPath = saveCodexAuthJson(parsed, getAuthJsonPath());
+            await ctx.deleteMessage().catch(() => {});
+            await ctx.reply(`auth.json imported and saved to ${savedPath}`);
+        } catch (error) {
+            await ctx.deleteMessage().catch(() => {});
+            await ctx.reply(`Failed to import auth.json: ${(error as Error).message}`);
+        }
     }
 
     // Session-wide usage tracker
@@ -363,7 +462,8 @@ export function codex<C extends Context = Context>(
                 await ctx.reply(
                     `🤖 *Codex Bot Commands*\n\n` +
                     `*Authentication:*\n` +
-                    `\`/${commandPrefix} login\` — Login via browser (Device Code Flow)\n` +
+                    `\`/${commandPrefix} login\` — Show manual auth.json instructions\n` +
+                    `\`/${commandPrefix} importjson\` — Import a pasted auth.json\n` +
                     `\`/${commandPrefix} logout\` — Clear saved auth tokens\n` +
                     `\`/${commandPrefix} auth export\` — Download saved auth.json\n\n` +
                     `*Chat:*\n` +
@@ -493,6 +593,11 @@ export function codex<C extends Context = Context>(
                 return true;
             }
 
+            case 'importjson': {
+                await requestAuthJsonImport(ctx);
+                return true;
+            }
+
             case 'auth': {
                 const action = args[0]?.toLowerCase();
                 if (action !== 'export') {
@@ -513,7 +618,7 @@ export function codex<C extends Context = Context>(
                 try {
                     if (!fs.existsSync(authPath) || !fs.statSync(authPath).isFile()) {
                         await ctx.reply(
-                            `ℹ️ No auth.json found at ${authPath}. Use /${commandPrefix} login first.`
+                            `ℹ️ No auth.json found at ${authPath}. Use /${commandPrefix} importjson first.`
                         );
                         return true;
                     }
@@ -534,101 +639,7 @@ export function codex<C extends Context = Context>(
             case 'login': {
                 if (!(await ensureAuthAdmin(ctx))) return true;
 
-                const userId = ctx.from?.id;
-                if (!userId) {
-                    await ctx.reply('⚠️ Could not determine your user ID.');
-                    return true;
-                }
-
-                // Prevent multiple simultaneous login flows
-                if (activeLogins.has(userId)) {
-                    await ctx.reply('⏳ Login already in progress. Please complete the previous one first.');
-                    return true;
-                }
-
-                activeLogins.add(userId);
-
-                try {
-                    const authJsonPath = getAuthJsonPath();
-
-                    await ctx.reply(
-                        '🔐 *Codex Login — Device Code Flow*\n\n' +
-                        'Requesting authorization code from OpenAI...\n' +
-                        'Please wait...',
-                        { parse_mode: 'Markdown' }
-                    );
-
-                    await deviceLogin(
-                        {
-                            onCode: async ({ userCode, verificationUri, verificationUriComplete, expiresIn }) => {
-                                const url = verificationUriComplete ?? verificationUri;
-                                const expiresMin = Math.floor(expiresIn / 60);
-                                await ctx.reply(
-                                    `🔑 *Login Step*\n\n` +
-                                    `1️⃣ Open this link in your browser:\n` +
-                                    `${url}\n\n` +
-                                    `2️⃣ Sign in with your ChatGPT account\n\n` +
-                                    `3️⃣ Enter this code:\n` +
-                                    `\`${userCode}\`\n\n` +
-                                    `⏱ Code expires in ${expiresMin} minutes.\n` +
-                                    `💡 _I will check automatically when you're done._`,
-                                    { parse_mode: 'Markdown' }
-                                );
-                            },
-
-                            onPoll: async (attempt, elapsed) => {
-                                // Send a progress update every ~30 seconds
-                                if (attempt % 6 === 0) {
-                                    const secs = Math.floor(elapsed / 1000);
-                                    await ctx.reply(
-                                        `⏳ Waiting for authorization... (${secs}s elapsed)`
-                                    ).catch(() => {});
-                                }
-                                return true; // continue polling
-                            },
-
-                            onSuccess: async (tokens) => {
-                                // Try to extract plan info from the token
-                                let planInfo = '';
-                                try {
-                                    const parts = tokens.access_token.split('.');
-                                    if (parts.length >= 2) {
-                                        const payload = JSON.parse(
-                                            Buffer.from(parts[1], 'base64url').toString('utf-8')
-                                        );
-                                        const auth = payload['https://api.openai.com/auth'];
-                                        if (auth?.chatgpt_plan_type) {
-                                            planInfo = `\nPlan: \`${auth.chatgpt_plan_type}\``;
-                                        }
-                                    }
-                                } catch { /* skip */ }
-
-                                await ctx.reply(
-                                    `✅ *Login Successful!*\n\n` +
-                                    `Token saved to \`${authJsonPath}\`${planInfo}\n\n` +
-                                    `⚠️ *Important:* Restart the bot to use the new token.\n` +
-                                    `Or use \`/${commandPrefix} status\` to check the current session.`,
-                                    { parse_mode: 'Markdown' }
-                                );
-                            },
-
-                            onError: async (error) => {
-                                await ctx.reply(
-                                    `❌ *Login Failed*\n\n${error.message}`,
-                                    { parse_mode: 'Markdown' }
-                                );
-                            },
-                        },
-                        {
-                            authJsonPath,
-                            timeoutMs: 300_000, // 5 min
-                        }
-                    );
-                } catch {
-                    // Error already reported via onError callback
-                } finally {
-                    activeLogins.delete(userId);
-                }
+                await sendManualAuthInstructions(ctx);
                 return true;
             }
 
@@ -642,7 +653,7 @@ export function codex<C extends Context = Context>(
                         await ctx.reply(
                             `🔓 *Logged Out*\n\n` +
                             `Auth tokens removed from \`${authPath}\`.\n` +
-                            `Use \`/${commandPrefix} login\` to authenticate again.`,
+                            `Use \`/${commandPrefix} importjson\` to import auth.json again.`,
                             { parse_mode: 'Markdown' }
                         );
                     } else {
@@ -674,6 +685,22 @@ export function codex<C extends Context = Context>(
 
         const text = ctx.message?.text;
         if (!text) return next();
+
+        const userId = ctx.from?.id;
+        if (userId !== undefined && pendingAuthJsonImports.has(userId)) {
+            if (text.trim().toLowerCase() === '/cancel') {
+                clearPendingAuthJsonImport(userId);
+                await ctx.reply('Codex auth.json import cancelled.');
+                return;
+            }
+
+            if (!text.startsWith('/')) {
+                await importPastedAuthJson(ctx, text);
+                return;
+            }
+
+            clearPendingAuthJsonImport(userId);
+        }
 
         // ---- Command routing (/codex ...) ----
         if (text.startsWith(`/${commandPrefix}`)) {
