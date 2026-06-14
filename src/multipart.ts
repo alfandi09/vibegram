@@ -181,7 +181,12 @@ function serializeMultipartValue(
 }
 
 function escapeMultipartName(value: string): string {
-    return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    // Strip CR/LF and other control characters first to prevent header
+    // injection, then escape backslashes and quotes for the quoted-string.
+    return value
+        .replace(/[\x00-\x1f\x7f]/g, '')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
 }
 
 async function* readUploadValue(value: UploadValue): AsyncIterable<Uint8Array> {

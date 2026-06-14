@@ -61,11 +61,15 @@ bot.use(session({
 }));
 ```
 
+## Keamanan Konkurensi
+
+Middleware `session()` menserialkan siklus muat → handler → simpan **per kunci session**. Update bersamaan untuk `chatId:userId` yang sama diproses satu per satu, jadi dua pesan beruntun dari pengguna yang sama tidak akan membaca state awal yang sama lalu saling menimpa perubahan (last-writer-wins). Update untuk kunci berbeda tetap berjalan paralel.
+
 ## MemorySessionStore (Bawaan)
 
 VibeGram menggunakan `MemorySessionStore` secara default dengan:
 - **TTL**: 24 jam (dapat dikonfigurasi)
-- **Eviksi LRU**: Hapus entri terlama saat kapasitas penuh (default: 10.000)
+- **Eviksi LRU**: membaca session menyegarkan posisinya, jadi entri yang paling lama tak dipakai dihapus lebih dulu saat kapasitas penuh (default: 10.000)
 
 ```typescript
 import { MemorySessionStore } from 'vibegram';

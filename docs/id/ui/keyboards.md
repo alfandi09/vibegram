@@ -157,3 +157,36 @@ await ctx.reply('Masukkan nama Anda:', {
     }),
 });
 ```
+
+## Escape Teks Tak Tepercaya
+
+Saat menyisipkan teks dari pengguna ke pesan yang memakai `parse_mode`, escape dulu untuk mencegah formatting injection (satu `_`, `*`, atau `<` liar bisa merusak pesan atau menyuntik markup). `Markup` menyediakan tiga helper:
+
+```typescript
+import { Markup } from 'vibegram';
+
+// HTML — escape & < >
+await ctx.reply(`Halo <b>${Markup.escapeHTML(namaUser)}</b>`, {
+    parse_mode: 'HTML',
+});
+
+// MarkdownV2 — escape semua karakter khusus
+await ctx.reply(`Halo *${Markup.escapeMarkdownV2(namaUser)}*`, {
+    parse_mode: 'MarkdownV2',
+});
+
+// Markdown lama
+await ctx.reply(`Halo _${Markup.escapeMarkdown(namaUser)}_`, {
+    parse_mode: 'Markdown',
+});
+```
+
+| Helper | Dipakai dengan |
+|--------|----------------|
+| `Markup.escapeHTML(text)` | `parse_mode: 'HTML'` |
+| `Markup.escapeMarkdownV2(text)` | `parse_mode: 'MarkdownV2'` |
+| `Markup.escapeMarkdown(text)` | `parse_mode: 'Markdown'` (lama) |
+
+::: tip
+Escape hanya bagian dinamisnya. Meng-escape seluruh template juga akan meng-escape markup yang ingin Anda pertahankan.
+:::

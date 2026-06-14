@@ -1,6 +1,6 @@
 # Tipe TypeScript
 
-VibeGram menyertakan 32+ interface TypeScript yang mencakup semua objek Bot API Telegram v10.0 utama.
+VibeGram menyertakan 45+ interface TypeScript yang mencakup semua objek Bot API Telegram 10.1 utama.
 
 ## Tipe Update & Pesan
 
@@ -89,6 +89,33 @@ import type {
 | `SendLivePhotoOptions` | Opsi tambahan untuk `sendLivePhoto` |
 | `DeleteMessageReactionOptions` | Opsi menghapus satu reaction message |
 | `DeleteAllMessageReactionsOptions` | Opsi menghapus reaction terbaru |
+
+## Tipe Bot API 10.1
+
+### Rich Message
+
+| Tipe | Deskripsi |
+| ---- | --------- |
+| `RichMessage` | Pesan terformat kaya (`blocks` + `is_rtl` opsional) |
+| `InputRichMessage` | Rich message yang dikirim; pakai salah satu dari `html` atau `markdown` |
+| `InputRichMessageContent` | Konten rich message untuk hasil inline query |
+| `RichText` | String biasa, array `RichText`, atau elemen `RichText*` |
+| `RichBlock` | Union dari 21 tipe blok (`paragraph`, `heading`, `table`, `photo`, …) |
+| `RichBlockCaption` | Caption (`text` + `credit` opsional) untuk blok media |
+| `RichBlockTableCell` | Satu sel pada `RichBlockTable` |
+| `RichBlockListItem` | Satu item pada `RichBlockList` |
+
+25 tipe elemen inline `RichText*` (`RichTextBold`, `RichTextItalic`, `RichTextUrl`, `RichTextCustomEmoji`, …) dan 21 tipe blok `RichBlock*` semuanya di-export terpisah untuk typing yang presisi.
+
+### Join Request Query & Poll
+
+| Tipe | Deskripsi |
+| ---- | --------- |
+| `ChatJoinRequestQueryResult` | Hasil `'approve' \| 'decline' \| 'queue'` untuk `answerChatJoinRequestQuery` |
+| `Link` | Objek HTTP link (`url`) |
+| `InputMediaLink` | Media link yang bisa dipakai sebagai media opsi poll |
+
+> Field baru pada tipe yang sudah ada: `User.supports_join_request_queries`, `ChatFullInfo.guard_bot`, `ChatJoinRequest.query_id`, dan `Message.rich_message`.
 
 ## Interface Pagination
 

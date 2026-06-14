@@ -1,8 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
-import { apiCache } from '../src/cache';
+import { apiCache, MemoryCache } from '../src/cache';
 import { Context } from '../src/context';
 import { TelegramClient } from '../src/client';
 import { createContext, makeMessageUpdate } from './helpers/mock';
+
+describe('MemoryCache', () => {
+    it('evicts the least-recently-used entry, not insertion order', async () => {
+        const cache = new MemoryCache(2);
+        await cache.set('a', 1, 60000);
+        await cache.set('b', 2, 60000);
+        // Touch 'a' so 'b' becomes least-recently-used.
+        await cache.get('a');
+        await cache.set('c', 3, 60000); // should evict 'b', not 'a'
+
+        expect(await cache.get('a')).toBe(1);
+        expect(await cache.get('b')).toBeUndefined();
+        expect(await cache.get('c')).toBe(3);
+    });
+});
 
 describe('apiCache()', () => {
     it('restores ctx.client.callApi when downstream middleware throws', async () => {

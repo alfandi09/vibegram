@@ -42,20 +42,23 @@ bot.use(rateLimit({
 
 | Opsi | Tipe | Default | Deskripsi |
 |------|------|---------|-----------|
-| `windowMs` | `number` | `60_000` | Durasi jendela waktu (ms) |
-| `limit` | `number` | `20` (grup) / `60` (privat) | Maksimal request per jendela |
-| `onLimitExceeded` | `Function` | `undefined` | Callback saat terlimit |
-| `keyGenerator` | `Function` | `'chatId_fromId'` | Fungsi pembuat kunci |
+| `windowMs` | `number` | Auto | Durasi jendela waktu (ms): 1000 privat, 60000 grup |
+| `limit` | `number` | Auto | Maksimal request per jendela: 1 privat, 20 grup |
+| `keyGenerator` | `(ctx) => string \| undefined` | `'chatId_fromId'` | Fungsi pembuat kunci |
+| `onLimitExceeded` | `(ctx, next) => void` | Abaikan diam-diam | Callback saat limit terlampaui |
+| `store` | `RateLimitStore` | In-memory | Store eksternal untuk berbagi counter antar proses |
+| `strictMode` | `boolean` | `false` | Blokir update tanpa kunci yang bisa di-resolve (alih-alih diteruskan) |
 
 ## Perilaku Default
 
-VibeGram menggunakan limit berbeda berdasarkan tipe chat sesuai panduan resmi Telegram:
+Tanpa opsi, rate limiter menerapkan batas resmi Telegram berdasarkan tipe chat:
 
 | Tipe Chat | Default Limit | Jendela |
 |-----------|---------------|---------|
-| Chat privat | 60 pesan | 1 menit |
+| Chat privat | 1 pesan | 1 detik |
 | Grup/Supergroup | 20 pesan | 1 menit |
-| Channel | 20 pesan | 1 menit |
+
+Request yang melebihi limit diabaikan diam-diam (handler tidak dipanggil). Tidak ada error yang dilempar.
 
 ## Penanganan Saat Terlimit
 
@@ -97,4 +100,42 @@ Middleware log yang dipasang sebelum `rateLimit` akan menerima semua request ter
 bot.use(logger());       // Log semua request
 bot.use(rateLimit());    // Tolak yang melebihi limit
 // Handler hanya menerima request yang lolos
+```
+
+## Berbagi Counter Antar Proses
+
+Untuk deployment multi-proses atau multi-worker, berikan `store` eksternal agar counter dibagikan (mis. di-backing Redis). Kontrak store:
+
+```typescript
+interface RateLimitStore {
+    get(key: string): Promise<RateLimitRecord | undefined> | RateLimitRecord | undefined;
+    set(key: string, value: RateLimitRecord, ttlMs: number): Promise<void> | void;
+    delete(key: string): Promise<void> | void;
+    // Opsional — lihat di bawah.
+    increment?(key: string, windowMs: number, now: number):
+        Promise<RateLimitRecord> | RateLimitRecord;
+}
+```
+
+::: warning Konkurensi
+Siklus `get` → ubah → `set` biasa **tidak atomik** pada store async bersama. Saat ada burst update bersamaan untuk kunci yang sama, dua request bisa membaca count yang sama dan menulis nilai yang sama, sehingga increment ter-hitung kurang dan limit jebol.
+
+Agar tetap benar di bawah konkurensi, implementasikan method opsional **`increment()`** yang melakukan create-or-increment atomik (mis. `INCR` + `EXPIRE` di Redis). Bila tersedia, middleware memakainya alih-alih siklus `get`/`set`. Store in-memory bawaan bersifat single-thread sehingga sudah atomik.
+:::
+
+```typescript
+// Contoh: store atomik berbasis Redis (pseudocode)
+const store: RateLimitStore = {
+    get: async (key) => /* ... */,
+    set: async (key, value, ttlMs) => /* ... */,
+    delete: async (key) => /* ... */,
+    increment: async (key, windowMs, now) => {
+        const count = await redis.incr(key);
+        if (count === 1) await redis.pexpire(key, windowMs);
+        const pttl = await redis.pttl(key);
+        return { count, resetTime: now + Math.max(0, pttl) };
+    },
+};
+
+bot.use(rateLimit({ store }));
 ```

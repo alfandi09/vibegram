@@ -21,4 +21,4 @@ http.createServer(
 
 The native adapter accepts only `application/json` requests and rejects oversized bodies before parsing.
 
-See the full adapter matrix and response codes in [Framework Adapters](./express.md).
+See the full adapter matrix and response codes in [Framework Adapters](/adapters/express).

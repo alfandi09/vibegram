@@ -9,6 +9,28 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.4.0] - 2026-06-14
+
+### Added
+
+- Bot API 10.1 Rich Messages: `sendRichMessage()`, `sendRichMessageDraft()`, and the `ctx.replyWithRichMessage()` shortcut, plus the full type family (`RichMessage`, `InputRichMessage`, `InputRichMessageContent`, `RichText`, `RichBlock`, and all 25 `RichText*` / 21 `RichBlock*` element types).
+- Bot API 10.1 Join Request Queries: `answerChatJoinRequestQuery()` and `sendChatJoinRequestWebApp()`, with new fields `User.supports_join_request_queries`, `ChatFullInfo.guard_bot`, and `ChatJoinRequest.query_id`.
+- Bot API 10.1 poll link media: `Link` and `InputMediaLink` types.
+- `Markup.escapeHTML()`, `Markup.escapeMarkdownV2()`, and `Markup.escapeMarkdown()` helpers for safely interpolating untrusted text into formatted messages.
+- Optional atomic `increment()` method on `RateLimitStore` for race-free rate limiting on shared async stores (e.g. Redis).
+
+### Fixed
+
+- Session middleware now serializes the load/save cycle per key, preventing lost updates when the same user sends messages concurrently.
+- `BotQueue.scheduleOnce()` no longer orphans a timer when its handler re-schedules the same id, and `scheduleInterval()` skips overlapping runs.
+- `MemoryCache` and `MemorySessionStore` now refresh recency on read, making eviction genuinely least-recently-used instead of insertion-order.
+
+### Security
+
+- Strip control characters from multipart field names to prevent header injection in file uploads.
+
+---
+
 ## [2.3.0] - 2026-06-05
 
 ### Added

@@ -40,6 +40,20 @@ export interface RateLimitStore {
     get(key: string): Promise<RateLimitRecord | undefined> | RateLimitRecord | undefined;
     set(key: string, value: RateLimitRecord, ttlMs: number): Promise<void> | void;
     delete(key: string): Promise<void> | void;
+    /**
+     * Optional atomic increment. When provided, the middleware uses this instead
+     * of the get/set read-modify-write cycle, which is not safe under concurrent
+     * access on a shared async store (e.g. Redis). Implementations should
+     * atomically: create the record with count=1 and the given resetTime if it
+     * doesn't exist or has expired, otherwise increment count by 1, and return
+     * the resulting record. `windowMs` is the window length used to compute the
+     * reset time / TTL when (re)initializing.
+     */
+    increment?(
+        key: string,
+        windowMs: number,
+        now: number
+    ): Promise<RateLimitRecord> | RateLimitRecord;
 }
 
 function defaultKeyGenerator(ctx: Context): string | undefined {
@@ -68,6 +82,22 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
             },
             delete: key => {
                 memoryStore.delete(key);
+            },
+            // Synchronous, single-threaded => inherently atomic. Avoids the
+            // get/set TOCTOU window for the default store.
+            increment: (key, windowMs, now) => {
+                const existing = memoryStore.get(key);
+                if (!existing || now > existing.resetTime) {
+                    const fresh: RateLimitRecord = { count: 1, resetTime: now + windowMs };
+                    memoryStore.set(key, fresh);
+                    return fresh;
+                }
+                const updated: RateLimitRecord = {
+                    count: existing.count + 1,
+                    resetTime: existing.resetTime,
+                };
+                memoryStore.set(key, updated);
+                return updated;
             },
         };
 
@@ -112,6 +142,23 @@ export function rateLimit(options?: RateLimitOptions): Middleware<any> {
         const limitCount = options?.limit ?? defaultLimit;
 
         const now = Date.now();
+
+        // Prefer the store's atomic increment when available — avoids the
+        // get/set read-modify-write race on shared async stores.
+        if (store.increment) {
+            const record = await store.increment(key, windowMsDuration, now);
+
+            if (record.count > limitCount) {
+                if (options?.onLimitExceeded) {
+                    return options.onLimitExceeded(ctx, next);
+                }
+                console.warn(`[Rate Limiter] Throttling request from ${key}.`);
+                return;
+            }
+
+            return next();
+        }
+
         let record = await store.get(key);
 
         // 3. Initialize or reset the record if the window has expired.

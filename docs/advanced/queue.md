@@ -7,8 +7,8 @@ handling or exceed platform limits.
 
 <FeatureGrid title="Queue use cases" description="Use the queue when work should be rate-limited, retried, or decoupled from an incoming update.">
   <FeatureCard title="Broadcasting" description="Send messages to many users without hitting Telegram rate limits." href="#broadcasting" />
-  <FeatureCard title="Background jobs" description="Defer non-critical work outside the update handler." href="#background-jobs" />
-  <FeatureCard title="Retries" description="Handle transient Telegram or network failures predictably." href="#retries" />
+  <FeatureCard title="Scheduling" description="Run one-off or recurring jobs outside the update handler." href="#scheduling" />
+  <FeatureCard title="Rate limit strategy" description="Tune concurrency and delays to stay within platform limits." href="#rate-limit-strategy" />
 </FeatureGrid>
 
 The `BotQueue` provides rate-limited mass broadcasting and task scheduling — essential for bots that need to send messages to thousands of users without hitting Telegram's rate limits.

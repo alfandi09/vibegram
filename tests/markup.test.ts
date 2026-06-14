@@ -202,3 +202,21 @@ describe('Markup.replyButton', () => {
         expect(btn.request_location).toBe(true);
     });
 });
+
+describe('Markup escape helpers', () => {
+    it('escapeHTML escapes &, <, > only', () => {
+        expect(Markup.escapeHTML('<b>a & b</b>')).toBe('&lt;b&gt;a &amp; b&lt;/b&gt;');
+        // Ampersand escaped first so existing entities are not double-broken.
+        expect(Markup.escapeHTML('Tom & Jerry')).toBe('Tom &amp; Jerry');
+    });
+
+    it('escapeMarkdownV2 escapes all reserved characters', () => {
+        expect(Markup.escapeMarkdownV2('a_b*c[d]')).toBe('a\\_b\\*c\\[d\\]');
+        expect(Markup.escapeMarkdownV2('1.5 (x)')).toBe('1\\.5 \\(x\\)');
+        expect(Markup.escapeMarkdownV2('a\\b')).toBe('a\\\\b');
+    });
+
+    it('escapeMarkdown escapes legacy reserved characters', () => {
+        expect(Markup.escapeMarkdown('a_b*c`d[e')).toBe('a\\_b\\*c\\`d\\[e');
+    });
+});

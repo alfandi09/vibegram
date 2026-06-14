@@ -23,6 +23,10 @@ import {
     Gifts,
     InlineQueryResult,
     InputFile,
+    InputRichMessage,
+    ExtraRichMessage,
+    ExtraRichMessageDraft,
+    ChatJoinRequestQueryResult,
     InputProfilePhoto,
     InputStoryContent,
     LabeledPrice,
@@ -858,6 +862,64 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             live_photo: livePhoto,
             photo,
             ...extra,
+        });
+    }
+
+    /**
+     * Send a rich formatted message (Bot API 10.1).
+     */
+    async sendRichMessage(
+        chatId: number | string,
+        richMessage: InputRichMessage,
+        extra?: ExtraRichMessage
+    ): Promise<Message> {
+        return this.client.callApi('sendRichMessage', {
+            chat_id: chatId,
+            rich_message: richMessage,
+            ...extra,
+        });
+    }
+
+    /**
+     * Stream a partial rich message to a private chat as an ephemeral draft (Bot API 10.1).
+     */
+    async sendRichMessageDraft(
+        chatId: number,
+        draftId: number,
+        richMessage: InputRichMessage,
+        extra?: ExtraRichMessageDraft
+    ): Promise<boolean> {
+        return this.client.callApi('sendRichMessageDraft', {
+            chat_id: chatId,
+            draft_id: draftId,
+            rich_message: richMessage,
+            ...extra,
+        });
+    }
+
+    /**
+     * Process a received chat join request query (Bot API 10.1).
+     */
+    async answerChatJoinRequestQuery(
+        chatJoinRequestQueryId: string,
+        result: ChatJoinRequestQueryResult
+    ): Promise<boolean> {
+        return this.client.callApi('answerChatJoinRequestQuery', {
+            chat_join_request_query_id: chatJoinRequestQueryId,
+            result,
+        });
+    }
+
+    /**
+     * Process a chat join request query by showing a Mini App before deciding (Bot API 10.1).
+     */
+    async sendChatJoinRequestWebApp(
+        chatJoinRequestQueryId: string,
+        webAppUrl: string
+    ): Promise<boolean> {
+        return this.client.callApi('sendChatJoinRequestWebApp', {
+            chat_join_request_query_id: chatJoinRequestQueryId,
+            web_app_url: webAppUrl,
         });
     }
 

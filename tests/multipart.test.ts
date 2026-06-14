@@ -148,4 +148,16 @@ describe('Telegram multipart serialization', () => {
         expect(payload).toContain('name="media_1_media"');
         expect(payload).toContain('name="media_1_thumbnail"');
     });
+
+    it('strips CR/LF from multipart field names to prevent header injection', async () => {
+        const prepared = prepareRequestPayload({
+            'evil\r\nX-Injected: yes': Buffer.from('data'),
+        });
+
+        const payload = await readMultipartBody(prepared.body);
+
+        // The raw CRLF must not survive into the serialized headers.
+        expect(payload).not.toContain('X-Injected: yes\r\n');
+        expect(payload).toContain('name="evilX-Injected: yes"');
+    });
 });

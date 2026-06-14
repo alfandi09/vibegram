@@ -9,7 +9,7 @@
 <MethodSignature
   name="Conversation.waitForAny"
   signature="const input = await c.waitForAny(options)"
-  returns="Promise&lt;ConversationAnyResult&gt;"
+  returns="Promise&lt;ConversationWaitForAnyResult&gt;"
   :params="[
     { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validation, and validation error message.' }
   ]"

@@ -4,6 +4,23 @@ Catatan rilis VibeGram. Halaman ini menyorot perubahan yang paling berguna untuk
 
 Untuk log rilis lengkap, lihat repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.4.0
+
+### Added
+
+- **Bot API 10.1 — Rich Message**: `bot.sendRichMessage()`, `bot.sendRichMessageDraft()`, dan shortcut `ctx.replyWithRichMessage()`, plus keluarga tipe lengkap (`RichMessage`, `InputRichMessage`, `RichText`, `RichBlock`, serta seluruh 25 tipe elemen `RichText*` / 21 `RichBlock*`).
+- **Bot API 10.1 — Join Request Query**: `bot.answerChatJoinRequestQuery()` dan `bot.sendChatJoinRequestWebApp()`, dengan field baru `User.supports_join_request_queries`, `ChatFullInfo.guard_bot`, dan `ChatJoinRequest.query_id`.
+- **Bot API 10.1 — Poll**: tipe `Link` dan `InputMediaLink` (media link untuk opsi poll).
+- Helper `Markup.escapeHTML()`, `Markup.escapeMarkdownV2()`, dan `Markup.escapeMarkdown()` untuk menyisipkan teks tak tepercaya ke pesan terformat dengan aman.
+- Method opsional atomik `increment()` pada `RateLimitStore` untuk rate limiting bebas-race pada store async bersama (mis. Redis).
+
+### Fixed
+
+- **Konkurensi session**: middleware `session()` kini menserialkan muat/simpan per kunci, mencegah update hilang saat pengguna yang sama mengirim pesan bersamaan.
+- **Timer queue**: `scheduleOnce()` tidak lagi meng-orphan timer saat handler-nya menjadwalkan ulang id yang sama, dan `scheduleInterval()` melewati run yang tumpang tindih.
+- **Multipart**: karakter kontrol di-strip dari nama field multipart untuk mencegah header injection.
+- **Eviksi LRU**: `MemoryCache` dan `MemorySessionStore` kini menyegarkan posisi saat dibaca, jadi eviksi benar-benar least-recently-used, bukan urutan penyisipan.
+
 ## 2.3.0
 
 Dirilis pada 2026-06-05.

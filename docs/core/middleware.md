@@ -138,11 +138,11 @@ bot.use(async (ctx, next) => {
 Apply middleware only to specific update types using filter combinators:
 
 ```typescript
-import { and, isMessage, isCommand } from 'vibegram';
+import { and, isPrivate, hasText } from 'vibegram';
 
-// Only apply to text messages that are commands
-bot.use(and(isMessage, isCommand), async (ctx, next) => {
-    console.log(`Command: ${ctx.command?.command}`);
+// Only apply to text messages in private chats
+bot.use(and(isPrivate, hasText), async (ctx, next) => {
+    console.log(`Private text: ${ctx.message?.text}`);
     return next();
 });
 ```

@@ -10,11 +10,12 @@ export default defineConfig({
             include: ['src/**/*.ts'],
             exclude: ['src/index.ts', 'src/types.ts'],
             thresholds: {
-                // Keep CI coverage gating enabled, but align thresholds with the
-                // current tested surface until deeper module coverage lands.
-                lines: 40,
-                functions: 45,
-                branches: 70,
+                // Aligned to actual coverage (lines ~69%, funcs ~71%, branches ~78%)
+                // with headroom to avoid flaky CI gating. Raise incrementally as
+                // deeper module coverage lands.
+                lines: 60,
+                functions: 65,
+                branches: 75,
             },
         },
     },

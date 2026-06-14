@@ -1,3 +1,13 @@
+import {
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    KeyboardButtonRequestChat,
+    KeyboardButtonRequestManagedBot,
+    KeyboardButtonRequestUser,
+    ReplyKeyboardMarkup,
+} from './types';
+
 export interface PaginationItem {
     text: string;
     callback_data: string;
@@ -23,8 +33,36 @@ export interface PaginationOptions {
  * Eliminates boilerplate from manually constructing inline_keyboard matrix arrays.
  */
 export class Markup {
+    /**
+     * Escape text for safe interpolation into a `parse_mode: 'HTML'` message.
+     * Escapes the characters Telegram treats as HTML markup (`<`, `>`, `&`).
+     * Use this on any user-supplied or untrusted text before embedding it in
+     * an HTML-formatted message to prevent formatting injection.
+     */
+    static escapeHTML(text: string): string {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Escape text for safe interpolation into a `parse_mode: 'MarkdownV2'` message.
+     * Escapes all characters Telegram reserves in MarkdownV2.
+     * @see https://core.telegram.org/bots/api#markdownv2-style
+     */
+    static escapeMarkdownV2(text: string): string {
+        return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+    }
+
+    /**
+     * Escape text for safe interpolation into a legacy `parse_mode: 'Markdown'` message.
+     * Note: legacy Markdown cannot represent every character unambiguously;
+     * prefer {@link Markup.escapeMarkdownV2} for new code.
+     */
+    static escapeMarkdown(text: string): string {
+        return text.replace(/[_*`[]/g, '\\$&');
+    }
+
     /** Build a standard InlineKeyboardMarkup from a matrix of button rows. */
-    static inlineKeyboard(buttonRows: any[][]) {
+    static inlineKeyboard(buttonRows: InlineKeyboardButton[][]): InlineKeyboardMarkup {
         return { inline_keyboard: buttonRows };
     }
 
@@ -41,8 +79,8 @@ export class Markup {
      * ], 2)
      * // inline_keyboard → [[Mon, Tue], [Wed]]
      */
-    static grid(buttons: any[], columns: number = 2) {
-        const rows: any[][] = [];
+    static grid(buttons: InlineKeyboardButton[], columns: number = 2): InlineKeyboardMarkup {
+        const rows: InlineKeyboardButton[][] = [];
         for (let i = 0; i < buttons.length; i += columns) {
             rows.push(buttons.slice(i, i + columns));
         }
@@ -98,7 +136,7 @@ export class Markup {
 
         // Arrange items into columns (grid) or a single column (list).
         const columns = options.columns || 1;
-        const keyboard: any[][] = [];
+        const keyboard: InlineKeyboardButton[][] = [];
         for (let i = 0; i < itemsOnPage.length; i += columns) {
             const row = itemsOnPage.slice(i, i + columns).map(item => ({
                 text: item.text,
@@ -108,7 +146,7 @@ export class Markup {
         }
 
         // Build the navigation row.
-        const navRow = [];
+        const navRow: InlineKeyboardButton[] = [];
 
         // Previous page button.
         if (page > 1) {
@@ -144,7 +182,7 @@ export class Markup {
      * Supports input_field_placeholder and selective targeting.
      */
     static keyboard(
-        buttonRows: any[][],
+        buttonRows: KeyboardButton[][],
         options?: {
             resize_keyboard?: boolean;
             one_time_keyboard?: boolean;
@@ -152,7 +190,7 @@ export class Markup {
             input_field_placeholder?: string;
             selective?: boolean;
         }
-    ) {
+    ): ReplyKeyboardMarkup {
         return {
             keyboard: buttonRows,
             resize_keyboard: options?.resize_keyboard ?? true,
@@ -195,17 +233,29 @@ export class Markup {
             request_poll: type ? { type } : {},
         }),
         /** Select a specific user or bot (Bot API 6.x). */
-        requestUser: (text: string, request_id: number, extraOptions: any = {}) => ({
+        requestUser: (
+            text: string,
+            request_id: number,
+            extraOptions: Partial<Omit<KeyboardButtonRequestUser, 'request_id'>> = {}
+        ) => ({
             text,
             request_user: { request_id, ...extraOptions },
         }),
         /** Select a specific group or channel (Bot API 6.x). */
-        requestChat: (text: string, request_id: number, extraOptions: any = {}) => ({
+        requestChat: (
+            text: string,
+            request_id: number,
+            extraOptions: Partial<Omit<KeyboardButtonRequestChat, 'request_id'>> = {}
+        ) => ({
             text,
             request_chat: { request_id, ...extraOptions },
         }),
         /** Authorize a Managed Bot on behalf of the user (Bot API 9.6). */
-        requestManagedBot: (text: string, request_id: number, extraOptions: any = {}) => ({
+        requestManagedBot: (
+            text: string,
+            request_id: number,
+            extraOptions: Partial<Omit<KeyboardButtonRequestManagedBot, 'request_id'>> = {}
+        ) => ({
             text,
             request_managed_bot: { request_id, ...extraOptions },
         }),

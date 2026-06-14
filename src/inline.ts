@@ -2,6 +2,8 @@
  * Inline Query result builder — simplifies constructing InlineQueryResult arrays.
  */
 
+import { InlineKeyboardMarkup, InlineQueryResult } from './types';
+
 function assertNonEmptyString(name: string, value: unknown): asserts value is string {
     if (typeof value !== 'string' || value.trim() === '') {
         throw new TypeError(`Inline option "${name}" must be a non-empty string.`);
@@ -77,7 +79,7 @@ export interface InlineArticleOptions {
     thumbnail_url?: string;
     thumbnail_width?: number;
     thumbnail_height?: number;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlinePhotoOptions {
@@ -90,7 +92,7 @@ export interface InlinePhotoOptions {
     parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
     photo_width?: number;
     photo_height?: number;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineDocumentOptions {
@@ -102,7 +104,7 @@ export interface InlineDocumentOptions {
     caption?: string;
     parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
     thumbnail_url?: string;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineVideoOptions {
@@ -117,7 +119,7 @@ export interface InlineVideoOptions {
     video_width?: number;
     video_height?: number;
     video_duration?: number;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineGifOptions {
@@ -130,7 +132,7 @@ export interface InlineGifOptions {
     title?: string;
     caption?: string;
     parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineVoiceOptions {
@@ -140,7 +142,7 @@ export interface InlineVoiceOptions {
     voice_duration?: number;
     caption?: string;
     parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineLocationOptions {
@@ -151,7 +153,7 @@ export interface InlineLocationOptions {
     thumbnail_url?: string;
     thumbnail_width?: number;
     thumbnail_height?: number;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 export interface InlineVenueOptions extends InlineLocationOptions {
@@ -169,7 +171,7 @@ export interface InlineContactOptions {
     last_name?: string;
     vcard?: string;
     thumbnail_url?: string;
-    reply_markup?: any;
+    reply_markup?: InlineKeyboardMarkup;
 }
 
 /**
@@ -186,7 +188,7 @@ export interface InlineContactOptions {
  * ```
  */
 export class InlineResults {
-    private results: any[] = [];
+    private results: InlineQueryResult[] = [];
 
     private constructor() {}
 
@@ -426,7 +428,7 @@ export class InlineResults {
     }
 
     /** Build and return the results array for answerInlineQuery */
-    build(): any[] {
+    build(): InlineQueryResult[] {
         return [...this.results];
     }
 

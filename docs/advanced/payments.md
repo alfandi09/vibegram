@@ -7,7 +7,7 @@ state when fulfilling paid content.
 
 <FeatureGrid title="Payment surfaces" description="Use Telegram payments for invoices and Stars for digital content flows.">
   <FeatureCard title="Invoices" description="Create payment flows with Telegram invoice APIs." href="#invoices" />
-  <FeatureCard title="Stars" description="Handle digital content monetization with Stars methods." href="#telegram-stars" />
+  <FeatureCard title="Paid media" description="Sell digital content with Stars-backed paid media." href="#sending-paid-media" />
   <FeatureCard title="Checkout" description="Answer pre-checkout queries before completing fulfillment." href="#pre-checkout" />
 </FeatureGrid>
 

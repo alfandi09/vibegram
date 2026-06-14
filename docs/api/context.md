@@ -159,6 +159,11 @@ await ctx.replyWithLivePhoto('LIVE_PHOTO_FILE_ID', 'PHOTO_FILE_ID', {
     caption: 'Bot API 10.0 live photo',
 });
 
+// Send a Bot API 10.1 rich message (HTML or Markdown source — exactly one)
+await ctx.replyWithRichMessage({
+    html: '<h2>Welcome</h2><p>This is a <b>rich</b> message.</p>',
+});
+
 // Edit a message after delay
 const msg = await ctx.reply('Loading...');
 setTimeout(() => ctx.editMessageText('Done!'), 2000);

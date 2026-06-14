@@ -45,7 +45,7 @@ export class MemorySessionStore implements SessionStore {
 
     /**
      * @param ttlMs Time-to-live in milliseconds. Defaults to 24 hours.
-     * @param maxEntries Maximum number of sessions to store. Oldest entries are evicted when exceeded. Defaults to 10000.
+     * @param maxEntries Maximum number of sessions to store. Least-recently-used entries are evicted when exceeded. Defaults to 10000.
      * @param cleanupIntervalMs Periodic cleanup interval in milliseconds. Set to 0 to disable. Defaults to 60000.
      */
     constructor(
@@ -73,12 +73,19 @@ export class MemorySessionStore implements SessionStore {
             return undefined;
         }
 
+        // Refresh recency so eviction is least-recently-used, not insertion-order.
+        this.store.delete(key);
+        this.store.set(key, item);
+
         return item.value;
     }
 
     set(key: string, value: any) {
-        // Evict oldest entries if capacity exceeded
-        if (this.store.size >= this.maxEntries && !this.store.has(key)) {
+        // Refresh recency on overwrite, then evict the least-recently-used
+        // entry (first key in insertion order) when capacity is exceeded.
+        if (this.store.has(key)) {
+            this.store.delete(key);
+        } else if (this.store.size >= this.maxEntries) {
             const firstKey = this.store.keys().next().value;
             if (firstKey !== undefined) this.store.delete(firstKey);
         }
@@ -132,6 +139,11 @@ export interface SessionOptions<S = any> {
 export function session<S = any>(options?: SessionOptions<S>): Middleware<any> {
     const store = options?.store || new MemorySessionStore();
 
+    // Per-key promise chain. Serializes the load->handler->save cycle for the
+    // same session key so concurrent updates don't read the same starting
+    // state and clobber each other's writes (last-writer-wins).
+    const locks = new Map<string, Promise<void>>();
+
     const getSessionKey =
         options?.getSessionKey ||
         ((ctx: Context) => {
@@ -149,25 +161,50 @@ export function session<S = any>(options?: SessionOptions<S>): Middleware<any> {
             return next();
         }
 
-        // Load existing session or initialize with default state
-        let currentSession = (await store.get(key)) || (options?.initial ? options.initial() : {});
+        const previous = locks.get(key) ?? Promise.resolve();
 
-        Object.defineProperty(ctx, 'session', {
-            get: function () {
-                return currentSession;
-            },
-            set: function (newValue) {
-                currentSession = cloneSessionValue(newValue);
-            },
+        let release!: () => void;
+        const current = new Promise<void>(resolve => {
+            release = resolve;
         });
+        // Chain this run after any in-flight run for the same key, so the
+        // load->handler->save cycle is serialized per key.
+        const tail = previous.then(() => current);
+        locks.set(key, tail);
 
-        await next();
+        try {
+            // Wait for the previous run to finish before loading state.
+            await previous.catch(() => undefined);
 
-        // Persist updated session to store. If session is null, delete from store.
-        if (currentSession == null) {
-            await store.delete(key);
-        } else {
-            await store.set(key, currentSession);
+            // Load existing session or initialize with default state
+            let currentSession =
+                (await store.get(key)) || (options?.initial ? options.initial() : {});
+
+            Object.defineProperty(ctx, 'session', {
+                configurable: true,
+                get: function () {
+                    return currentSession;
+                },
+                set: function (newValue) {
+                    currentSession = cloneSessionValue(newValue);
+                },
+            });
+
+            await next();
+
+            // Persist updated session to store. If session is null, delete from store.
+            if (currentSession == null) {
+                await store.delete(key);
+            } else {
+                await store.set(key, currentSession);
+            }
+        } finally {
+            release();
+            // If no newer run chained itself after us, drop the lock entry to
+            // keep the locks map from growing unbounded.
+            if (locks.get(key) === tail) {
+                locks.delete(key);
+            }
         }
     };
 }

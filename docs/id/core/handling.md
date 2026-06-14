@@ -98,7 +98,7 @@ bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media diterima!'));
 Middleware dan listener dieksekusi **sesuai urutan pendaftaran**. Yang pertama didaftarkan, pertama dieksekusi:
 
 ```typescript
-bot.use(logger);           // 1. Logger (selalu berjalan)
+bot.use(logger());         // 1. Logger (selalu berjalan)
 bot.on('message', ...);    // 2. Pesan apa saja
 bot.command('start', ...); // 3. Hanya /start
 bot.hears(/hi/, ...);      // 4. Hanya teks "hi"

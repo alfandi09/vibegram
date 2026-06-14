@@ -44,6 +44,15 @@ import type {
     UserProfileAudios,
     VideoChatEnded,
     VideoQuality,
+    RichMessage,
+    RichText,
+    RichBlock,
+    InputRichMessage,
+    InputRichMessageContent,
+    InputMediaLink,
+    Link,
+    ChatJoinRequest,
+    ChatJoinRequestQueryResult,
 } from '../src/types';
 
 describe('modern Telegram types', () => {
@@ -412,5 +421,54 @@ describe('modern Telegram types', () => {
         expect(livePhoto.photo[0]?.file_id).toBe('photo');
         expect(settings.added_users?.[0]?.id).toBe(1);
         expect(sentGuestMessage.message_id).toBe(99);
+    });
+
+    it('accepts Bot API 10.1 rich messages, join request queries, and poll links', () => {
+        const bold: RichText = { type: 'bold', text: 'hello' };
+        const nested: RichText = [
+            'plain ',
+            { type: 'italic', text: bold },
+            { type: 'url', text: 'site', url: 'https://example.com' },
+        ];
+
+        const blocks: RichBlock[] = [
+            { type: 'paragraph', text: nested },
+            { type: 'heading', text: 'Title', size: 1 },
+            { type: 'divider' },
+            { type: 'pre', text: 'code()', language: 'ts' },
+            {
+                type: 'list',
+                items: [{ label: '1', blocks: [{ type: 'paragraph', text: 'item' }] }],
+            },
+            {
+                type: 'table',
+                cells: [[{ text: 'h', is_header: true, align: 'center' }]],
+                is_bordered: true,
+            },
+        ];
+
+        const richMessage = { blocks, is_rtl: false } satisfies RichMessage;
+        const input = { html: '<b>hi</b>', is_rtl: true } satisfies InputRichMessage;
+        const inlineContent = { rich_message: input } satisfies InputRichMessageContent;
+
+        const link = { url: 'https://t.me' } satisfies Link;
+        const mediaLink = { type: 'link', url: 'https://t.me' } satisfies InputMediaLink;
+
+        const joinRequest = {
+            chat: { id: 1, type: 'group' },
+            from: { id: 2, is_bot: false, first_name: 'Joiner' },
+            user_chat_id: 3,
+            date: 1,
+            query_id: 'q-1',
+        } satisfies ChatJoinRequest;
+        const result: ChatJoinRequestQueryResult = 'approve';
+
+        expect(richMessage.blocks).toHaveLength(6);
+        expect(input.html).toBe('<b>hi</b>');
+        expect(inlineContent.rich_message.is_rtl).toBe(true);
+        expect(link.url).toBe('https://t.me');
+        expect(mediaLink.type).toBe('link');
+        expect(joinRequest.query_id).toBe('q-1');
+        expect(result).toBe('approve');
     });
 });

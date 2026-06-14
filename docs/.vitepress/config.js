@@ -6,7 +6,7 @@ export default async () => {
     return {
         title: 'VibeGram',
         description:
-            'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API v10.0 support',
+            'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API 10.1 support',
         base: '/vibegram/',
 
         vite: {
@@ -40,7 +40,7 @@ export default async () => {
                 {
                     property: 'og:description',
                     content:
-                        'Modern, production-ready Telegram Bot Framework for Node.js with broad Bot API v10.0 support.',
+                        'Modern, production-ready Telegram Bot Framework for Node.js with broad Bot API 10.1 support.',
                 },
             ],
             [

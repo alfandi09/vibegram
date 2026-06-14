@@ -1,9 +1,9 @@
 # Group Administration
 
 <FeatureGrid title="Group management surfaces" description="Use these shortcuts when a bot moderates groups, supergroups, join requests, or member permissions.">
-  <FeatureCard title="Member controls" description="Ban, unban, restrict, and promote members from Context helpers." href="#member-management" />
-  <FeatureCard title="Permissions" description="Set default chat permissions and moderation policy." href="#permissions" />
-  <FeatureCard title="Join requests" description="Approve or decline users before they enter the group." href="#join-requests" />
+  <FeatureCard title="Member controls" description="Ban, unban, restrict, and promote members from Context helpers." href="#banning--unbanning" />
+  <FeatureCard title="Permissions" description="Set default chat permissions and moderation policy." href="#setting-permissions" />
+  <FeatureCard title="All admin methods" description="Browse the complete table of administration shortcuts." href="#all-admin-methods" />
 </FeatureGrid>
 
 VibeGram provides Context shortcuts for common group and supergroup management tasks.

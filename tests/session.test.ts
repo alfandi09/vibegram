@@ -170,4 +170,44 @@ describe('session() middleware', () => {
         expect(customKey).toHaveBeenCalledOnce();
         expect(store.get('custom:key')).toBeDefined();
     });
+
+    it('serializes concurrent updates for the same key without losing writes', async () => {
+        const store = new MemorySessionStore();
+        const mw = session({ store, initial: () => ({ count: 0 }) });
+
+        // Two updates for the same chat/from key, dispatched concurrently. Each
+        // increments the counter behind an async boundary that would interleave
+        // a naive load->modify->save cycle and lose one increment.
+        const run = () => {
+            const { ctx } = createContext(makeMessageUpdate('hi'));
+            return mw(ctx, async () => {
+                const current = ctx.session.count;
+                await new Promise(r => setTimeout(r, 5));
+                ctx.session.count = current + 1;
+            });
+        };
+
+        await Promise.all([run(), run()]);
+
+        expect((store.get('99:42') as any).count).toBe(2);
+    });
+
+    it('does not leak lock entries after concurrent runs settle', async () => {
+        const store = new MemorySessionStore();
+        const mw = session({ store, initial: () => ({ count: 0 }) });
+        const run = () => {
+            const { ctx } = createContext(makeMessageUpdate('hi'));
+            return mw(ctx, async () => {
+                ctx.session.count++;
+            });
+        };
+
+        await Promise.all([run(), run(), run()]);
+        // A subsequent run should still work (lock map cleaned up, not stuck).
+        const { ctx } = createContext(makeMessageUpdate('hi'));
+        await mw(ctx, async () => {
+            ctx.session.count++;
+        });
+        expect((store.get('99:42') as any).count).toBe(4);
+    });
 });

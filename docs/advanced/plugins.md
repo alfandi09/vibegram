@@ -1,9 +1,9 @@
 # Plugin System
 
 <FeatureGrid title="Plugin composition" description="Package middleware, commands, handlers, and lifecycle hooks into reusable units.">
-  <FeatureCard title="Install plugins" description="Mount plugin classes or functions through `bot.plugin()`." href="#installing-plugins" />
-  <FeatureCard title="Reusable features" description="Share analytics, auth, logging, or domain behavior across bots." href="#creating-plugins" />
-  <FeatureCard title="Typed options" description="Keep plugin configuration explicit and easy to validate." href="#plugin-options" />
+  <FeatureCard title="Install plugins" description="Mount plugin classes or functions through `bot.plugin()`." href="#quick-start" />
+  <FeatureCard title="Reusable features" description="Share analytics, auth, logging, or domain behavior across bots." href="#creating-a-reusable-plugin" />
+  <FeatureCard title="Plugin vs middleware" description="Know when to reach for a plugin instead of plain middleware." href="#plugin-vs-middleware" />
 </FeatureGrid>
 
 VibeGram's plugin system enables modular feature composition. Plugins encapsulate middleware, commands, and handlers into reusable, installable units.

@@ -28,14 +28,19 @@ Sebelum bump versi, SELALU cek dulu:
 npm view vibegram versions --json
 ```
 
-Versi yang **sudah terpakai dan tidak boleh digunakan lagi**:
+Versi yang **sudah terpakai dan tidak boleh digunakan lagi** (per cek npm 2026-06-14):
 
 - `1.0.0-rc.1`, `1.0.0-rc.2`, `1.0.0`, `1.0.1`
-- `1.1.0` (npm menolak publish sebagai versi yang pernah dipakai meskipun sempat tidak muncul di daftar)
-- `1.2.0` (sudah publish sebagai latest pada 2026-04-25)
-- `1.1.1`, `1.1.2` (pernah gagal publish, status tidak pasti — hindari)
+- `1.2.0`, `1.2.1`
+- `2.0.0`, `2.1.0`, `2.2.0`, `2.2.1`, `2.3.0` (latest saat ini)
 
-Versi berikutnya yang aman: `1.2.1` untuk patch atau `1.3.0` untuk minor (cek dulu via command di atas).
+Versi yang **burned / hindari** (pernah gagal atau ditolak npm, status tidak pasti):
+
+- `1.1.0` (npm menolak publish sebagai versi yang pernah dipakai meskipun sempat tidak muncul di daftar)
+- `1.1.1`, `1.1.2` (pernah gagal publish)
+- `1.3.0` (lewati untuk menghindari ambiguitas dengan riwayat 1.x)
+
+Versi berikutnya yang aman: `2.3.1` untuk patch atau `2.4.0` untuk minor (SELALU cek dulu via command di atas sebelum bump).
 
 ### 1.2 Jangan Ubah CI Publish Trigger ke Tag-Based
 
@@ -179,6 +184,9 @@ src/ratelimit.ts  → Rate limiting middleware
 src/i18n.ts       → Internationalization
 src/logger.ts     → Logging + sanitization
 src/webapp.ts     → Telegram Web App HMAC validation
+src/http.ts         → Internal HTTP transport (fetch-based, Node >=18). Tidak di barrel export.
+src/multipart.ts    → Internal multipart/form-data builder untuk file upload. Tidak di barrel export.
+src/codex/          → Submodule AI (ChatGPT/Codex plugin). Export terpisah via "vibegram/codex".
 ```
 
 ### 3.2 Aturan Penulisan Kode
@@ -403,6 +411,12 @@ src/index.ts (barrel export)
 - Setelah phase hardening dan API coverage, rilis `1.1.0` ditolak npm sebagai versi yang pernah dipublish.
 - Versi dikoreksi ke `1.2.0`, CI push-to-main + version-check berhasil publish ke npm.
 - Pelajaran: perlakukan `1.1.0` sebagai burned version dan gunakan `1.2.1`/`1.3.0` untuk update berikutnya sesuai SemVer.
+
+**Mei-Juni 2026 — Rilis 2.x:**
+
+- Setelah penambahan Bot API v10, codex plugin, dan plugin suite, versi naik ke `2.3.0` (latest di npm per 2026-06-14).
+- Versi `1.3.0` dilewati; rentang `1.2.x` lalu lompat ke `2.0.0` dan seterusnya sudah terpakai (`2.0.0`, `2.1.0`, `2.2.0`, `2.2.1`, `2.3.0`).
+- Pelajaran: selalu cek `npm view vibegram versions --json` sebelum bump; versi aman berikutnya `2.3.1`/`2.4.0`.
 
 **Dependabot PR menumpuk:**
 

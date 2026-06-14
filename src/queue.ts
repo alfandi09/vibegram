@@ -167,10 +167,15 @@ export class BotQueue {
     ): ScheduledJob {
         this.cancelScheduled(id);
 
+        let running = false;
         const job: ScheduledJob = {
             id,
             handler,
             interval: setInterval(async () => {
+                // Skip this tick if the previous run hasn't finished, to avoid
+                // overlapping executions piling up when handler() > intervalMs.
+                if (running) return;
+                running = true;
                 try {
                     await handler();
                 } catch (err) {
@@ -180,6 +185,8 @@ export class BotQueue {
                             id
                         );
                     }
+                } finally {
+                    running = false;
                 }
             }, intervalMs),
             timeout: null,
@@ -209,8 +216,13 @@ export class BotQueue {
                             id
                         );
                     }
+                } finally {
+                    // Only remove this job if it hasn't been replaced by a
+                    // re-schedule of the same id from within the handler.
+                    if (this.scheduledJobs.get(id) === job) {
+                        this.scheduledJobs.delete(id);
+                    }
                 }
-                this.scheduledJobs.delete(id);
             }, delayMs),
         };
 

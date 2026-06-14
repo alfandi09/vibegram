@@ -75,4 +75,30 @@ describe('BotQueue', () => {
         expect(callsA).toEqual([1]);
         expect(callsB).toEqual([10]);
     });
+
+    it('scheduleOnce re-armed from its own handler keeps the new job cancellable', async () => {
+        const queue = new BotQueue(createMockClient());
+        let firstRan = false;
+        let secondRan = false;
+
+        queue.scheduleOnce('job', 5, () => {
+            firstRan = true;
+            // Re-arm the same id from within the handler.
+            queue.scheduleOnce('job', 5, () => {
+                secondRan = true;
+            });
+        });
+
+        // Wait for the first run to fire and re-schedule.
+        await new Promise(resolve => setTimeout(resolve, 15));
+        expect(firstRan).toBe(true);
+
+        // The re-armed job must still be tracked and cancellable.
+        expect(queue.activeJobs).toBe(1);
+        expect(queue.cancelScheduled('job')).toBe(true);
+
+        await new Promise(resolve => setTimeout(resolve, 15));
+        expect(secondRan).toBe(false);
+        expect(queue.activeJobs).toBe(0);
+    });
 });

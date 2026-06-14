@@ -53,7 +53,7 @@ Bot Instance
 | ---------------- | ----------------------------------------------------------- |
 | `Bot`            | Entry point with polling, webhooks, and plugin support      |
 | `TelegramClient` | HTTP client with Keep-Alive                                 |
-| `Context`        | 60+ methods for all Bot API v10.0 operations                |
+| `Context`        | 60+ methods for all Bot API 10.1 operations                |
 | `Composer`       | Middleware stack with compose/use/command/on/hears/action   |
 | `Markup`         | Keyboard builder (inline, reply, grid, force-reply, remove) |
 | `Session`        | Typed session store with LRU eviction + adapter pattern     |
@@ -74,24 +74,24 @@ Bot Instance
 
 ## Bot API Coverage
 
-VibeGram targets **Telegram Bot API v10.0** (May 2026) with:
+VibeGram targets **Telegram Bot API 10.1** (June 2026) with:
 
 - **60+ Context methods** spanning messages, media, admin, forums, business flows, checklists, stickers, and verification
 - Strong TypeScript coverage for major API objects, with ongoing sync work for the newest Telegram feature families
 - **5 Framework adapters** for webhook deployment
 - Support for Forum Topics, Telegram Stars, Managed Bots, Draft Messages, and more
 - Guest Mode, live photos, poll media, reaction cleanup methods, and managed bot access settings
+- Rich Messages, Join Request Queries, and poll link media (Bot API 10.1)
 
-## What's New in v1.2.0
+## What's New in 2.4.0
 
-- ✅ `Markup.grid()` — instant grid keyboards from flat arrays
-- ✅ `Markup.button.login()` and `Markup.button.copy()` (Bot API 9.6)
-- ✅ 5 framework adapters: Express, Fastify, Hono, Koa, Native HTTP
-- ✅ 40+ new context methods (Forum Topics, Star Gifts, Stickers, Verification...)
-- ✅ Typed error class hierarchy with `instanceof` support
-- ✅ `ctx.match` auto-injection for RegExp hears/action
-- ✅ Graceful shutdown with in-flight update tracking
-- ✅ Conversation auto-cleanup to prevent memory leaks
-- ✅ 190+ unit tests covering core runtime, adapters, security utilities, and example smoke tests
+- ✅ Bot API 10.1 Rich Messages — `sendRichMessage()`, `sendRichMessageDraft()`, `ctx.replyWithRichMessage()`
+- ✅ Bot API 10.1 Join Request Queries — `answerChatJoinRequestQuery()`, `sendChatJoinRequestWebApp()`
+- ✅ `Markup.escapeHTML()` / `escapeMarkdownV2()` / `escapeMarkdown()` for safe text interpolation
+- ✅ Atomic `increment()` hook on `RateLimitStore` for race-free shared-store rate limiting
+- ✅ Per-key session serialization — no lost writes under concurrent updates
+- ✅ True LRU eviction for `MemoryCache` and `MemorySessionStore`
+- ✅ Hardened multipart serialization against header injection
+- ✅ 415+ unit tests covering core runtime, adapters, security utilities, and example smoke tests
 
 See the full [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md) for details.

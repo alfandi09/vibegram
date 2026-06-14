@@ -1,5 +1,6 @@
 import { Context } from './context';
 import { Middleware } from './composer';
+import { InlineKeyboardButton, InlineKeyboardMarkup } from './types';
 
 /**
  * Menu item definition.
@@ -171,11 +172,11 @@ export class Menu {
     /**
      * Render the menu keyboard for sending/editing.
      */
-    async render(ctx: Context): Promise<any> {
-        const keyboard: any[][] = [];
+    async render(ctx: Context): Promise<InlineKeyboardMarkup> {
+        const keyboard: InlineKeyboardButton[][] = [];
 
         for (const row of this.rows) {
-            const buttons: any[] = [];
+            const buttons: InlineKeyboardButton[] = [];
             for (const item of row.items) {
                 // Check visibility
                 if (item.hide && (await item.hide(ctx))) continue;

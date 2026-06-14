@@ -10,6 +10,7 @@
   <FeatureCard title="Routing" description="Register middleware, commands, listeners, actions, and global error handlers." href="#routing-methods" />
   <FeatureCard title="Business APIs" description="Call business account, gifts, stories, and direct API wrappers." href="#business-account-methods" />
   <FeatureCard title="Bot API 10.0" description="Use guest replies, live photos, reaction cleanup, and managed bot access settings." href="#bot-api-100-methods" />
+  <FeatureCard title="Bot API 10.1" description="Send rich messages and process chat join request queries." href="#bot-api-101-methods" />
 </FeatureGrid>
 
 Methods available directly on the `Bot` instance (no Context required).
@@ -76,6 +77,27 @@ These wrappers expose the Bot API 10.0 additions while keeping Telegram's offici
 | `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
 | `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
 | `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
+
+## Bot API 10.1 Methods {#bot-api-101-methods}
+
+These wrappers expose the Bot API 10.1 additions while keeping Telegram's official payload names.
+
+| Method                                                    | API                          |
+| --------------------------------------------------------- | ---------------------------- |
+| `bot.sendRichMessage(chatId, richMessage, extra?)`        | `sendRichMessage`            |
+| `bot.sendRichMessageDraft(chatId, draftId, richMessage, extra?)` | `sendRichMessageDraft` |
+| `bot.answerChatJoinRequestQuery(queryId, result)`         | `answerChatJoinRequestQuery` |
+| `bot.sendChatJoinRequestWebApp(queryId, webAppUrl)`       | `sendChatJoinRequestWebApp`  |
+
+```typescript
+// Send a rich message (HTML or Markdown source — exactly one)
+await bot.sendRichMessage(chatId, {
+    html: '<h1>Release notes</h1><p>Now with <b>rich</b> formatting.</p>',
+});
+
+// Approve, decline, or queue a chat join request query
+await bot.answerChatJoinRequestQuery(queryId, 'approve');
+```
 
 ## Gifts and Stories
 

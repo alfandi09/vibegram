@@ -31,14 +31,22 @@ export class MemoryCache implements CacheStore {
             return undefined;
         }
 
+        // Refresh recency: move this key to the most-recently-used position so
+        // eviction is genuinely LRU rather than insertion-order (FIFO).
+        this.data.delete(key);
+        this.data.set(key, entry);
+
         return entry.value;
     }
 
     async set(key: string, value: any, ttlMs: number): Promise<void> {
-        // LRU eviction when at capacity
-        if (this.data.size >= this.maxEntries && !this.data.has(key)) {
+        // Refresh recency on overwrite, then evict the least-recently-used
+        // entry (the first key in insertion order) when at capacity.
+        if (this.data.has(key)) {
+            this.data.delete(key);
+        } else if (this.data.size >= this.maxEntries) {
             const firstKey = this.data.keys().next().value;
-            if (firstKey) this.data.delete(firstKey);
+            if (firstKey !== undefined) this.data.delete(firstKey);
         }
 
         this.data.set(key, {

@@ -76,3 +76,36 @@ await ctx.reply('What is your name?', {
     })
 });
 ```
+
+## Escaping Untrusted Text
+
+When you interpolate user-supplied text into a message that uses `parse_mode`, escape it first to prevent formatting injection (a stray `_`, `*`, or `<` can break the message or inject markup). `Markup` ships three helpers:
+
+```typescript
+import { Markup } from 'vibegram';
+
+// HTML — escapes & < >
+await ctx.reply(`Hello <b>${Markup.escapeHTML(userName)}</b>`, {
+    parse_mode: 'HTML',
+});
+
+// MarkdownV2 — escapes every reserved character
+await ctx.reply(`Hello *${Markup.escapeMarkdownV2(userName)}*`, {
+    parse_mode: 'MarkdownV2',
+});
+
+// Legacy Markdown
+await ctx.reply(`Hello _${Markup.escapeMarkdown(userName)}_`, {
+    parse_mode: 'Markdown',
+});
+```
+
+| Helper | Use with |
+|--------|----------|
+| `Markup.escapeHTML(text)` | `parse_mode: 'HTML'` |
+| `Markup.escapeMarkdownV2(text)` | `parse_mode: 'MarkdownV2'` |
+| `Markup.escapeMarkdown(text)` | `parse_mode: 'Markdown'` (legacy) |
+
+::: tip
+Only escape the dynamic parts. Escaping your whole template would also escape the markup you intend to keep.
+:::

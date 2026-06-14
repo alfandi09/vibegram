@@ -17,6 +17,24 @@ import {
     ExtraRestrictMember,
     ExtraPromoteMember,
     ExtraInviteLink,
+    ExtraLocation,
+    ExtraVenue,
+    ExtraContact,
+    ExtraEditReplyMarkup,
+    ExtraEditCaption,
+    ExtraInvoice,
+    ExtraAnswerInlineQuery,
+    ExtraAnswerCbQuery,
+    ExtraAnswerShippingQuery,
+    InputPaidMedia,
+    InputRichMessage,
+    ExtraRichMessage,
+    InlineKeyboardMarkup,
+    InlineQueryResult,
+    LabeledPrice,
+    ReactionType,
+    UserChatBoosts,
+    ChatPhoto,
     GetBusinessAccountGiftsOptions,
     GetUserGiftsOptions,
     InputFile,
@@ -54,12 +72,12 @@ function createScopedClient(client: TelegramClient): TelegramClient {
  * Context object is passed to all middlewares and handlers.
  * It encapsulates the current Update and provides shortcuts to Telegram API methods.
  */
-export class Context {
+export class Context<S = any> {
     private static readonly NO_VALUE = Symbol('context:no-value');
     public readonly update: Update;
     public readonly client: TelegramClient;
     public readonly telegram: TelegramClient;
-    public session?: any; // Injected by session() middleware
+    public session: S = undefined as S; // Injected by session() middleware
     public wizard?: {
         state: any;
         next: () => void;
@@ -495,7 +513,7 @@ export class Context {
     /**
      * Interface Shortcut: Location
      */
-    async replyWithLocation(latitude: number, longitude: number, extra?: any) {
+    async replyWithLocation(latitude: number, longitude: number, extra?: ExtraLocation) {
         if (!this.chat) throw new Error('Cannot send location: Chat ID is not available');
         return this.client.callApi('sendLocation', {
             chat_id: this.chat.id,
@@ -529,7 +547,7 @@ export class Context {
         longitude: number,
         title: string,
         address: string,
-        extra?: any
+        extra?: ExtraVenue
     ) {
         if (!this.chat) throw new Error('Cannot send venue: Chat ID is not available');
         return this.client.callApi('sendVenue', {
@@ -547,7 +565,7 @@ export class Context {
     /**
      * Interface Shortcut: Contact
      */
-    async replyWithContact(phoneNumber: string, firstName: string, extra?: any) {
+    async replyWithContact(phoneNumber: string, firstName: string, extra?: ExtraContact) {
         if (!this.chat) throw new Error('Cannot send contact: Chat ID is not available');
         return this.client.callApi('sendContact', {
             chat_id: this.chat.id,
@@ -580,7 +598,7 @@ export class Context {
     /**
      * Edit Message Reply Markup directly
      */
-    async editMessageReplyMarkup(reply_markup: any, extra?: any) {
+    async editMessageReplyMarkup(reply_markup: InlineKeyboardMarkup, extra?: ExtraEditReplyMarkup) {
         const target = this.getEditTarget();
         return this.client.callApi('editMessageReplyMarkup', {
             business_connection_id: this.businessConnectionId,
@@ -593,7 +611,7 @@ export class Context {
     /**
      * Edit Message Caption
      */
-    async editMessageCaption(caption: string, extra?: any) {
+    async editMessageCaption(caption: string, extra?: ExtraEditCaption) {
         const target = this.getEditTarget();
         return this.client.callApi('editMessageCaption', {
             business_connection_id: this.businessConnectionId,
@@ -606,7 +624,7 @@ export class Context {
     /**
      * Edit message media.
      */
-    async editMessageMedia(media: any, extra?: { reply_markup?: any }) {
+    async editMessageMedia(media: InputMedia, extra?: ExtraEditReplyMarkup) {
         const target = this.getEditTarget();
         return this.client.callApi('editMessageMedia', {
             business_connection_id: this.businessConnectionId,
@@ -626,7 +644,7 @@ export class Context {
             horizontal_accuracy?: number;
             heading?: number;
             proximity_alert_radius?: number;
-            reply_markup?: any;
+            reply_markup?: InlineKeyboardMarkup;
             live_period?: number;
         }
     ) {
@@ -643,7 +661,7 @@ export class Context {
     /**
      * Stop a live location message.
      */
-    async stopMessageLiveLocation(extra?: { reply_markup?: any }) {
+    async stopMessageLiveLocation(extra?: ExtraEditReplyMarkup) {
         const target = this.getEditTarget();
         return this.client.callApi('stopMessageLiveLocation', {
             business_connection_id: this.businessConnectionId,
@@ -686,8 +704,8 @@ export class Context {
         description: string,
         payload: string,
         currency: string,
-        prices: any[],
-        extra?: any
+        prices: LabeledPrice[],
+        extra?: ExtraInvoice
     ) {
         if (!this.chat) throw new Error('Cannot send invoice: Chat ID is not available');
         return this.client.callApi('sendInvoice', {
@@ -706,7 +724,7 @@ export class Context {
     /**
      * Inline Core Query Answering (Global bot invocation tracking)
      */
-    async answerInlineQuery(results: any[], extra?: any) {
+    async answerInlineQuery(results: InlineQueryResult[], extra?: ExtraAnswerInlineQuery) {
         if (!this.update.inline_query)
             throw new Error('Cannot answer inline query: Not an inline query update');
         return this.client.callApi('answerInlineQuery', {
@@ -724,7 +742,7 @@ export class Context {
      * bot.action('save', ctx => ctx.answerCbQuery('Saved'));
      * ```
      */
-    async answerCbQuery(text?: string, showAlert?: boolean, extra?: any) {
+    async answerCbQuery(text?: string, showAlert?: boolean, extra?: ExtraAnswerCbQuery) {
         if (!this.update.callback_query) {
             throw new Error('Cannot answer callback query: Not a callback query update');
         }
@@ -779,15 +797,13 @@ export class Context {
      * bot.on('message', ctx => ctx.setReaction('👍'));
      * ```
      */
-    async setReaction(reaction: string | any[], isBig?: boolean) {
+    async setReaction(reaction: string | ReactionType[], isBig?: boolean) {
         if (!this.chat || !this.message?.message_id)
             throw new Error('Cannot set reaction: Chat ID or Message ID is not available');
 
         // Parse a string emoji into the MessageReaction array format.
-        let formattedReaction = reaction;
-        if (typeof reaction === 'string') {
-            formattedReaction = [{ type: 'emoji', emoji: reaction }];
-        }
+        const formattedReaction: ReactionType[] =
+            typeof reaction === 'string' ? [{ type: 'emoji', emoji: reaction }] : reaction;
 
         return this.client.callApi('setMessageReaction', {
             chat_id: this.chat.id,
@@ -800,7 +816,7 @@ export class Context {
     /**
      * Send Paid Media (Telegram Stars)
      */
-    async replyWithPaidMedia(star_count: number, media: any[], extra?: ExtraMedia) {
+    async replyWithPaidMedia(star_count: number, media: InputPaidMedia[], extra?: ExtraMedia) {
         if (!this.chat) throw new Error('Cannot send paid media: Chat ID is not available');
         return this.client.callApi('sendPaidMedia', {
             chat_id: this.chat.id,
@@ -813,9 +829,26 @@ export class Context {
     }
 
     /**
+     * Send a rich formatted message to the current chat (Bot API 10.1).
+     */
+    async replyWithRichMessage(
+        richMessage: InputRichMessage,
+        extra?: ExtraRichMessage
+    ): Promise<Message> {
+        if (!this.chat) throw new Error('Cannot send rich message: Chat ID is not available');
+        return this.client.callApi('sendRichMessage', {
+            chat_id: this.chat.id,
+            business_connection_id: this.businessConnectionId,
+            message_thread_id: this.getThreadId(),
+            rich_message: richMessage,
+            ...extra,
+        });
+    }
+
+    /**
      * Copy Message (Silent transfer)
      */
-    async copyMessage(toChatId: number | string, extra?: any) {
+    async copyMessage(toChatId: number | string, extra?: Record<string, unknown>) {
         if (!this.chat || !this.message?.message_id)
             throw new Error('Cannot copy message: Origin Chat ID or Message ID is not available');
         return this.client.callApi('copyMessage', {
@@ -846,7 +879,7 @@ export class Context {
     /**
      * Administration: Standard Message Forwarding
      */
-    async forwardMessage(toChatId: number | string, extra?: any) {
+    async forwardMessage(toChatId: number | string, extra?: Record<string, unknown>) {
         if (!this.chat || !this.message?.message_id)
             throw new Error(
                 'Cannot forward message: Origin Chat ID or Message ID is not available'
@@ -1528,7 +1561,7 @@ export class Context {
     /**
      * Get the list of boosts applied to a chat by the current user.
      */
-    async getUserChatBoosts(userId: number): Promise<any> {
+    async getUserChatBoosts(userId: number): Promise<UserChatBoosts> {
         if (!this.chat) throw new Error('Cannot get user chat boosts: Chat ID is not available');
         return this.client.callApi('getUserChatBoosts', { chat_id: this.chat.id, user_id: userId });
     }
@@ -1677,7 +1710,7 @@ export class Context {
     /**
      * Get information about custom emoji stickers by their IDs.
      */
-    async getCustomEmojiStickers(customEmojiIds: string[]): Promise<any[]> {
+    async getCustomEmojiStickers(customEmojiIds: string[]): Promise<Sticker[]> {
         return this.client.callApi('getCustomEmojiStickers', { custom_emoji_ids: customEmojiIds });
     }
 
@@ -1766,12 +1799,12 @@ export class Context {
     /**
      * Send a checklist message (Bot API 9.6).
      */
-    async replyWithChecklist(checklist: InputChecklist, extra?: ExtraReplyMessage): Promise<any>;
+    async replyWithChecklist(checklist: InputChecklist, extra?: ExtraReplyMessage): Promise<Message>;
     async replyWithChecklist(
         title: string,
         tasks: InputChecklistTask[],
         extra?: ExtraReplyMessage
-    ): Promise<any>;
+    ): Promise<Message>;
     async replyWithChecklist(
         checklistOrTitle: InputChecklist | string,
         tasksOrExtra?: InputChecklistTask[] | ExtraReplyMessage,
@@ -1807,7 +1840,7 @@ export class Context {
     async editMessageChecklist(
         checklist: InputChecklist,
         extra?: { reply_markup?: ReplyMarkup }
-    ): Promise<any> {
+    ): Promise<Message> {
         const target = this.getEditTarget();
         return this.client.callApi('editMessageChecklist', {
             business_connection_id: this.businessConnectionId,
@@ -1822,7 +1855,7 @@ export class Context {
      */
     async answerShippingQuery(
         ok: boolean,
-        extra?: { shipping_options?: any[]; error_message?: string }
+        extra?: ExtraAnswerShippingQuery
     ): Promise<boolean> {
         if (!this.update.shipping_query)
             throw new Error('Cannot answer shipping query: Not a shipping_query update');
@@ -1844,7 +1877,7 @@ export class Context {
     /**
      * Set the chat profile photo.
      */
-    async setChatPhoto(photo: any): Promise<boolean> {
+    async setChatPhoto(photo: InputFile): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set chat photo: Chat ID is not available');
         return this.client.callApi('setChatPhoto', { chat_id: this.chat.id, photo });
     }
@@ -1876,7 +1909,7 @@ export class Context {
     /**
      * Get a list of custom emoji reaction packs available for this chat.
      */
-    async getEmojiReactionPacks(): Promise<any> {
+    async getEmojiReactionPacks(): Promise<unknown> {
         return this.client.callApi('getEmojiReactionPacks');
     }
 

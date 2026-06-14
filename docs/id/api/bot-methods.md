@@ -10,6 +10,7 @@
   <FeatureCard title="Routing" description="Daftarkan middleware, command, listener, action, dan error handler global." href="#metode-routing" cta="Buka routing" />
   <FeatureCard title="API bisnis" description="Panggil akun bisnis, hadiah, stories, dan wrapper API langsung." href="#metode-akun-bisnis" cta="Buka bisnis" />
   <FeatureCard title="Bot API 10.0" description="Gunakan guest reply, live photo, cleanup reaction, dan pengaturan akses managed bot." href="#metode-bot-api-100" cta="Buka Bot API 10.0" />
+  <FeatureCard title="Bot API 10.1" description="Kirim rich message dan proses chat join request query." href="#metode-bot-api-101" cta="Buka Bot API 10.1" />
 </FeatureGrid>
 
 Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
@@ -76,6 +77,27 @@ Wrapper ini mengekspos tambahan Bot API 10.0 dengan nama payload resmi Telegram.
 | `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
 | `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
 | `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
+
+## Metode Bot API 10.1 {#metode-bot-api-101}
+
+Wrapper ini mengekspos tambahan Bot API 10.1 dengan nama payload resmi Telegram.
+
+| Metode                                                    | API                          |
+| --------------------------------------------------------- | ---------------------------- |
+| `bot.sendRichMessage(chatId, richMessage, extra?)`        | `sendRichMessage`            |
+| `bot.sendRichMessageDraft(chatId, draftId, richMessage, extra?)` | `sendRichMessageDraft` |
+| `bot.answerChatJoinRequestQuery(queryId, result)`         | `answerChatJoinRequestQuery` |
+| `bot.sendChatJoinRequestWebApp(queryId, webAppUrl)`       | `sendChatJoinRequestWebApp`  |
+
+```typescript
+// Kirim rich message (sumber HTML atau Markdown — pilih salah satu)
+await bot.sendRichMessage(chatId, {
+    html: '<h1>Catatan rilis</h1><p>Kini dengan format <b>kaya</b>.</p>',
+});
+
+// Setujui, tolak, atau antrekan chat join request query
+await bot.answerChatJoinRequestQuery(queryId, 'approve');
+```
 
 ## Hadiah dan Stories
 

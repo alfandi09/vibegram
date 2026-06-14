@@ -1,6 +1,6 @@
 # TypeScript Types
 
-VibeGram provides 32+ TypeScript interfaces for type-safe development and targets Telegram Bot API v10.0. All types are exported from the main package.
+VibeGram provides 45+ TypeScript interfaces for type-safe development and targets Telegram Bot API 10.1. All types are exported from the main package.
 
 ```typescript
 import { Update, Message, User, Chat, ChatFullInfo, CallbackQuery, ... } from 'vibegram';
@@ -95,3 +95,30 @@ Supported entity types: `mention`, `hashtag`, `cashtag`, `bot_command`, `url`, `
 | `DeleteMessageReactionOptions` | Options for removing one message reaction |
 | `DeleteAllMessageReactionsOptions` | Options for removing recent reactions |
 | `SendLivePhotoOptions` | Extra options for `sendLivePhoto` |
+
+## Bot API 10.1 Types
+
+### Rich Messages
+
+| Type | Description |
+| --- | --- |
+| `RichMessage` | A rich formatted message (`blocks` + optional `is_rtl`) |
+| `InputRichMessage` | Rich message to send; use exactly one of `html` or `markdown` |
+| `InputRichMessageContent` | Rich message content for inline query results |
+| `RichText` | Plain string, an array of `RichText`, or a `RichText*` element |
+| `RichBlock` | Union of the 21 block types (`paragraph`, `heading`, `table`, `photo`, …) |
+| `RichBlockCaption` | Caption (`text` + optional `credit`) for media blocks |
+| `RichBlockTableCell` | A single cell in a `RichBlockTable` |
+| `RichBlockListItem` | An item in a `RichBlockList` |
+
+The 25 inline `RichText*` element types (`RichTextBold`, `RichTextItalic`, `RichTextUrl`, `RichTextCustomEmoji`, …) and the 21 `RichBlock*` block types are all exported individually for fine-grained typing.
+
+### Join Request Queries & Polls
+
+| Type | Description |
+| --- | --- |
+| `ChatJoinRequestQueryResult` | `'approve' \| 'decline' \| 'queue'` result for `answerChatJoinRequestQuery` |
+| `Link` | An HTTP link object (`url`) |
+| `InputMediaLink` | Link media usable as a poll option media |
+
+> New fields on existing types: `User.supports_join_request_queries`, `ChatFullInfo.guard_bot`, `ChatJoinRequest.query_id`, and `Message.rich_message`.

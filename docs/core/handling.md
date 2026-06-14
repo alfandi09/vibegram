@@ -61,9 +61,9 @@ bot.action('confirm_order', async (ctx) => {
     await ctx.answerCbQuery('Order confirmed!');
 });
 
-// Regex match
+// Regex match — capture groups are injected into ctx.match
 bot.action(/item_(\d+)/, async (ctx) => {
-    const itemId = ctx.update.callback_query?.data?.split('_')[1];
+    const itemId = ctx.match![1];
     await ctx.answerCbQuery(`Selected item ${itemId}`);
 });
 ```

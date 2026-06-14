@@ -7,7 +7,7 @@ VibeGram adalah framework Bot Telegram berbasis TypeScript yang dirancang untuk 
 | Fitur | VibeGram | Bot API Mentah |
 |-------|----------|----------------|
 | Pipeline middleware | ✅ Built-in | ❌ Manual |
-| Type safety | ✅ 32+ interface | ❌ `any` |
+| Type safety | ✅ 45+ interface | ❌ `any` |
 | Manajemen session | ✅ Generik bertipe | ❌ Manual |
 | Conversation | ✅ async/await | ❌ Manual |
 | Rate limiting | ✅ Built-in | ❌ Manual |
@@ -68,7 +68,7 @@ Instansi Bot
 | `WebAppUtils` | Validasi Mini App HMAC-SHA256 |
 | `I18n` | Internasionalisasi dengan deteksi lokal otomatis |
 | `logger` | Timing request dan klasifikasi update |
-| `Types` | 32+ interface TypeScript untuk Bot API v10.0 |
+| `Types` | 45+ interface TypeScript untuk Bot API 10.1 |
 
 ## Adapters Framework
 
@@ -84,8 +84,9 @@ VibeGram menyediakan adapter kelas satu untuk framework Node.js populer:
 
 ## Cakupan Bot API
 
-VibeGram menargetkan **Telegram Bot API v10.0** (Mei 2026) dengan:
+VibeGram menargetkan **Telegram Bot API 10.1** (Juni 2026) dengan:
 - **60+ metode Context** untuk pesan, media, dan konten interaktif
-- **32 interface TypeScript** mencakup semua objek API utama
+- **45+ interface TypeScript** mencakup semua objek API utama
 - Dukungan Telegram Stars, Pesan Draft, Managed Bot, Forum Topic, dan lainnya
 - Guest Mode, live photo, poll media, method cleanup reaction, dan pengaturan akses managed bot
+- Rich Message, Join Request Query, dan media link pada poll (Bot API 10.1)

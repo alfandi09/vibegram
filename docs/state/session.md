@@ -76,14 +76,19 @@ bot.use(session({
 }));
 ```
 
+## Concurrency Safety
+
+The `session()` middleware serializes the load → handler → save cycle **per session key**. Concurrent updates for the same `chatId:userId` are processed one at a time, so two rapid messages from the same user can't read the same starting state and overwrite each other's changes (last-writer-wins). Updates for *different* keys still run in parallel.
+
 ## Memory Management
 
-The built-in `MemorySessionStore` enforces a hard cap of **10,000 entries** (configurable) with LRU eviction to prevent memory leaks in production:
+The built-in `MemorySessionStore` enforces a hard cap of **10,000 entries** (configurable) with true LRU eviction — reading a session refreshes its recency, so the least-recently-used entry is evicted first:
 
 ```typescript
 import { MemorySessionStore } from 'vibegram';
 
-const store = new MemorySessionStore(5000); // max 5,000 sessions
+// Constructor: (ttlMs, maxEntries, cleanupIntervalMs)
+const store = new MemorySessionStore(86_400_000, 5000); // 24h TTL, max 5,000 sessions
 bot.use(session({ store }));
 ```
 

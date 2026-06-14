@@ -23,4 +23,4 @@ app.get('/healthz', webhook);
 export default app;
 ```
 
-Lihat ringkasan semua adapter dan kode respons di [Adapter Framework](./express.md).
+Lihat ringkasan semua adapter dan kode respons di [Adapter Framework](/id/adapters/express).

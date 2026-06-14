@@ -52,6 +52,11 @@ await ctx.replyWithVoice('file_id');
 await ctx.replyWithSticker('file_id');
 await ctx.replyWithAnimation('file_id'); // GIF
 await ctx.replyWithDice('🎲'); // Dadu animasi
+
+// Rich message Bot API 10.1 (sumber HTML atau Markdown — pilih salah satu)
+await ctx.replyWithRichMessage({
+    html: '<h2>Selamat datang</h2><p>Ini pesan <b>kaya</b>.</p>',
+});
 ```
 
 ### Pesan Interaktif
@@ -148,7 +153,6 @@ await ctx.restrictChatMember(userId, permissions);
 await ctx.promoteChatMember(userId, { can_delete_messages: true });
 await ctx.setChatAdministratorCustomTitle(userId, 'Moderator');
 await ctx.setChatPermissions({ can_send_messages: true });
-await ctx.kickChatMember = ctx.banChatMember; // alias
 
 await ctx.getChatMember(userId);
 await ctx.getChatMembersCount();

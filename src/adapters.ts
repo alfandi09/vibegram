@@ -34,6 +34,79 @@ interface ChainableReply {
     code(statusCode: number): { send(body: string): unknown };
 }
 
+/** Minimal Express-like request shape consumed by the adapter. */
+interface ExpressLikeRequest {
+    method?: string;
+    path?: string;
+    url?: string;
+    originalUrl?: string;
+    headers?: Record<string, unknown>;
+    body?: unknown;
+}
+
+/** Minimal Express-like response shape consumed by the adapter. */
+interface ExpressLikeResponse {
+    writeHead?: (statusCode: number) => void;
+    end: (body?: string) => void;
+    statusCode?: number;
+}
+
+type ExpressNext = (err?: unknown) => void;
+
+/** Minimal Fastify instance shape consumed by the plugin adapter. */
+interface FastifyLike {
+    get(path: string, handler: (request: unknown, reply: ChainableReply) => unknown): unknown;
+    post(
+        path: string,
+        handler: (request: FastifyRequestLike, reply: FastifyReplyLike) => unknown
+    ): unknown;
+}
+
+interface FastifyRequestLike {
+    headers: Record<string, unknown>;
+    body?: { update_id?: unknown } & Record<string, unknown>;
+}
+
+interface FastifyReplyLike {
+    code(statusCode: number): { send(body: string): unknown };
+}
+
+/** Minimal Hono context shape consumed by the adapter. */
+interface HonoContextLike {
+    req: {
+        method?: string;
+        path?: string;
+        url?: string;
+        header(name: string): string | undefined;
+        json(): Promise<unknown>;
+    };
+    text(body: string, status: number): unknown;
+}
+
+/** Minimal Koa context shape consumed by the adapter. */
+interface KoaContextLike {
+    method: string;
+    path?: string;
+    url?: string;
+    status: number;
+    body: unknown;
+    get(field: string): string;
+    request: { body?: { update_id?: unknown } & Record<string, unknown> };
+}
+
+/** Minimal native Node.js request shape consumed by the adapter. */
+interface NativeRequestLike extends AsyncIterable<Buffer | string> {
+    method?: string;
+    url?: string;
+    headers: Record<string, unknown>;
+}
+
+/** Minimal native Node.js response shape consumed by the adapter. */
+interface NativeResponseLike {
+    writeHead(statusCode: number): void;
+    end(body?: string): void;
+}
+
 export interface WebhookAdapterBot {
     handleUpdate(update: Update): Promise<void>;
     webhookCallback(
@@ -102,6 +175,14 @@ function hasJsonContentType(contentType: unknown): boolean {
     );
 }
 
+function isUpdateLike(value: unknown): value is { update_id: number } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { update_id?: unknown }).update_id === 'number'
+    );
+}
+
 function getRequestPath(value: unknown): string | undefined {
     if (typeof value !== 'string' || value.trim() === '') {
         return undefined;
@@ -153,7 +234,7 @@ function sendHealthCheckResponse(res: {
 export function createExpressMiddleware(bot: WebhookAdapterBot, options?: AdapterOptions) {
     assertAdapterOptions(options);
     const handler = bot.webhookCallback(options?.secretToken);
-    return async (req: any, res: any, next: any) => {
+    return async (req: ExpressLikeRequest, res: ExpressLikeResponse, next: ExpressNext) => {
         if (
             isHealthCheckRequest(
                 req.method,
@@ -166,7 +247,7 @@ export function createExpressMiddleware(bot: WebhookAdapterBot, options?: Adapte
         }
 
         try {
-            await handler(req, res);
+            await handler(req as WebhookRequest, res as WebhookResponse);
         } catch (err) {
             next(err);
         }
@@ -190,14 +271,14 @@ export function createFastifyPlugin(bot: WebhookAdapterBot, options?: AdapterOpt
     const healthPath = options?.healthPath;
     const secretToken = options?.secretToken;
 
-    return async function plugin(fastify: any) {
+    return async function plugin(fastify: FastifyLike) {
         if (healthPath) {
             fastify.get(healthPath, async (_request: unknown, reply: ChainableReply) =>
                 reply.code(200).send(HEALTH_CHECK_RESPONSE_BODY)
             );
         }
 
-        fastify.post(path, async (request: any, reply: any) => {
+        fastify.post(path, async (request: FastifyRequestLike, reply: FastifyReplyLike) => {
             // Validate secret token if provided.
             const header = request.headers['x-telegram-bot-api-secret-token'];
             if (!matchesSecretToken(header, secretToken)) {
@@ -207,12 +288,12 @@ export function createFastifyPlugin(bot: WebhookAdapterBot, options?: AdapterOpt
             const update = request.body;
 
             // Basic structural validation.
-            if (!update || typeof update !== 'object' || typeof update.update_id !== 'number') {
+            if (!isUpdateLike(update)) {
                 return reply.code(400).send('Bad Request: Invalid update object.');
             }
 
             try {
-                await bot.handleUpdate(update);
+                await bot.handleUpdate(update as Update);
                 return reply.code(200).send('OK');
             } catch {
                 return reply.code(500).send('Internal Server Error');
@@ -236,7 +317,7 @@ export function createHonoHandler(bot: WebhookAdapterBot, options?: AdapterOptio
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
-    return async (c: any) => {
+    return async (c: HonoContextLike) => {
         if (isHealthCheckRequest(c.req.method, c.req.path ?? c.req.url, options?.healthPath)) {
             return c.text(HEALTH_CHECK_RESPONSE_BODY, 200);
         }
@@ -246,19 +327,19 @@ export function createHonoHandler(bot: WebhookAdapterBot, options?: AdapterOptio
             return c.text('Forbidden', 403);
         }
 
-        let update: any;
+        let update: unknown;
         try {
             update = await c.req.json();
         } catch {
             return c.text('Bad Request: Cannot parse JSON body.', 400);
         }
 
-        if (!update || typeof update.update_id !== 'number') {
+        if (!isUpdateLike(update)) {
             return c.text('Bad Request: Invalid update object.', 400);
         }
 
         try {
-            await bot.handleUpdate(update);
+            await bot.handleUpdate(update as Update);
             return c.text('OK', 200);
         } catch {
             return c.text('Internal Server Error', 500);
@@ -284,7 +365,7 @@ export function createNativeHandler(bot: WebhookAdapterBot, options?: AdapterOpt
     const healthPath = options?.healthPath;
     const maxBodySizeBytes = options?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
 
-    return async (req: any, res: any) => {
+    return async (req: NativeRequestLike, res: NativeResponseLike) => {
         if (isHealthCheckRequest(req.method, req.url, healthPath)) {
             sendHealthCheckResponse(res);
             return;
@@ -326,7 +407,7 @@ export function createNativeHandler(bot: WebhookAdapterBot, options?: AdapterOpt
             chunks.push(bufferChunk);
         }
 
-        let update: any;
+        let update: unknown;
         try {
             update = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
         } catch {
@@ -335,14 +416,14 @@ export function createNativeHandler(bot: WebhookAdapterBot, options?: AdapterOpt
             return;
         }
 
-        if (!update || typeof update.update_id !== 'number') {
+        if (!isUpdateLike(update)) {
             res.writeHead(400);
             res.end('Bad Request: Invalid update object.');
             return;
         }
 
         try {
-            await bot.handleUpdate(update);
+            await bot.handleUpdate(update as Update);
         } catch {
             res.writeHead(500);
             res.end('Internal Server Error');
@@ -370,7 +451,7 @@ export function createKoaMiddleware(bot: WebhookAdapterBot, options?: AdapterOpt
     assertAdapterOptions(options);
     const secretToken = options?.secretToken;
 
-    return async (ctx: any, next: any) => {
+    return async (ctx: KoaContextLike, next: () => Promise<unknown>) => {
         if (isHealthCheckRequest(ctx.method, ctx.path ?? ctx.url, options?.healthPath)) {
             ctx.status = 200;
             ctx.body = HEALTH_CHECK_RESPONSE_BODY;
@@ -390,14 +471,14 @@ export function createKoaMiddleware(bot: WebhookAdapterBot, options?: AdapterOpt
 
         const update = ctx.request.body;
 
-        if (!update || typeof update.update_id !== 'number') {
+        if (!isUpdateLike(update)) {
             ctx.status = 400;
             ctx.body = 'Bad Request: Invalid update object.';
             return;
         }
 
         try {
-            await bot.handleUpdate(update);
+            await bot.handleUpdate(update as Update);
             ctx.status = 200;
             ctx.body = 'OK';
         } catch {

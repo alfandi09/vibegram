@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * VIBEGRAM: COMPREHENSIVE TELEGRAM BOT API TYPE DEFINITIONS (v9.x)
+ * VIBEGRAM: COMPREHENSIVE TELEGRAM BOT API TYPE DEFINITIONS (v10.1)
  * =========================================================================
  * All definitions here are "Zero-Bloat" — TypeScript interfaces are erased
  * entirely at `tsc` compile time, adding zero runtime overhead.
@@ -20,6 +20,7 @@ export interface User {
     can_read_all_group_messages?: boolean;
     supports_inline_queries?: boolean;
     supports_guest_queries?: boolean;
+    supports_join_request_queries?: boolean; // API 10.1
     can_manage_bots?: boolean; // API 9.6 Managed Bots Flag
     can_connect_to_business?: boolean;
     has_main_web_app?: boolean;
@@ -85,6 +86,7 @@ export interface ChatFullInfo extends Chat {
     accent_color_id?: number;
     max_reaction_count?: number;
     photo?: ChatPhoto;
+    guard_bot?: User; // API 10.1
     active_usernames?: string[];
     birthdate?: Birthdate;
     business_intro?: BusinessIntro;
@@ -1173,6 +1175,7 @@ export interface ChatJoinRequest {
     date: number;
     bio?: string;
     invite_link?: ChatInviteLink;
+    query_id?: string; // API 10.1
 }
 
 export interface ShippingQuery {
@@ -1450,6 +1453,7 @@ export interface Message {
     story?: Story;
     video?: Video;
     live_photo?: LivePhoto;
+    rich_message?: RichMessage; // API 10.1
     video_note?: VideoNote;
     voice?: Voice;
     caption?: string;
@@ -1856,12 +1860,24 @@ export interface InputMediaVenue {
     google_place_type?: string;
 }
 
+/** Represents an HTTP link to be sent (API 10.1). */
+export interface InputMediaLink {
+    type: 'link';
+    url: string;
+}
+
+/** Represents an HTTP link (API 10.1). */
+export interface Link {
+    url: string;
+}
+
 export type PollMedia =
     | InputMediaPhoto
     | InputMediaAnimation
     | InputMediaSticker
     | InputMediaLocation
-    | InputMediaVenue;
+    | InputMediaVenue
+    | InputMediaLink;
 
 export type InputPollMedia = PollMedia;
 
@@ -2027,6 +2043,7 @@ export interface ExtraEditMessage {
     entities?: MessageEntity[];
     link_preview_options?: LinkPreviewOptions;
     reply_markup?: InlineKeyboardMarkup;
+    rich_message?: InputRichMessage; // API 10.1
 }
 
 /** Extra parameters for sendPoll / sendQuiz */
@@ -2109,3 +2126,503 @@ export interface ExtraInviteLink {
     member_limit?: number;
     creates_join_request?: boolean;
 }
+
+/** Extra parameters for sendLocation. */
+export interface ExtraLocation extends ExtraReplyMessage {
+    horizontal_accuracy?: number;
+    live_period?: number;
+    heading?: number;
+    proximity_alert_radius?: number;
+}
+
+/** Extra parameters for sendVenue. */
+export interface ExtraVenue extends ExtraReplyMessage {
+    foursquare_id?: string;
+    foursquare_type?: string;
+    google_place_id?: string;
+    google_place_type?: string;
+}
+
+/** Extra parameters for sendContact. */
+export interface ExtraContact extends ExtraReplyMessage {
+    last_name?: string;
+    vcard?: string;
+}
+
+/** Extra parameters for editMessageReplyMarkup / editMessageMedia / stopMessageLiveLocation. */
+export interface ExtraEditReplyMarkup {
+    business_connection_id?: string;
+    reply_markup?: InlineKeyboardMarkup;
+}
+
+/** Extra parameters for editMessageCaption. */
+export interface ExtraEditCaption {
+    business_connection_id?: string;
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    show_caption_above_media?: boolean;
+    reply_markup?: InlineKeyboardMarkup;
+}
+
+/** Extra parameters for sendInvoice. */
+export interface ExtraInvoice extends ExtraReplyMessage {
+    provider_token?: string;
+    max_tip_amount?: number;
+    suggested_tip_amounts?: number[];
+    start_parameter?: string;
+    provider_data?: string;
+    photo_url?: string;
+    photo_size?: number;
+    photo_width?: number;
+    photo_height?: number;
+    need_name?: boolean;
+    need_phone_number?: boolean;
+    need_email?: boolean;
+    need_shipping_address?: boolean;
+    send_phone_number_to_provider?: boolean;
+    send_email_to_provider?: boolean;
+    is_flexible?: boolean;
+}
+
+/** Extra parameters for answerInlineQuery. */
+export interface ExtraAnswerInlineQuery {
+    cache_time?: number;
+    is_personal?: boolean;
+    next_offset?: string;
+    button?: InlineQueryResultsButton;
+}
+
+export interface InlineQueryResultsButton {
+    text: string;
+    web_app?: { url: string };
+    start_parameter?: string;
+}
+
+/** Extra parameters for answerCallbackQuery. */
+export interface ExtraAnswerCbQuery {
+    url?: string;
+    cache_time?: number;
+}
+
+/** A shipping option offered in answerShippingQuery. */
+export interface ShippingOption {
+    id: string;
+    title: string;
+    prices: LabeledPrice[];
+}
+
+/** Extra parameters for answerShippingQuery. */
+export interface ExtraAnswerShippingQuery {
+    shipping_options?: ShippingOption[];
+    error_message?: string;
+}
+
+/** A paid media input for sendPaidMedia. */
+export type InputPaidMedia =
+    | { type: 'photo'; media: InputFile }
+    | { type: 'video'; media: InputFile; [key: string]: unknown }
+    | InputPaidMediaLivePhoto;
+
+/** Boosts applied to a chat by a user, returned by getUserChatBoosts. */
+export interface UserChatBoosts {
+    boosts: ChatBoost[];
+}
+
+/* =========================================================================
+ * RICH MESSAGES (Bot API 10.1)
+ * =======================================================================*/
+
+/**
+ * A rich formatted text. Can be plain text, an array of RichText, or any of
+ * the RichText* element types below.
+ */
+export type RichText = string | RichText[] | RichTextElement;
+
+export type RichTextElement =
+    | RichTextBold
+    | RichTextItalic
+    | RichTextUnderline
+    | RichTextStrikethrough
+    | RichTextSpoiler
+    | RichTextDateTime
+    | RichTextTextMention
+    | RichTextSubscript
+    | RichTextSuperscript
+    | RichTextMarked
+    | RichTextCode
+    | RichTextCustomEmoji
+    | RichTextMathematicalExpression
+    | RichTextUrl
+    | RichTextEmailAddress
+    | RichTextPhoneNumber
+    | RichTextBankCardNumber
+    | RichTextMention
+    | RichTextHashtag
+    | RichTextCashtag
+    | RichTextBotCommand
+    | RichTextAnchor
+    | RichTextAnchorLink
+    | RichTextReference
+    | RichTextReferenceLink;
+
+export interface RichTextBold {
+    type: 'bold';
+    text: RichText;
+}
+
+export interface RichTextItalic {
+    type: 'italic';
+    text: RichText;
+}
+
+export interface RichTextUnderline {
+    type: 'underline';
+    text: RichText;
+}
+
+export interface RichTextStrikethrough {
+    type: 'strikethrough';
+    text: RichText;
+}
+
+export interface RichTextSpoiler {
+    type: 'spoiler';
+    text: RichText;
+}
+
+export interface RichTextDateTime {
+    type: 'date_time';
+    text: RichText;
+    unix_time: number;
+    date_time_format: string;
+}
+
+export interface RichTextTextMention {
+    type: 'text_mention';
+    text: RichText;
+    user: User;
+}
+
+export interface RichTextSubscript {
+    type: 'subscript';
+    text: RichText;
+}
+
+export interface RichTextSuperscript {
+    type: 'superscript';
+    text: RichText;
+}
+
+export interface RichTextMarked {
+    type: 'marked';
+    text: RichText;
+}
+
+export interface RichTextCode {
+    type: 'code';
+    text: RichText;
+}
+
+export interface RichTextCustomEmoji {
+    type: 'custom_emoji';
+    custom_emoji_id: string;
+    alternative_text: string;
+}
+
+export interface RichTextMathematicalExpression {
+    type: 'mathematical_expression';
+    expression: string;
+}
+
+export interface RichTextUrl {
+    type: 'url';
+    text: RichText;
+    url: string;
+}
+
+export interface RichTextEmailAddress {
+    type: 'email_address';
+    text: RichText;
+    email_address: string;
+}
+
+export interface RichTextPhoneNumber {
+    type: 'phone_number';
+    text: RichText;
+    phone_number: string;
+}
+
+export interface RichTextBankCardNumber {
+    type: 'bank_card_number';
+    text: RichText;
+    bank_card_number: string;
+}
+
+export interface RichTextMention {
+    type: 'mention';
+    text: RichText;
+    username: string;
+}
+
+export interface RichTextHashtag {
+    type: 'hashtag';
+    text: RichText;
+    hashtag: string;
+}
+
+export interface RichTextCashtag {
+    type: 'cashtag';
+    text: RichText;
+    cashtag: string;
+}
+
+export interface RichTextBotCommand {
+    type: 'bot_command';
+    text: RichText;
+    bot_command: string;
+}
+
+export interface RichTextAnchor {
+    type: 'anchor';
+    name: string;
+}
+
+export interface RichTextAnchorLink {
+    type: 'anchor_link';
+    text: RichText;
+    anchor_name: string;
+}
+
+export interface RichTextReference {
+    type: 'reference';
+    text: RichText;
+    name: string;
+}
+
+export interface RichTextReferenceLink {
+    type: 'reference_link';
+    text: RichText;
+    reference_name: string;
+}
+
+/** Caption of a rich formatted block. */
+export interface RichBlockCaption {
+    text: RichText;
+    credit?: RichText;
+}
+
+/** Cell in a table. */
+export interface RichBlockTableCell {
+    text?: RichText;
+    is_header?: true;
+    colspan?: number;
+    rowspan?: number;
+    align?: 'left' | 'center' | 'right';
+    valign?: 'top' | 'middle' | 'bottom';
+}
+
+/** An item of a list. */
+export interface RichBlockListItem {
+    label: string;
+    blocks: RichBlock[];
+    has_checkbox?: true;
+    is_checked?: true;
+    value?: number;
+    type?: 'a' | 'A' | 'i' | 'I' | '1';
+}
+
+/** A block in a rich formatted message. */
+export type RichBlock =
+    | RichBlockParagraph
+    | RichBlockSectionHeading
+    | RichBlockPreformatted
+    | RichBlockFooter
+    | RichBlockDivider
+    | RichBlockMathematicalExpression
+    | RichBlockAnchor
+    | RichBlockList
+    | RichBlockBlockQuotation
+    | RichBlockPullQuotation
+    | RichBlockCollage
+    | RichBlockSlideshow
+    | RichBlockTable
+    | RichBlockDetails
+    | RichBlockMap
+    | RichBlockAnimation
+    | RichBlockAudio
+    | RichBlockPhoto
+    | RichBlockVideo
+    | RichBlockVoiceNote
+    | RichBlockThinking;
+
+export interface RichBlockParagraph {
+    type: 'paragraph';
+    text: RichText;
+}
+
+export interface RichBlockSectionHeading {
+    type: 'heading';
+    text: RichText;
+    size: number;
+}
+
+export interface RichBlockPreformatted {
+    type: 'pre';
+    text: RichText;
+    language?: string;
+}
+
+export interface RichBlockFooter {
+    type: 'footer';
+    text: RichText;
+}
+
+export interface RichBlockDivider {
+    type: 'divider';
+}
+
+export interface RichBlockMathematicalExpression {
+    type: 'mathematical_expression';
+    expression: string;
+}
+
+export interface RichBlockAnchor {
+    type: 'anchor';
+    name: string;
+}
+
+export interface RichBlockList {
+    type: 'list';
+    items: RichBlockListItem[];
+}
+
+export interface RichBlockBlockQuotation {
+    type: 'blockquote';
+    blocks: RichBlock[];
+    credit?: RichText;
+}
+
+export interface RichBlockPullQuotation {
+    type: 'pullquote';
+    text: RichText;
+    credit?: RichText;
+}
+
+export interface RichBlockCollage {
+    type: 'collage';
+    blocks: RichBlock[];
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockSlideshow {
+    type: 'slideshow';
+    blocks: RichBlock[];
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockTable {
+    type: 'table';
+    cells: RichBlockTableCell[][];
+    is_bordered?: true;
+    is_striped?: true;
+    caption?: RichText;
+}
+
+export interface RichBlockDetails {
+    type: 'details';
+    summary: RichText;
+    blocks: RichBlock[];
+    is_open?: true;
+}
+
+export interface RichBlockMap {
+    type: 'map';
+    location: Location;
+    zoom: number;
+    width: number;
+    height: number;
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockAnimation {
+    type: 'animation';
+    animation: Animation;
+    has_spoiler?: true;
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockAudio {
+    type: 'audio';
+    audio: Audio;
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockPhoto {
+    type: 'photo';
+    photo: PhotoSize[];
+    has_spoiler?: true;
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockVideo {
+    type: 'video';
+    video: Video;
+    has_spoiler?: true;
+    caption?: RichBlockCaption;
+}
+
+export interface RichBlockVoiceNote {
+    type: 'voice_note';
+    voice_note: Voice;
+    caption?: RichBlockCaption;
+}
+
+/** A "Thinking…" placeholder block; usable only in sendRichMessageDraft. */
+export interface RichBlockThinking {
+    type: 'thinking';
+    text: RichText;
+}
+
+/** A rich formatted message. */
+export interface RichMessage {
+    blocks: RichBlock[];
+    is_rtl?: boolean;
+}
+
+/**
+ * Describes a rich message to be sent. Exactly one of `html` or `markdown`
+ * must be used.
+ */
+export interface InputRichMessage {
+    html?: string;
+    markdown?: string;
+    is_rtl?: boolean;
+    skip_entity_detection?: boolean;
+}
+
+/** Content of a rich message to be sent as the result of an inline query. */
+export interface InputRichMessageContent {
+    rich_message: InputRichMessage;
+}
+
+/** Extra parameters for sendRichMessage. */
+export interface ExtraRichMessage {
+    business_connection_id?: string;
+    message_thread_id?: number;
+    direct_messages_topic_id?: number;
+    disable_notification?: boolean;
+    protect_content?: boolean;
+    allow_paid_broadcast?: boolean;
+    message_effect_id?: string;
+    suggested_post_parameters?: SuggestedPostParameters;
+    reply_parameters?: ReplyParameters;
+    reply_markup?: ReplyMarkup;
+}
+
+/** Extra parameters for sendRichMessageDraft. */
+export interface ExtraRichMessageDraft {
+    message_thread_id?: number;
+}
+
+/** Result value for answerChatJoinRequestQuery. */
+export type ChatJoinRequestQueryResult = 'approve' | 'decline' | 'queue';

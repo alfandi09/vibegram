@@ -21,4 +21,4 @@ http.createServer(
 
 Adapter native hanya menerima request `application/json` dan menolak body yang terlalu besar sebelum parsing.
 
-Lihat ringkasan semua adapter dan kode respons di [Adapter Framework](./express.md).
+Lihat ringkasan semua adapter dan kode respons di [Adapter Framework](/id/adapters/express).

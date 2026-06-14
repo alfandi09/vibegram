@@ -9,7 +9,7 @@
 <MethodSignature
   name="Conversation.waitForAny"
   signature="const input = await c.waitForAny(options)"
-  returns="Promise&lt;ConversationAnyResult&gt;"
+  returns="Promise&lt;ConversationWaitForAnyResult&gt;"
   :params="[
     { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validasi, dan pesan error validasi.' }
   ]"
@@ -116,9 +116,8 @@ await ctx.reply('Pilih satu:', {
     ]),
 });
 
-const cbCtx = await c.waitForCallbackQuery(['ya', 'tidak']);
-const pilihan = cbCtx.update.callback_query?.data; // 'ya' atau 'tidak'
-await cbCtx.answerCbQuery();
+const pilihan = await c.waitForCallbackQuery(); // 'ya' atau 'tidak'
+await ctx.answerCbQuery();
 ```
 
 ## Contoh: Form Pembelian
@@ -152,10 +151,10 @@ conv.define('beli', async (ctx, c) => {
         }
     );
 
-    const cbCtx = await c.waitForCallbackQuery(['konfirm', 'batal']);
-    await cbCtx.answerCbQuery();
+    const pilihan = await c.waitForCallbackQuery(); // 'konfirm' atau 'batal'
+    await ctx.answerCbQuery();
 
-    if (cbCtx.update.callback_query?.data === 'konfirm') {
+    if (pilihan === 'konfirm') {
         await ctx.reply(`🎉 Pesanan ${jumlah}x ${produk} dikonfirmasi!`);
     } else {
         await ctx.reply('❌ Pemesanan dibatalkan.');

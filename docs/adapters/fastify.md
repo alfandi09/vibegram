@@ -28,4 +28,4 @@ await bot.setWebhook('https://your-domain.com/webhook', {
 await fastify.listen({ port: 3000, host: '0.0.0.0' });
 ```
 
-See the full adapter matrix and response codes in [Framework Adapters](./express.md).
+See the full adapter matrix and response codes in [Framework Adapters](/adapters/express).
