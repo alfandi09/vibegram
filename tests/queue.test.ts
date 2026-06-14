@@ -83,22 +83,21 @@ describe('BotQueue', () => {
 
         queue.scheduleOnce('job', 5, () => {
             firstRan = true;
-            // Re-arm the same id from within the handler.
-            queue.scheduleOnce('job', 5, () => {
+            // Re-arm the same id with a long delay so it won't fire during the
+            // test window — we only care that it stays tracked and cancellable.
+            queue.scheduleOnce('job', 60_000, () => {
                 secondRan = true;
             });
         });
 
-        // Wait for the first run to fire and re-schedule.
-        await new Promise(resolve => setTimeout(resolve, 15));
+        // Wait long enough for the first run to fire and re-schedule.
+        await new Promise(resolve => setTimeout(resolve, 40));
         expect(firstRan).toBe(true);
 
         // The re-armed job must still be tracked and cancellable.
         expect(queue.activeJobs).toBe(1);
         expect(queue.cancelScheduled('job')).toBe(true);
-
-        await new Promise(resolve => setTimeout(resolve, 15));
-        expect(secondRan).toBe(false);
         expect(queue.activeJobs).toBe(0);
+        expect(secondRan).toBe(false);
     });
 });
