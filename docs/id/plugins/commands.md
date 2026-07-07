@@ -34,7 +34,7 @@ Untuk saat ini, gunakan package repository sebagai local file dependency:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/commands": "file:../vibegram/plugins/commands"
   }
 }

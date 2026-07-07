@@ -1,50 +1,56 @@
 # Telegram Stars & Pembayaran
 
 <SecurityNote title="Keamanan pembayaran" variant="warning">
-Validasi harga, payload, dan pre-checkout query di server. Jangan percaya state client
-saat memenuhi konten berbayar.
+Validasi harga, payload, pre-checkout query, dan status fulfillment di server.
+Jangan pernah percaya state client saat membuka konten berbayar.
 </SecurityNote>
 
-<FeatureGrid title="Permukaan pembayaran" description="Gunakan Telegram payments untuk invoice dan Stars untuk monetisasi konten digital.">
-  <FeatureCard title="Invoice" description="Buat flow pembayaran dengan API invoice Telegram." href="#invoice" cta="Buka invoice" />
-  <FeatureCard title="Stars" description="Kelola monetisasi konten digital dengan metode Stars." href="#telegram-stars" cta="Buka Stars" />
-  <FeatureCard title="Checkout" description="Jawab pre-checkout query sebelum fulfillment." href="#pre-checkout" cta="Buka checkout" />
+<FeatureGrid title="Permukaan pembayaran" description="Gunakan Telegram payments untuk invoice dan Stars untuk flow konten digital.">
+  <FeatureCard title="Invoice" description="Buat flow pembayaran dengan API invoice Telegram." href="#invoice" />
+  <FeatureCard title="Media berbayar" description="Jual konten digital dengan paid media berbasis Stars." href="#mengirim-media-berbayar" />
+  <FeatureCard title="Checkout" description="Jawab pre-checkout query sebelum fulfillment." href="#pre-checkout" />
 </FeatureGrid>
 
-VibeGram mendukung sistem pembayaran bawaan Telegram, termasuk Telegram Stars untuk monetisasi konten digital.
+VibeGram mendukung invoice Telegram, validasi pre-checkout, update pembayaran
+berhasil, paid media Telegram Stars, refund, gift, dan riwayat transaksi.
 
 ## Mengirim Media Berbayar
 
-```typescript
+```ts
 bot.command('premium', async ctx => {
     await ctx.replyWithPaidMedia(
-        15, // Harga dalam Telegram Stars
+        15,
         [{ type: 'photo', media: 'https://contoh.com/konten-premium.jpg' }],
-        { caption: '📸 Konten Premium — 15 Stars' }
+        { caption: 'Konten premium - 15 Stars' }
     );
 });
 ```
 
+Gunakan paid media untuk konten digital yang fulfillment-nya terjadi di
+Telegram.
+
 ## Invoice
 
-```typescript
+```ts
 bot.command('beli', async ctx => {
-    await ctx.replyWithInvoice({
-        title: 'Keanggotaan Pro',
-        description: 'Akses 30 hari ke fitur premium',
-        payload: 'keanggotaan_pro_30h',
-        provider_token: 'TOKEN_PENYEDIA_PEMBAYARAN',
-        currency: 'USD',
-        prices: [{ label: 'Keanggotaan Pro', amount: 999 }], // $9.99
-    });
+    await ctx.replyWithInvoice(
+        'Keanggotaan Pro',
+        'Akses 30 hari ke fitur premium',
+        'keanggotaan_pro_30h',
+        'USD',
+        [{ label: 'Keanggotaan Pro', amount: 999 }],
+        { provider_token: process.env.PAYMENT_PROVIDER_TOKEN! }
+    );
 });
 ```
 
+Amount memakai unit terkecil untuk mata uang biasa. Untuk flow Stars, ikuti
+aturan Telegram `XTR` dan requirement provider.
+
 ## Pre-Checkout
 
-```typescript
+```ts
 bot.on('pre_checkout_query', async ctx => {
-    // Validasi pesanan sebelum dikenakan biaya
     const payload = ctx.update.pre_checkout_query?.invoice_payload;
 
     if (payload === 'keanggotaan_pro_30h') {
@@ -55,73 +61,91 @@ bot.on('pre_checkout_query', async ctx => {
 });
 ```
 
+Selalu validasi payload, harga, user, dan ketersediaan sebelum menyetujui
+charge.
+
 ## Pembayaran Berhasil
 
-```typescript
+```ts
 bot.on('message', async ctx => {
-    if (ctx.message?.successful_payment) {
-        const pembayaran = ctx.message.successful_payment;
-        const jumlah = pembayaran.total_amount / 100; // konversi dari sen
+    const payment = ctx.message?.successful_payment;
+    if (!payment) return;
 
-        await ctx.reply(
-            `✅ Pembayaran ${jumlah} ${pembayaran.currency} diterima!\n` +
-                `ID Transaksi: ${pembayaran.telegram_payment_charge_id}`
-        );
+    await aktivasiPremium(ctx.from!.id, payment.telegram_payment_charge_id);
 
-        // Aktifkan fitur premium untuk pengguna
-        await aktivasiPremium(ctx.from!.id);
-    }
+    await ctx.reply(
+        `Pembayaran diterima: ${payment.total_amount} ${payment.currency}`
+    );
 });
 ```
+
+Buat fulfillment idempotent dengan menyimpan Telegram payment charge ID sebelum
+membuka fitur berbayar.
 
 ## Refund Telegram Stars
 
-```typescript
+```ts
 bot.command('refund', async ctx => {
     const chargeId = ctx.command?.args?.[0];
-    if (!chargeId) return ctx.reply('Masukkan ID transaksi.');
+    if (!chargeId || !ctx.from) return ctx.reply('Kirim ID transaksi.');
 
-    await ctx.refundStarPayment(ctx.from!.id, chargeId);
-    await ctx.reply('✅ Stars dikembalikan ke pengguna.');
+    await ctx.refundStarPayment(ctx.from.id, chargeId);
+    await ctx.reply('Stars dikembalikan.');
 });
 ```
 
-## Gift Stars (Bot API 9.x)
+Buka command refund hanya untuk operator tepercaya atau flow admin yang
+diproteksi.
 
-```typescript
-// Kirim hadiah Stars ke pengguna
-bot.command('hadiah', async ctx => {
+## Gift Stars
+
+```ts
+bot.command('gift', async ctx => {
+    if (!ctx.from) return;
+
     const gifts = await ctx.getAvailableGifts();
-    const giftId = gifts.gifts[0].id;
+    const giftId = gifts.gifts[0]?.id;
+    if (!giftId) return ctx.reply('Gift belum tersedia.');
 
-    await ctx.sendGift(ctx.from!.id, giftId, {
-        text: '🎁 Terima kasih telah menggunakan bot kami!',
+    await ctx.sendGift(ctx.from.id, giftId, {
+        text: 'Terima kasih sudah memakai bot.',
     });
 });
 
-// Lihat Stars yang dimiliki bot
 bot.command('saldo', async ctx => {
-    const saldo = await ctx.getStarBalance();
-    await ctx.reply(`💫 Saldo Stars bot: ${saldo.amount}`);
+    const balance = await ctx.getMyStarBalance();
+    await ctx.reply(`Saldo Stars bot: ${balance.amount}`);
 });
 ```
+
+Gunakan `getAvailableGifts()` sebelum mengirim gift karena daftar gift bisa
+berubah dari waktu ke waktu.
 
 ## Riwayat Transaksi
 
-```typescript
+```ts
 bot.command('transaksi', async ctx => {
-    const riwayat = await ctx.getStarTransactions({ limit: 10 });
-    const daftar = riwayat.transactions.map(t => `• ${t.amount} Stars — ${t.date}`).join('\n');
-    await ctx.reply(`📊 10 Transaksi Terakhir:\n${daftar}`);
+    const history = await ctx.getStarTransactions({ limit: 10 });
+    const lines = history.transactions.map(transaction => {
+        return `${transaction.id}: ${transaction.amount.amount} Stars`;
+    });
+
+    await ctx.reply(lines.join('\n') || 'Belum ada transaksi.');
 });
 ```
 
-## Tombol Pembayaran di Keyboard
+Simpan transaction ID di database sendiri jika flow fulfillment atau refund
+bergantung padanya.
 
-```typescript
+## Tombol Pembayaran
+
+```ts
 import { Markup } from 'vibegram';
 
-await ctx.reply('Lanjutkan pembelian:', {
-    reply_markup: Markup.inlineKeyboard([[Markup.button.pay('💳 Bayar Sekarang')]]),
+await ctx.reply('Lanjutkan checkout:', {
+    reply_markup: Markup.inlineKeyboard([[Markup.button.pay('Bayar sekarang')]]),
 });
 ```
+
+Tombol pembayaran Telegram hanya valid di pesan invoice dan harus mengikuti
+aturan posisi dari Telegram.

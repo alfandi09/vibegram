@@ -217,6 +217,6 @@ describe('Markup escape helpers', () => {
     });
 
     it('escapeMarkdown escapes legacy reserved characters', () => {
-        expect(Markup.escapeMarkdown('a_b*c`d[e')).toBe('a\\_b\\*c\\`d\\[e');
+        expect(Markup.escapeMarkdown('a_b*c`d[e]')).toBe('a\\_b\\*c\\`d\\[e\\]');
     });
 });

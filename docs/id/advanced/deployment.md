@@ -53,6 +53,19 @@ await bot.setWebhook(`${process.env.PUBLIC_URL}/webhook`, {
 app.listen(Number(process.env.PORT || 3000));
 ```
 
+## VPS dengan systemd
+
+Build aplikasi dan jalankan JavaScript hasil compile:
+
+```bash
+npm ci
+npm run build
+node dist/bot.js
+```
+
+Untuk `systemd`, simpan environment variable di file environment yang hanya bisa
+dibaca oleh service user.
+
 ## Checklist
 
 - Gunakan HTTPS untuk webhook.

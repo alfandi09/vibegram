@@ -29,7 +29,7 @@ Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 Install rilis VibeGram terbaru. Codex sudah termasuk di package utama `vibegram` dan diimport dari subpath `vibegram/codex`:
 
 ```bash
-npm install vibegram@^2.3.0
+npm install vibegram@^2.4.0
 ```
 
 ```typescript
@@ -466,6 +466,21 @@ Ini berguna untuk secret manager atau test environment, tapi token hasil refresh
 | `accountId` | auto-detected | Header ChatGPT account ID |
 | `deviceId` | random UUID | Header `oai-device-id` |
 | `autoRefresh` | `true` jika `refresh_token` tersedia | Auto-refresh token expired via OAuth2 |
+
+## Roadmap: Provider OpenAI API Resmi
+
+`codexProvider()` saat ini memakai session `auth.json` ChatGPT dan backend Codex ChatGPT.
+Track provider berikutnya adalah provider OpenAI API resmi yang opsional, memakai API key, dan
+tidak bergantung pada cookie session ChatGPT atau refresh token.
+
+Berdasarkan dokumentasi developer OpenAI terbaru, provider ini sebaiknya menargetkan
+[Responses API](https://developers.openai.com/api/reference/responses/overview/) lebih dulu, dengan
+integrasi [Agents SDK](https://developers.openai.com/api/docs/guides/agents) sebagai opsi level
+lebih tinggi untuk workflow yang butuh tool orchestration, tracing, atau handoff. Chat Completions
+bisa tetap menjadi jalur kompatibilitas, tetapi referensi API OpenAI merekomendasikan Responses
+untuk project baru.
+
+Provider ini harus tetap opsional dan tidak menjadi dependency runtime core VibeGram.
 
 ## Troubleshooting
 

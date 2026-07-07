@@ -68,11 +68,24 @@ function defaultKeyGenerator(ctx: Context): string | undefined {
     return undefined;
 }
 
+function validatePositiveIntegerOption(name: string, value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer.`);
+    }
+}
+
 /**
  * Inbound rate limiter middleware.
  * Mirrors Telegram's native rate limit thresholds to protect against request flooding.
  */
-export function rateLimit(options?: RateLimitOptions): Middleware<any> {
+export function rateLimit(options?: RateLimitOptions): Middleware {
+    if (options?.windowMs !== undefined) {
+        validatePositiveIntegerOption('windowMs', options.windowMs);
+    }
+    if (options?.limit !== undefined) {
+        validatePositiveIntegerOption('limit', options.limit);
+    }
+
     const memoryStore = new Map<string, RateLimitRecord>();
     const store: RateLimitStore =
         options?.store ?? {

@@ -1,27 +1,29 @@
 # Validasi WebApp
 
-VibeGram memvalidasi `initData` Telegram Mini App menggunakan HMAC-SHA256. Ini mencegah payload yang dipalsukan atau dimanipulasi.
+VibeGram memvalidasi `initData` Telegram Mini App memakai HMAC-SHA256. Ini
+mencegah payload palsu atau hasil manipulasi diterima oleh backend.
 
 ## Cara Kerja Autentikasi WebApp Telegram
 
-1. Pengguna membuka Mini App di dalam Telegram
-2. Mini App menerima `window.Telegram.WebApp.initData` (query string)
-3. Backend Anda memvalidasi parameter `hash` terhadap token bot menggunakan HMAC-SHA256
-4. Jika valid, data `user` bisa dipercaya
+1. User membuka Mini App di dalam Telegram.
+2. Mini App menerima `window.Telegram.WebApp.initData`.
+3. Backend memvalidasi parameter `hash` terhadap token bot.
+4. Jika validasi berhasil, data `user` yang sudah diparse bisa dipercaya dalam
+   batas freshness yang dikonfigurasi.
 
 ## Validasi via Instansi Bot
 
-```typescript
+```ts
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-// Di route handler Express.js Anda:
 app.post('/api/auth', (req, res) => {
     try {
-        const userData = bot.validateWebAppData(req.body.initData, {
-            maxAgeSeconds: 300 // Tolak data yang lebih dari 5 menit
+        const data = bot.validateWebAppData(req.body.initData, {
+            maxAgeSeconds: 300,
         });
-        res.json({ user: userData });
-    } catch (error) {
+
+        res.json({ user: data.user });
+    } catch {
         res.status(403).json({ error: 'initData tidak valid' });
     }
 });
@@ -29,80 +31,78 @@ app.post('/api/auth', (req, res) => {
 
 ## Validasi via Utility Statis
 
-```typescript
+```ts
 import { WebAppUtils } from 'vibegram';
 
-const userData = WebAppUtils.validate(process.env.BOT_TOKEN!, initData, {
-    maxAgeSeconds: 300
+const data = WebAppUtils.validate(process.env.BOT_TOKEN!, initData, {
+    maxAgeSeconds: 300,
 });
 ```
 
-## Contoh dengan Express + TypeScript
+## Contoh Express dan TypeScript
 
-```typescript
+```ts
 import express from 'express';
-import { Bot, WebAppUtils } from 'vibegram';
+import { WebAppUtils } from 'vibegram';
 
 const app = express();
-const bot = new Bot(process.env.BOT_TOKEN!);
 
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
 
 app.post('/api/webapp/auth', (req, res) => {
-    const { initData } = req.body;
-
-    if (!initData) {
-        return res.status(400).json({ error: 'initData diperlukan' });
+    const initData = req.body?.initData;
+    if (typeof initData !== 'string') {
+        return res.status(400).json({ error: 'initData wajib diisi' });
     }
 
     try {
         const data = WebAppUtils.validate(process.env.BOT_TOKEN!, initData, {
-            maxAgeSeconds: 600 // 10 menit
+            maxAgeSeconds: 600,
         });
 
-        // data.user berisi info pengguna Telegram yang terverifikasi
-        const user = data.user;
-        console.log(`Login dari: ${user.first_name} (${user.id})`);
-
-        res.json({
-            success: true,
-            user: {
-                id: user.id,
-                name: user.first_name,
-                username: user.username,
-            }
+        return res.json({
+            user: data.user,
         });
-    } catch (err) {
-        res.status(403).json({ error: 'initData tidak valid atau kadaluwarsa' });
+    } catch {
+        return res.status(403).json({ error: 'initData tidak valid atau kadaluwarsa' });
     }
 });
 ```
 
+Gunakan body limit JSON kecil untuk endpoint auth. `initData` adalah query
+string ringkas, jadi body besar patut dicurigai.
+
 ## Detail Keamanan
 
-- Menggunakan `crypto.timingSafeEqual()` untuk mencegah timing attack pada perbandingan hash
-- Token bot bersifat privat — tidak pernah terekspos di klien WebApp
-- `maxAgeSeconds` mencegah replay attack menggunakan nilai `auth_date` yang basi
+- Memakai `crypto.timingSafeEqual()` untuk perbandingan hash constant-time.
+- Menurunkan secret key WebApp dari token bot dengan skema HMAC `WebAppData`
+  Telegram.
+- Mewajibkan parameter `hash` dan timestamp `auth_date` valid.
+- Menolak hash malformed dan nilai `auth_date` dari masa depan.
+- `maxAgeSeconds` membatasi replay memakai `auth_date` lama.
+- Token bot harus tetap di server dan tidak boleh dikirim ke Mini App.
 
 ## Opsi
 
 | Opsi | Tipe | Default | Deskripsi |
-|------|------|---------|-----------|
-| `maxAgeSeconds` | `number` | `undefined` | Umur maksimal initData dalam detik |
+| --- | --- | --- | --- |
+| `maxAgeSeconds` | `number` | `86400` | Umur maksimum `auth_date` yang diterima, dalam detik. |
+
+`maxAgeSeconds` harus positive integer.
 
 ## Error yang Dilempar
 
-```typescript
-import { WebAppValidationError } from 'vibegram';
+```ts
+import { WebAppValidationError, WebAppUtils } from 'vibegram';
 
 try {
     WebAppUtils.validate(token, initData);
-} catch (err) {
-    if (err instanceof WebAppValidationError) {
-        console.error('Alasan:', err.message);
-        // 'Hash tidak cocok'
-        // 'initData kadaluwarsa'
-        // 'Hash tidak ditemukan di initData'
+} catch (error) {
+    if (error instanceof WebAppValidationError) {
+        console.error(error.message);
     }
 }
 ```
+
+Kegagalan validasi melempar `WebAppValidationError`. Kembalikan respons 403
+generik ke client dan simpan detail error di log server.

@@ -50,8 +50,8 @@ describe('Composer.command()', () => {
         expect(capturedCtx!.command?.args).toEqual(['hello', 'world']);
     });
 
-    it('strips @botname from command', async () => {
-        const composer = new Composer<Context>();
+    it('triggers bot-targeted commands when the suffix matches the configured bot username', async () => {
+        const composer = new Composer<Context>({ botUsername: 'mybot' });
         const handler = vi.fn();
         composer.command('start', handler);
 
@@ -59,6 +59,17 @@ describe('Composer.command()', () => {
         await runComposer(composer, ctx);
 
         expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it('does NOT trigger bot-targeted commands for another bot username', async () => {
+        const composer = new Composer<Context>({ botUsername: 'mybot' });
+        const handler = vi.fn();
+        composer.command('start', handler);
+
+        const { ctx } = createContext(makeMessageUpdate('/start@OtherBot'));
+        await runComposer(composer, ctx);
+
+        expect(handler).not.toHaveBeenCalled();
     });
 
     it('does NOT trigger on wrong command', async () => {

@@ -7,6 +7,7 @@ import { prepareRequestPayload, validateRequestPayload } from './multipart';
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 const DEFAULT_MAX_JSON_PAYLOAD_BYTES = 50 * 1024 * 1024;
+const DEFAULT_MAX_RESPONSE_BYTES = 50 * 1024 * 1024;
 const DEFAULT_NETWORK_RETRIES = 0;
 const DEFAULT_NETWORK_RETRY_BASE_DELAY_MS = 500;
 const DEFAULT_NETWORK_RETRY_MAX_DELAY_MS = 5000;
@@ -123,6 +124,12 @@ function validateNonNegativeNumberOption(name: string, value: number): void {
     }
 }
 
+function validatePositiveIntegerOption(name: string, value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer.`);
+    }
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -180,6 +187,11 @@ export interface TelegramClientOptions {
      */
     maxJsonPayloadBytes?: number;
     /**
+     * Maximum Telegram API response body size in bytes for JSON/text/buffer responses.
+     * Defaults to 50MB.
+     */
+    maxResponseBytes?: number;
+    /**
      * Number of retries for transient network failures and HTTP 5xx responses.
      * HTTP 4xx client errors and Telegram rate-limit responses are never retried here.
      * Defaults to 0 to avoid duplicate non-idempotent Bot API calls unless explicitly enabled.
@@ -210,6 +222,7 @@ export class TelegramClient {
     private readonly _token: string;
     private readonly hooks?: TelegramClientHooks;
     private readonly maxJsonPayloadBytes: number;
+    private readonly maxResponseBytes: number;
     private readonly networkRetries: number;
     private readonly networkRetryBaseDelayMs: number;
     private readonly networkRetryMaxDelayMs: number;
@@ -219,6 +232,7 @@ export class TelegramClient {
         this._token = token;
         this.hooks = options?.hooks;
         this.maxJsonPayloadBytes = options?.maxJsonPayloadBytes ?? DEFAULT_MAX_JSON_PAYLOAD_BYTES;
+        this.maxResponseBytes = options?.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
         this.networkRetries = options?.networkRetries ?? DEFAULT_NETWORK_RETRIES;
         this.networkRetryBaseDelayMs =
             options?.networkRetryBaseDelayMs ?? DEFAULT_NETWORK_RETRY_BASE_DELAY_MS;
@@ -228,6 +242,7 @@ export class TelegramClient {
         if (!Number.isFinite(this.maxJsonPayloadBytes) || this.maxJsonPayloadBytes <= 0) {
             throw new TypeError('maxJsonPayloadBytes must be a positive number.');
         }
+        validatePositiveIntegerOption('maxResponseBytes', this.maxResponseBytes);
         validateNonNegativeIntegerOption('networkRetries', this.networkRetries);
         validateNonNegativeNumberOption('networkRetryBaseDelayMs', this.networkRetryBaseDelayMs);
         validateNonNegativeNumberOption('networkRetryMaxDelayMs', this.networkRetryMaxDelayMs);
@@ -314,8 +329,10 @@ export class TelegramClient {
                     : JSON.stringify(reqData ?? {}),
                 timeoutMs: 50000,
                 responseType: 'json',
+                maxResponseBytes: this.maxResponseBytes,
             });
             const result = response.data;
+            this.assertResponseWithinLimit(result);
             if (!result.ok) {
                 const errorCode = result.error_code ?? 0;
                 const description = result.description ?? 'Telegram request failed';
@@ -455,6 +472,15 @@ export class TelegramClient {
             );
 
             throw networkError;
+        }
+    }
+
+    private assertResponseWithinLimit(response: TelegramApiResponse): void {
+        const bytes = Buffer.byteLength(JSON.stringify(response) ?? '', 'utf8');
+        if (bytes > this.maxResponseBytes) {
+            throw new NetworkError(
+                `Telegram API response exceeds maximum size of ${this.maxResponseBytes} bytes.`
+            );
         }
     }
 

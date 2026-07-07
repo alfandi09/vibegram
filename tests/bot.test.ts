@@ -119,6 +119,25 @@ describe('Bot', () => {
         expect(settingsHandler).toHaveBeenCalledTimes(1);
     });
 
+    it('routes bot-targeted commands after getMe provides the bot username', async () => {
+        const bot = new Bot('test-token');
+        const startHandler = vi.fn();
+
+        bot.client.callApi = vi.fn(async method => {
+            if (method === 'getMe') {
+                return { id: 1, is_bot: true, first_name: 'Bot', username: 'ThisBot' };
+            }
+            return undefined;
+        }) as any;
+        bot.start(startHandler);
+
+        await (bot as any).getBotInfoOrThrow();
+        await bot.handleUpdate(makeMessageUpdate('/start@OtherBot'));
+        await bot.handleUpdate(makeMessageUpdate('/start@ThisBot'));
+
+        expect(startHandler).toHaveBeenCalledOnce();
+    });
+
     it('emits update timeout errors through hooks and catch()', async () => {
         vi.useFakeTimers();
         try {
@@ -237,6 +256,38 @@ describe('Bot', () => {
 
         expect(handleUpdateSpy).not.toHaveBeenCalled();
         expect(logSpy).toHaveBeenCalledWith('[VibeGram] Bot stopped gracefully.');
+    });
+
+    it('keeps polling offset unchanged after a failed update when offsetCommit is processed', async () => {
+        vi.useFakeTimers();
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const bot = new Bot('test-token', {
+            polling: { interval: 0, offsetCommit: 'processed' },
+        });
+        const update = makeMessageUpdate('will fail');
+        const offsets: number[] = [];
+        let getUpdatesCount = 0;
+
+        bot.use(async () => {
+            throw new Error('handler failed');
+        });
+        (bot as any).isPolling = true;
+        bot.client.callApi = vi.fn(async (method: string, params?: { offset?: number }) => {
+            if (method !== 'getUpdates') return undefined;
+            offsets.push(params?.offset ?? -1);
+            getUpdatesCount++;
+            if (getUpdatesCount === 1) return [update];
+            (bot as any).isPolling = false;
+            return [];
+        }) as any;
+
+        const loop = (bot as any).pollingLoop() as Promise<void>;
+        await vi.advanceTimersByTimeAsync(3000);
+        await loop;
+
+        expect(offsets).toEqual([0, 0]);
+        expect(errorSpy).toHaveBeenCalled();
+        vi.useRealTimers();
     });
 
     it('emits update lifecycle hooks for success and failure paths', async () => {

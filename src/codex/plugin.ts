@@ -16,6 +16,7 @@ import {
     CodexContext,
     CodexMessage,
 } from './types';
+import { Markup } from '../markup';
 import { MemoryCodexStore } from './memory';
 import { saveCodexAuthJson } from './auth/manual';
 import * as fs from 'fs';
@@ -93,21 +94,35 @@ function isBotMentioned(ctx: Context, botUsername?: string): boolean {
 // Command parser helper
 // ---------------------------------------------------------------------------
 
+function normalizeBotUsername(username: string | undefined): string | undefined {
+    const normalized = username?.replace(/^@/, '').trim().toLowerCase();
+    return normalized || undefined;
+}
+
 function parseCommand(
     text: string,
-    prefix: string
+    prefix: string,
+    botUsername?: string
 ): { sub: string; args: string[] } | null {
-    const lower = text.trim().toLowerCase();
-    const cmdPattern = `/${prefix}`;
+    const [rawCommand, ...args] = text.trim().split(/\s+/);
+    if (!rawCommand?.startsWith('/')) return null;
 
-    if (!lower.startsWith(cmdPattern)) return null;
+    const commandText = rawCommand.slice(1);
+    const separatorIndex = commandText.indexOf('@');
+    const commandName =
+        separatorIndex === -1 ? commandText : commandText.slice(0, separatorIndex);
+    const target =
+        separatorIndex === -1
+            ? undefined
+            : normalizeBotUsername(commandText.slice(separatorIndex + 1));
 
-    const rest = text.slice(cmdPattern.length).trim();
-    const parts = rest.split(/\s+/).filter(Boolean);
-    const sub = (parts[0] ?? 'ask').toLowerCase();
-    const args = parts.slice(1);
+    if (commandName.toLowerCase() !== prefix.toLowerCase()) return null;
+    if (separatorIndex !== -1 && (!target || target !== normalizeBotUsername(botUsername))) {
+        return null;
+    }
 
-    return { sub, args };
+    const sub = (args[0] ?? 'ask').toLowerCase();
+    return { sub, args: args.slice(1) };
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +185,14 @@ export function codex<C extends Context = Context>(
         return ctx.chat?.id !== undefined && ctx.chat.id > 0;
     }
 
+    function escapeMarkdown(text: string): string {
+        return Markup.escapeMarkdown(text);
+    }
+
+    function commandMarkdown(suffix = ''): string {
+        return `/${escapeMarkdown(commandPrefix)}${suffix}`;
+    }
+
     function clearPendingAuthJsonImport(userId: number): void {
         pendingAuthJsonImports.delete(userId);
         const timeout = pendingAuthJsonImportTimeouts.get(userId);
@@ -199,9 +222,9 @@ export function codex<C extends Context = Context>(
                 'Use this flow:',
                 '1. Run `codex login` on a trusted local machine.',
                 '2. Open the generated `~/.codex/auth.json` file.',
-                `3. Send \`/${commandPrefix} importjson\` here, then paste the full auth.json content.`,
+                `3. Send \`${commandMarkdown(' importjson')}\` here, then paste the full auth.json content.`,
                 '',
-                `Target path: \`${authPath}\``,
+                `Target path: \`${escapeMarkdown(authPath)}\``,
             ].join('\n'),
             { parse_mode: 'Markdown' }
         );
@@ -462,19 +485,19 @@ export function codex<C extends Context = Context>(
                 await ctx.reply(
                     `🤖 *Codex Bot Commands*\n\n` +
                     `*Authentication:*\n` +
-                    `\`/${commandPrefix} login\` — Show manual auth.json instructions\n` +
-                    `\`/${commandPrefix} importjson\` — Import a pasted auth.json\n` +
-                    `\`/${commandPrefix} logout\` — Clear saved auth tokens\n` +
-                    `\`/${commandPrefix} auth export\` — Download saved auth.json\n\n` +
+                    `\`${commandMarkdown(' login')}\` — Show manual auth.json instructions\n` +
+                    `\`${commandMarkdown(' importjson')}\` — Import a pasted auth.json\n` +
+                    `\`${commandMarkdown(' logout')}\` — Clear saved auth tokens\n` +
+                    `\`${commandMarkdown(' auth export')}\` — Download saved auth.json\n\n` +
                     `*Chat:*\n` +
-                    `\`/${commandPrefix} ask <text>\` — Ask explicitly\n` +
-                    `\`/${commandPrefix} reset\` — Clear conversation memory\n` +
-                    `\`/${commandPrefix} personality <text>\` — Set custom instructions\n` +
-                    `\`/${commandPrefix} personality reset\` — Reset to default\n\n` +
+                    `\`${commandMarkdown(' ask <text>')}\` — Ask explicitly\n` +
+                    `\`${commandMarkdown(' reset')}\` — Clear conversation memory\n` +
+                    `\`${commandMarkdown(' personality <text>')}\` — Set custom instructions\n` +
+                    `\`${commandMarkdown(' personality reset')}\` — Reset to default\n\n` +
                     `*Info:*\n` +
-                    `\`/${commandPrefix} status\` — Provider, session & usage info\n` +
-                    `\`/${commandPrefix} models\` — List available models\n` +
-                    `\`/${commandPrefix} help\` — Show this help\n\n` +
+                    `\`${commandMarkdown(' status')}\` — Provider, session & usage info\n` +
+                    `\`${commandMarkdown(' models')}\` — List available models\n` +
+                    `\`${commandMarkdown(' help')}\` — Show this help\n\n` +
                     `💬 Or just send any message${isGroupChat(ctx) ? ' (mention the bot)' : ''}!`,
                     { parse_mode: 'Markdown' }
                 );
@@ -486,14 +509,16 @@ export function codex<C extends Context = Context>(
                 const status = await ctx.codex!.status();
                 const icon = status.connected ? '✅' : '❌';
                 let msg = `${icon} *Codex Status*\n\n`;
-                msg += `Provider: \`${status.provider}\`\n`;
-                if (status.model) msg += `Model: \`${status.model}\`\n`;
+                msg += `Provider: \`${escapeMarkdown(status.provider)}\`\n`;
+                if (status.model) msg += `Model: \`${escapeMarkdown(status.model)}\`\n`;
                 if (status.extra) {
                     const extra = status.extra;
-                    if (extra.planType) msg += `Plan: \`${extra.planType}\`\n`;
+                    if (extra.planType)
+                        msg += `Plan: \`${escapeMarkdown(String(extra.planType))}\`\n`;
                     if (extra.expired !== undefined)
                         msg += `Token: ${extra.expired ? '⚠️ Expired' : '🟢 Valid'}\n`;
-                    if (extra.expiresAt) msg += `Expires: \`${extra.expiresAt}\`\n`;
+                    if (extra.expiresAt)
+                        msg += `Expires: \`${escapeMarkdown(String(extra.expiresAt))}\`\n`;
                     if (extra.autoRefresh !== undefined)
                         msg += `Auto-refresh: ${extra.autoRefresh ? '🔄 On' : '⏸️ Off'}\n`;
                 }
@@ -508,9 +533,9 @@ export function codex<C extends Context = Context>(
                 // Per-user personality
                 const personality = await ctx.codex!.getPersonality();
                 if (personality) {
-                    const preview = personality.length > 60
-                        ? personality.slice(0, 60) + '...'
-                        : personality;
+                    const preview = escapeMarkdown(
+                        personality.length > 60 ? personality.slice(0, 60) + '...' : personality
+                    );
                     msg += `\n🎭 *Personality*\n\`${preview}\`\n`;
                 }
 
@@ -532,7 +557,11 @@ export function codex<C extends Context = Context>(
                     return true;
                 }
                 const list = models
-                    .map(m => `• \`${m.id}\`${m.displayName ? ` — ${m.displayName}` : ''}`)
+                    .map(
+                        m =>
+                            `• \`${escapeMarkdown(m.id)}\`` +
+                            (m.displayName ? ` — ${escapeMarkdown(m.displayName)}` : '')
+                    )
                     .join('\n');
                 await ctx.reply(`📋 *Available Models*\n\n${list}`, {
                     parse_mode: 'Markdown',
@@ -554,18 +583,18 @@ export function codex<C extends Context = Context>(
                     const current = await ctx.codex!.getPersonality();
                     if (current) {
                         await ctx.reply(
-                            `🎭 *Current Personality*\n\n${current}\n\n` +
-                            `Use \`/${commandPrefix} personality reset\` to clear.`,
+                            `🎭 *Current Personality*\n\n${escapeMarkdown(current)}\n\n` +
+                            `Use \`${commandMarkdown(' personality reset')}\` to clear.`,
                             { parse_mode: 'Markdown' }
                         );
                     } else {
                         await ctx.reply(
                             `🎭 No custom personality set.\n\n` +
-                            `Use \`/${commandPrefix} personality <instructions>\` to set one.\n\n` +
+                            `Use \`${commandMarkdown(' personality <instructions>')}\` to set one.\n\n` +
                             `Examples:\n` +
-                            `• \`/${commandPrefix} personality Jawab selalu dalam bahasa Indonesia dan gaya formal\`\n` +
-                            `• \`/${commandPrefix} personality You are a coding expert. Always provide code examples.\`\n` +
-                            `• \`/${commandPrefix} personality Kamu adalah chef profesional. Berikan resep dan tips memasak.\``,
+                            `• \`${commandMarkdown(' personality Jawab selalu dalam bahasa Indonesia dan gaya formal')}\`\n` +
+                            `• \`${commandMarkdown(' personality You are a coding expert. Always provide code examples.')}\`\n` +
+                            `• \`${commandMarkdown(' personality Kamu adalah chef profesional. Berikan resep dan tips memasak.')}\``,
                             { parse_mode: 'Markdown' }
                         );
                     }
@@ -584,9 +613,14 @@ export function codex<C extends Context = Context>(
                     return true;
                 }
                 await ctx.codex!.setPersonality(personalityText);
+                const personalityPreview = escapeMarkdown(
+                    personalityText.length > 100
+                        ? personalityText.slice(0, 100) + '...'
+                        : personalityText
+                );
                 await ctx.reply(
                     `🎭 Personality updated!\n\n` +
-                    `\`${personalityText.length > 100 ? personalityText.slice(0, 100) + '...' : personalityText}\`\n\n` +
+                    `\`${personalityPreview}\`\n\n` +
                     `This will apply to all your future messages.`,
                     { parse_mode: 'Markdown' }
                 );
@@ -652,8 +686,8 @@ export function codex<C extends Context = Context>(
                         fs.unlinkSync(authPath);
                         await ctx.reply(
                             `🔓 *Logged Out*\n\n` +
-                            `Auth tokens removed from \`${authPath}\`.\n` +
-                            `Use \`/${commandPrefix} importjson\` to import auth.json again.`,
+                            `Auth tokens removed from \`${escapeMarkdown(authPath)}\`.\n` +
+                            `Use \`${commandMarkdown(' importjson')}\` to import auth.json again.`,
                             { parse_mode: 'Markdown' }
                         );
                     } else {
@@ -703,8 +737,8 @@ export function codex<C extends Context = Context>(
         }
 
         // ---- Command routing (/codex ...) ----
-        if (text.startsWith(`/${commandPrefix}`)) {
-            const parsed = parseCommand(text, commandPrefix);
+        if (text.trim().startsWith(`/${commandPrefix}`)) {
+            const parsed = parseCommand(text, commandPrefix, botUsername);
             if (!parsed) return next();
 
             const handled = await handleCommand(ctx, parsed.sub, parsed.args);

@@ -105,6 +105,29 @@ bot.catch(async (error, ctx) => {
 | `i18n.middleware()` | `import { I18n }` | Internationalization |
 | `stage.middleware()` | `import { Stage }` | Scene routing |
 | `apiCache()` | `import { apiCache }` | TTL-based API response caching |
+| `dedupeUpdates()` | `import { dedupeUpdates }` | Drop duplicate Telegram updates by key |
+
+## Duplicate Update Protection
+
+Use `dedupeUpdates()` when your deployment may receive the same update more than once, especially
+with `polling.offsetCommit: 'processed'`, webhook retries, or multi-step handlers that must be
+idempotent.
+
+```typescript
+import { Bot, dedupeUpdates } from 'vibegram';
+
+const bot = new Bot(process.env.BOT_TOKEN!, {
+    polling: { offsetCommit: 'processed' },
+});
+
+bot.use(dedupeUpdates({
+    ttlMs: 24 * 60 * 60 * 1000,
+    maxEntries: 10_000,
+}));
+```
+
+By default the key is `ctx.update.update_id`. For multi-process bots, provide a custom
+`UpdateDedupeStore` backed by Redis or your shared datastore.
 
 ## Recommended Registration Order
 

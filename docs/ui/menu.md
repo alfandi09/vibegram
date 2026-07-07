@@ -71,6 +71,25 @@ menu.text('🔐 Admin Panel', adminHandler, {
 });
 ```
 
+## Practical Example: Store Menu
+
+```typescript
+const store = new Menu('store');
+
+store.text('Catalog', async ctx => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Opening catalog...');
+});
+
+store.text('Cart', async ctx => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Your cart is empty.');
+});
+
+store.row();
+store.url('Support', 'https://example.com/support');
+```
+
 ## Menu vs Manual Keyboards
 
 | Feature | Manual `Markup.inlineKeyboard` | `Menu` |

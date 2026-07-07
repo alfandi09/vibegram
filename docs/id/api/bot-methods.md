@@ -19,7 +19,7 @@ Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
 
 | Metode                                    | Deskripsi                                           |
 | ----------------------------------------- | --------------------------------------------------- |
-| `bot.launch(opts?)`                       | Mulai long-polling                                  |
+| `bot.launch(options?)`                    | Mulai long-polling atau webhook native              |
 | `bot.stop(reason?)`                       | Hentikan polling dengan graceful                    |
 | `bot.handleUpdate(update)`                | Proses objek update mentah secara manual            |
 | `bot.webhookCallback(secretToken?)`       | Buat handler webhook kompatibel Express             |
@@ -29,8 +29,8 @@ Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
 | `bot.setMyCommands(commands, extra?)`     | Set menu command                                    |
 | `bot.getMyCommands(extra?)`               | Ambil daftar command                                |
 | `bot.deleteMyCommands(extra?)`            | Hapus menu command                                  |
-| `bot.setWebhook(url, opts?)`              | Daftarkan webhook ke Telegram                       |
-| `bot.deleteWebhook(opts?)`                | Hapus webhook aktif                                 |
+| `bot.setWebhook(url, extra?)`             | Daftarkan webhook ke Telegram                       |
+| `bot.deleteWebhook(dropPendingUpdates?)`  | Hapus webhook aktif                                 |
 | `bot.getWebhookInfo()`                    | Ambil info webhook aktif                            |
 | `bot.plugin(plugin)`                      | Install plugin                                      |
 
@@ -142,29 +142,44 @@ await bot.callApi('forwardMessage', {
 });
 ```
 
-## Opsi Launch
+## Opsi Constructor dan Launch
 
-```typescript
-await bot.launch({
-    // Callback saat bot online
-    onStart: me => {
-        console.log(`@${me.username} online!`);
+```ts
+const bot = new Bot(process.env.BOT_TOKEN!, {
+    polling: {
+        allowed_updates: ['message', 'callback_query'],
+        offsetCommit: 'processed',
     },
-    // Opsi polling tambahan
-    dropPendingUpdates: true, // Abaikan update yang menumpuk saat restart
-    allowedUpdates: ['message', 'callback_query'], // Filter jenis update
+});
+
+await bot.launch({
+    onStart: me => {
+        console.log(`@${me.username} online`);
+    },
 });
 ```
 
+Gunakan `offsetCommit: 'received'` untuk perilaku polling historis. Gunakan
+`offsetCommit: 'processed'` jika handler update yang gagal perlu dicoba ulang
+oleh siklus polling berikutnya.
+
 ## Plugin API
 
-```typescript
-// Install plugin kelas
-bot.plugin(new AnalyticsPlugin('https://analytics.example.com'));
+```ts
+import { Preset, createPlugin } from 'vibegram';
 
-// Install plugin fungsional
-bot.plugin(greetingPlugin({ pesan: 'Halo!' }));
+const greetingPlugin = createPlugin('greeting', (bot, options: { message: string }) => {
+    bot.command('hello', ctx => ctx.reply(options.message));
+});
 
-// Install preset (beberapa plugin sekaligus)
-bot.plugin(produksiPreset);
+bot.plugin(greetingPlugin({ message: 'Halo!' }));
+
+const productionPreset = new Preset('production', [
+    greetingPlugin({ message: 'Halo!' }),
+]);
+
+bot.plugin(productionPreset);
 ```
+
+Plugin memasang diri ke surface composer yang sama dengan bot, jadi plugin bisa
+mendaftarkan middleware, command, listener, dan error handler.

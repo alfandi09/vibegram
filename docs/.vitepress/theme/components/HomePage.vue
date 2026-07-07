@@ -49,10 +49,10 @@ const { lang, site } = useData();
 const copiedCommandId = ref<string | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Extract version from package data, fallback to '1.2.x'
+// Extract version from package data, fallback to the current documented release line.
 const versionBadge = computed(() => {
     const v = (site.value as { themeConfig?: { version?: string } }).themeConfig?.version;
-    return v ?? '1.2.x';
+    return v ?? '2.4.0';
 });
 
 const isIndonesian = computed(
@@ -67,7 +67,7 @@ const copy = computed(() =>
               title: 'VibeGram',
               subtitle: 'Framework Bot Telegram',
               description:
-                  'Bangun bot Telegram siap produksi dengan middleware, webhook, conversation, session, adapter framework, dan cakupan Bot API v10.0 yang kuat.',
+                  'Bangun bot Telegram siap produksi dengan middleware, webhook, conversation, session, adapter framework, dan cakupan Bot API v10.1 yang kuat.',
               primary: { label: 'Mulai dari Quickstart', href: '/id/basics/quickstart' },
               secondary: { label: 'Referensi API', href: '/id/api/context' },
               github: 'Lihat GitHub',
@@ -77,7 +77,7 @@ const copy = computed(() =>
               copyLabel: 'Salin command',
               proofIntro: 'Dasar produksi yang sudah tersedia',
               proofDescription:
-                  'Type safety, secret token, rate limit, session, dan adapter framework.',
+                  'Type safety, secret token, dedupe update, rate limit, session, dan adapter framework.',
               featuresTitle: 'Semua alur bot inti dalam satu framework',
               featuresDescription:
                   'Homepage ini mengutamakan jalur belajar cepat: pahami pipeline, pilih adapter, lalu lanjut ke API yang paling sering dipakai.',
@@ -99,7 +99,7 @@ const copy = computed(() =>
               title: 'VibeGram',
               subtitle: 'Telegram Bot Framework',
               description:
-                  'Build production-ready Telegram bots with middleware, webhooks, conversations, sessions, framework adapters, and broad Bot API v10.0 coverage.',
+                  'Build production-ready Telegram bots with middleware, webhooks, conversations, sessions, framework adapters, and broad Bot API v10.1 coverage.',
               primary: { label: 'Get Started', href: '/basics/quickstart' },
               secondary: { label: 'API Reference', href: '/api/context' },
               github: 'View GitHub',
@@ -109,7 +109,7 @@ const copy = computed(() =>
               copyLabel: 'Copy command',
               proofIntro: 'Production foundations included',
               proofDescription:
-                  'Type safety, secret tokens, rate limits, sessions, and framework adapters.',
+                  'Type safety, secret tokens, update dedupe, rate limits, sessions, and framework adapters.',
               featuresTitle: 'The core bot workflow in one framework',
               featuresDescription:
                   'The homepage now points developers to the practical path: understand the pipeline, choose an adapter, then reach for the API surfaces they need.',
@@ -140,13 +140,13 @@ const proofItems = computed(() =>
         ? [
               { value: 'Node.js 18+', label: 'runtime modern' },
               { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 10.0', label: 'cakupan luas' },
+              { value: 'Bot API 10.1', label: 'cakupan luas' },
               { value: 'Strict TS', label: 'DX bertipe' },
           ]
         : [
               { value: 'Node.js 18+', label: 'modern runtime' },
               { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 10.0', label: 'broad coverage' },
+              { value: 'Bot API 10.1', label: 'broad coverage' },
               { value: 'Strict TS', label: 'typed DX' },
           ]
 );
@@ -267,7 +267,7 @@ const quickPath = computed<StepItem[]>(() =>
               {
                   label: '03',
                   title: 'Add handlers',
-                  description: 'Susun command, filter, middleware, dan scene.',
+                  description: 'Susun command, filter, middleware, dedupe, dan scene.',
                   command: "bot.command('start', ctx => ctx.reply('Ready'))",
                   href: '/id/core/middleware',
               },
@@ -297,7 +297,7 @@ const quickPath = computed<StepItem[]>(() =>
               {
                   label: '03',
                   title: 'Add handlers',
-                  description: 'Compose commands, filters, middleware, and scenes.',
+                  description: 'Compose commands, filters, middleware, dedupe, and scenes.',
                   command: "bot.command('start', ctx => ctx.reply('Ready'))",
                   href: '/core/middleware',
               },

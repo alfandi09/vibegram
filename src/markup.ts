@@ -58,7 +58,7 @@ export class Markup {
      * prefer {@link Markup.escapeMarkdownV2} for new code.
      */
     static escapeMarkdown(text: string): string {
-        return text.replace(/[_*`[]/g, '\\$&');
+        return text.replace(/[_*`[\]]/g, '\\$&');
     }
 
     /** Build a standard InlineKeyboardMarkup from a matrix of button rows. */

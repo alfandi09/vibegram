@@ -1,12 +1,11 @@
-import { Context } from './context';
 import { Middleware } from './composer';
 
 /**
  * Cache store interface for pluggable storage backends.
  */
 export interface CacheStore {
-    get(key: string): Promise<any | undefined>;
-    set(key: string, value: any, ttlMs: number): Promise<void>;
+    get(key: string): Promise<unknown | undefined>;
+    set(key: string, value: unknown, ttlMs: number): Promise<void>;
     delete(key: string): Promise<void>;
     clear(): Promise<void>;
 }
@@ -15,14 +14,14 @@ export interface CacheStore {
  * In-memory cache store with TTL expiration.
  */
 export class MemoryCache implements CacheStore {
-    private data = new Map<string, { value: any; expiresAt: number }>();
+    private data = new Map<string, { value: unknown; expiresAt: number }>();
     private maxEntries: number;
 
     constructor(maxEntries: number = 10000) {
         this.maxEntries = maxEntries;
     }
 
-    async get(key: string): Promise<any | undefined> {
+    async get(key: string): Promise<unknown | undefined> {
         const entry = this.data.get(key);
         if (!entry) return undefined;
 
@@ -39,7 +38,7 @@ export class MemoryCache implements CacheStore {
         return entry.value;
     }
 
-    async set(key: string, value: any, ttlMs: number): Promise<void> {
+    async set(key: string, value: unknown, ttlMs: number): Promise<void> {
         // Refresh recency on overwrite, then evict the least-recently-used
         // entry (the first key in insertion order) when at capacity.
         if (this.data.has(key)) {
@@ -75,7 +74,7 @@ export interface CacheOptions {
     /** Cache store implementation (default: MemoryCache) */
     store?: CacheStore;
     /** Custom key generator (default: method + JSON.stringify(params)) */
-    keyGenerator?: (method: string, params: any) => string;
+    keyGenerator?: (method: string, params: unknown) => string;
 }
 
 /**
@@ -91,12 +90,12 @@ export interface CacheOptions {
  * const chat2 = await ctx.getChat(); // returns cached
  * ```
  */
-export function apiCache(options?: CacheOptions): Middleware<any> {
+export function apiCache(options?: CacheOptions): Middleware {
     const store = options?.store || new MemoryCache();
     const ttlMs = (options?.ttl ?? 300) * 1000;
     const keyGen =
         options?.keyGenerator ||
-        ((method: string, params: any) => {
+        ((method: string, params: unknown) => {
             return `${method}:${JSON.stringify(params || {})}`;
         });
 
@@ -120,7 +119,7 @@ export function apiCache(options?: CacheOptions): Middleware<any> {
         // Intercept the client's callApi to add caching
         const originalCallApi = ctx.client.callApi.bind(ctx.client);
 
-        ctx.client.callApi = async (method: string, params?: any) => {
+        ctx.client.callApi = async (method: string, params?: unknown) => {
             if (!cacheableMethods.has(method)) {
                 return originalCallApi(method, params);
             }
@@ -154,20 +153,20 @@ export function apiCache(options?: CacheOptions): Middleware<any> {
  * const data = await cachedFetch(userId);
  * ```
  */
-export function cached<T extends (...args: any[]) => Promise<any>>(
-    fn: T,
+export function cached<Args extends unknown[], Result>(
+    fn: (...args: Args) => Promise<Result>,
     options?: { ttl?: number; store?: CacheStore }
-): T {
+): (...args: Args) => Promise<Result> {
     const store = options?.store || new MemoryCache();
     const ttlMs = (options?.ttl ?? 300) * 1000;
 
-    return (async (...args: any[]) => {
+    return async (...args: Args): Promise<Result> => {
         const key = JSON.stringify(args);
         const existing = await store.get(key);
-        if (existing !== undefined) return existing;
+        if (existing !== undefined) return existing as Result;
 
         const result = await fn(...args);
         await store.set(key, result, ttlMs);
         return result;
-    }) as T;
+    };
 }

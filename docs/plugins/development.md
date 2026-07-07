@@ -38,7 +38,7 @@ During local development, use a file dependency from this repository:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/runner": "file:../vibegram/plugins/runner"
   }
 }
@@ -116,7 +116,7 @@ Keep `vibegram` as a peer dependency so plugin users control the framework versi
 ```json
 {
   "peerDependencies": {
-    "vibegram": ">=2.1.0"
+    "vibegram": ">=2.4.0"
   }
 }
 ```

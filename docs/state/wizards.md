@@ -93,6 +93,25 @@ const validated = new Wizard('validated', [
 ]);
 ```
 
+## Navigation Buttons
+
+```typescript
+import { Markup } from 'vibegram';
+
+await ctx.reply('Review your answer:', {
+    reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('Back', 'wizard_back')],
+        [Markup.button.callback('Confirm', 'wizard_confirm')],
+    ]),
+});
+
+bot.action('wizard_back', ctx => ctx.wizard?.back());
+bot.action('wizard_confirm', ctx => ctx.wizard?.next());
+```
+
+Use callback buttons when users should explicitly confirm, go back, or leave a
+wizard step.
+
 ::: tip
 If you don't call `ctx.wizard?.next()`, the user stays on the current step — perfect for input validation loops.
 :::

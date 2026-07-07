@@ -1,5 +1,5 @@
 import { Context } from './context';
-import { Composer, Middleware } from './composer';
+import { Composer } from './composer';
 
 /**
  * Plugin interface for extending VibeGram bots with modular features.
@@ -23,7 +23,7 @@ export interface BotPlugin<C extends Context = Context> {
     /** Unique plugin identifier */
     name: string;
     /** Called when the plugin is registered on a bot */
-    install(composer: Composer<C>, options?: any): void;
+    install(composer: Composer<C>, options?: unknown): void;
 }
 
 /**
@@ -38,7 +38,7 @@ export interface BotPlugin<C extends Context = Context> {
  * bot.plugin(myPlugin({ message: 'Hi!' }));
  * ```
  */
-export function createPlugin<O = any, C extends Context = Context>(
+export function createPlugin<O = unknown, C extends Context = Context>(
     name: string,
     installer: (composer: Composer<C>, options: O) => void
 ): (options: O) => BotPlugin<C> {
@@ -46,7 +46,7 @@ export function createPlugin<O = any, C extends Context = Context>(
         name,
         install(composer: Composer<C>) {
             installer(composer, options);
-        }
+        },
     });
 }
 

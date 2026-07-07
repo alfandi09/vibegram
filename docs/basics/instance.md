@@ -16,41 +16,60 @@ and a health check endpoint.
 ```typescript
 import { Bot } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
+const bot = new Bot(process.env.BOT_TOKEN!);
 ```
+
+Keep tokens in environment variables. `launch()` validates the token with `getMe()`
+before polling or webhook mode starts.
 
 ## Polling Options
 
-Configure the polling behavior via the `options` parameter:
+Configure polling through the constructor:
 
 ```typescript
-const bot = new Bot('YOUR_BOT_TOKEN', {
+const bot = new Bot(process.env.BOT_TOKEN!, {
     polling: {
-        interval: 300, // ms between polls (default: 300)
-        limit: 100, // max updates per poll (default: 100)
-        timeout: 30, // long-polling timeout in seconds (default: 30)
-        allowed_updates: [
-            // filter update types (optional)
-            'message',
-            'callback_query',
-            'chat_member',
-        ],
+        interval: 300,
+        limit: 100,
+        timeout: 30,
+        offsetCommit: 'received',
+        allowed_updates: ['message', 'callback_query', 'chat_member'],
+    },
+});
+```
+
+`offsetCommit` controls when VibeGram advances the Telegram polling offset:
+
+| Value | Behavior | Tradeoff |
+| --- | --- | --- |
+| `'received'` | Advance before your handler runs. | Backward compatible and avoids repeated failing updates, but a crash can drop an update. |
+| `'processed'` | Advance only after `handleUpdate()` succeeds. | Safer for at-least-once processing, but failed handlers can retry the same update. Use idempotent handlers or `dedupeUpdates()`. |
+
+Start polling with an optional startup callback:
+
+```typescript
+await bot.launch({
+    onStart: me => {
+        console.log(`Bot @${me.username} is online`);
     },
 });
 ```
 
 ## Launch & Shutdown
 
+`launch()` registers graceful shutdown handlers for `SIGINT` and `SIGTERM`. You can
+also stop the bot manually:
+
 ```typescript
-// Start polling
-bot.launch().then(() => console.log('Bot running'));
+await bot.launch();
+await bot.stop('Maintenance');
+```
 
-// Graceful shutdown
-bot.stop('Maintenance');
+For custom process handling:
 
-// Handle process signals
-process.once('SIGINT', () => bot.stop());
-process.once('SIGTERM', () => bot.stop());
+```typescript
+process.once('SIGINT', () => void bot.stop('SIGINT'));
+process.once('SIGTERM', () => void bot.stop('SIGTERM'));
 ```
 
 ## Webhook Mode
@@ -69,16 +88,18 @@ await bot.launch({
 });
 ```
 
-`launch({ webhook })` starts VibeGram's native HTTP server, registers the webhook with Telegram, and shuts down gracefully when `bot.stop()` or a process signal runs.
+`launch({ webhook })` starts VibeGram's native HTTP server, registers the webhook
+with Telegram, and shuts down gracefully when `bot.stop()` or a process signal runs.
 
-If you already own an Express, Fastify, Hono, Koa, or native HTTP server, mount a webhook adapter and register Telegram manually:
+If you already own an Express, Fastify, Hono, Koa, or native HTTP server, mount a
+webhook adapter and register Telegram manually:
 
 ```typescript
 import express from 'express';
 import { createExpressMiddleware } from 'vibegram';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 const webhook = createExpressMiddleware(bot, {
     secretToken: process.env.WEBHOOK_SECRET,
@@ -99,24 +120,19 @@ app.listen(3000);
 
 These methods are available directly on the `Bot` instance:
 
-| Method                             | Description                           |
-| ---------------------------------- | ------------------------------------- |
-| `bot.getMe()`                      | Get bot info (id, username, name)     |
-| `bot.setMyCommands(commands)`      | Set the command menu                  |
-| `bot.getMyCommands()`              | Get current command list              |
-| `bot.deleteMyCommands()`           | Remove all commands                   |
-| `bot.callApi(method, params)`      | Call any Telegram API method directly |
-| `bot.validateWebAppData(initData)` | Validate Mini App data                |
-
-```typescript
-// Set up the command menu
-await bot.setMyCommands([
-    { command: 'start', description: 'Start the bot' },
-    { command: 'help', description: 'Show help' },
-    { command: 'settings', description: 'Bot settings' },
-]);
-
-// Get bot information
-const me = await bot.getMe();
-console.log(`Running as @${me.username}`);
-```
+| Method | Description |
+| --- | --- |
+| `bot.launch(opts?)` | Start polling or native webhook mode |
+| `bot.stop(reason?)` | Stop polling or webhook mode gracefully |
+| `bot.handleUpdate(update)` | Process an update manually |
+| `bot.setWebhook(url, opts?)` | Register a webhook URL with Telegram |
+| `bot.deleteWebhook(opts?)` | Delete the active webhook |
+| `bot.getWebhookInfo()` | Read active webhook information |
+| `bot.getMe()` | Get bot identity |
+| `bot.setMyCommands(commands)` | Set visible command menu |
+| `bot.deleteMyCommands()` | Remove visible command menu |
+| `bot.use(...middlewares)` | Register global middleware |
+| `bot.command(cmd, handler)` | Handle `/cmd` |
+| `bot.hears(trigger, handler)` | Match text or regex |
+| `bot.action(data, handler)` | Handle callback query data |
+| `bot.on(type, handler)` | Handle a specific update type |

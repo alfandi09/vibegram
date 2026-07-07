@@ -89,3 +89,35 @@ const results = InlineResults.builder()
 
 console.log(results.length); // 4
 ```
+
+## Practical Example: Search Bot
+
+```typescript
+bot.on('inline_query', async ctx => {
+    const query = ctx.update.inline_query?.query?.toLowerCase() || '';
+    const products = await db.products.findMany({
+        where: { name: { contains: query } },
+        take: 10,
+    });
+
+    const results = products
+        .reduce(
+            (builder, product) =>
+                builder.article({
+                    id: `product_${product.id}`,
+                    title: product.name,
+                    text: `<b>${product.name}</b>\nPrice: $${product.price}`,
+                    description: `$${product.price} - Stock: ${product.stock}`,
+                    parse_mode: 'HTML',
+                    thumbnail_url: product.imageUrl,
+                }),
+            InlineResults.builder()
+        )
+        .build();
+
+    await ctx.answerInlineQuery(results, {
+        cache_time: 30,
+        is_personal: true,
+    });
+});
+```

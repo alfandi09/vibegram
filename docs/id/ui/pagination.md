@@ -1,23 +1,24 @@
 # Paginasi
 
-Sistem paginasi otomatis VibeGram mengubah array apa pun menjadi keyboard inline yang bisa dinavigasi halaman per halaman.
+`Markup.pagination()` mengubah array item inline keyboard menjadi keyboard
+inline berpaginasi dengan navigasi previous/next.
 
 ## Memulai Cepat
 
-```typescript
-import { Markup, PaginationItem } from 'vibegram';
+```ts
+import { Markup, type PaginationItem } from 'vibegram';
 
-const produk: PaginationItem[] = Array.from({ length: 50 }).map((_, i) => ({
+const products: PaginationItem[] = Array.from({ length: 50 }).map((_, i) => ({
     text: `Produk #${i + 1}`,
-    callback_data: `beli_${i + 1}`
+    callback_data: `buy_${i + 1}`,
 }));
 
-const keyboard = Markup.pagination(produk, {
+const keyboard = Markup.pagination(products, {
     currentPage: 1,
     itemsPerPage: 5,
-    actionNext: 'hal_berikut',
-    actionPrev: 'hal_sebelum',
-    pageIndicatorPattern: 'Hal {current} dari {total}'
+    actionNext: 'page_next',
+    actionPrev: 'page_prev',
+    pageIndicatorPattern: 'Hal {current} dari {total}',
 });
 
 await ctx.reply('Jelajahi produk:', { reply_markup: keyboard });
@@ -26,108 +27,111 @@ await ctx.reply('Jelajahi produk:', { reply_markup: keyboard });
 ## Opsi
 
 | Opsi | Tipe | Default | Deskripsi |
-|------|------|---------|-----------|
-| `currentPage` | `number` | `1` | Nomor halaman saat ini |
-| `itemsPerPage` | `number` | `5` | Item per halaman |
-| `columns` | `number` | `1` | Item per baris |
-| `actionNext` | `string` | — | Callback data tombol "Berikutnya" |
-| `actionPrev` | `string` | — | Callback data tombol "Sebelumnya" |
-| `pageIndicatorPattern` | `string` | `'{current}/{total}'` | Pola teks indikator halaman |
+| --- | --- | --- | --- |
+| `currentPage` | `number` | `1` | Nomor halaman saat ini. |
+| `itemsPerPage` | `number` | `1` di guard implementasi | Item per halaman. |
+| `columns` | `number` | `1` | Item per baris. |
+| `actionNext` | `string` | Wajib | Callback data tombol next. |
+| `actionPrev` | `string` | Wajib | Callback data tombol previous. |
+| `pageIndicatorPattern` | `string` | `'{current}/{total}'` | Pola label indikator halaman. |
+
+`currentPage` dan `itemsPerPage` dijaga minimal `1`.
 
 ## Menangani Navigasi
 
-```typescript
-bot.use(session({ initial: () => ({ halaman: 1 }) }));
+```ts
+bot.use(session({ initial: () => ({ page: 1 }) }));
 
-bot.action(/hal_(berikut|sebelum)/, async (ctx) => {
-    const arah = ctx.match![1] === 'berikut' ? 1 : -1;
-    ctx.session.halaman = Math.max(1, ctx.session.halaman + arah);
+bot.action(/page_(next|prev)/, async ctx => {
+    const direction = ctx.match?.[1] === 'next' ? 1 : -1;
+    ctx.session.page = Math.max(1, ctx.session.page + direction);
 
-    const keyboard = Markup.pagination(produk, {
-        currentPage: ctx.session.halaman,
+    const keyboard = Markup.pagination(products, {
+        currentPage: ctx.session.page,
         itemsPerPage: 5,
-        actionNext: 'hal_berikut',
-        actionPrev: 'hal_sebelum',
-        pageIndicatorPattern: 'Hal {current} dari {total}'
+        actionNext: 'page_next',
+        actionPrev: 'page_prev',
+        pageIndicatorPattern: 'Hal {current} dari {total}',
     });
 
     await ctx.answerCbQuery();
     await ctx.editMessageReplyMarkup(keyboard);
 });
 ```
+
+Simpan halaman saat ini di session, database, atau callback data sesuai berapa
+lama state navigasi perlu bertahan.
 
 ## Tata Letak Grid
 
-Gunakan `columns` untuk grid multi-kolom:
+Gunakan `columns` untuk halaman multi-kolom.
 
-```typescript
-const keyboard = Markup.pagination(produk, {
+```ts
+const keyboard = Markup.pagination(products, {
     currentPage: 1,
     itemsPerPage: 6,
-    columns: 3, // 3 item per baris × 2 baris = 6 item
-    actionNext: 'hal_berikut',
-    actionPrev: 'hal_sebelum'
+    columns: 3,
+    actionNext: 'page_next',
+    actionPrev: 'page_prev',
 });
-// Layout:
-// [Produk 1] [Produk 2] [Produk 3]
-// [Produk 4] [Produk 5] [Produk 6]
-// [← Sebelumnya] [1/10] [Berikutnya →]
 ```
+
+Ini merender maksimal tiga tombol item per baris, lalu menambahkan baris
+navigasi.
 
 ## Markup.grid() untuk Grid Sederhana
 
-Untuk array item yang tidak memerlukan paginasi, gunakan `Markup.grid()`:
+Jika tidak perlu pagination, gunakan `Markup.grid()`.
 
-```typescript
-const kategori = ['Elektronik', 'Pakaian', 'Makanan', 'Olahraga'];
+```ts
+const categories = ['Elektronik', 'Pakaian', 'Makanan', 'Olahraga'];
 
 await ctx.reply('Pilih kategori:', {
     reply_markup: Markup.grid(
-        kategori.map(k => Markup.button.callback(k, `kat_${k.toLowerCase()}`)),
-        2 // 2 item per baris
-    )
+        categories.map(category => {
+            return Markup.button.callback(category, `cat_${category.toLowerCase()}`);
+        }),
+        2
+    ),
 });
 ```
 
-## Contoh Lengkap: Katalog Produk
+`Markup.grid()` hanya menyusun tombol. Method ini tidak menambahkan kontrol
+navigasi.
 
-```typescript
-bot.use(session({ initial: () => ({ halaman: 1 }) }));
+## Contoh Lengkap Katalog Produk
 
-const tampilkanProduk = async (ctx: any, halaman: number) => {
-    const keyboard = Markup.pagination(semuaProduk, {
-        currentPage: halaman,
+```ts
+bot.use(session({ initial: () => ({ page: 1 }) }));
+
+function productKeyboard(page: number) {
+    return Markup.pagination(allProducts, {
+        currentPage: page,
         itemsPerPage: 8,
         columns: 2,
-        actionNext: 'prod_berikut',
-        actionPrev: 'prod_sebelum',
-        pageIndicatorPattern: '📦 {current}/{total}',
+        actionNext: 'products_next',
+        actionPrev: 'products_prev',
+        pageIndicatorPattern: '{current}/{total}',
     });
+}
 
-    return ctx.reply('🛍️ Katalog Produk:', { reply_markup: keyboard });
-};
-
-bot.command('katalog', ctx => tampilkanProduk(ctx, 1));
-
-bot.action(/prod_(berikut|sebelum)/, async ctx => {
-    const arah = ctx.match![1] === 'berikut' ? 1 : -1;
-    ctx.session.halaman = Math.max(1, (ctx.session.halaman || 1) + arah);
-
-    const keyboard = Markup.pagination(semuaProduk, {
-        currentPage: ctx.session.halaman,
-        itemsPerPage: 8,
-        columns: 2,
-        actionNext: 'prod_berikut',
-        actionPrev: 'prod_sebelum',
-        pageIndicatorPattern: '📦 {current}/{total}',
+bot.command('catalog', ctx => {
+    ctx.session.page = 1;
+    return ctx.reply('Katalog produk:', {
+        reply_markup: productKeyboard(ctx.session.page),
     });
-
-    await ctx.answerCbQuery();
-    await ctx.editMessageReplyMarkup(keyboard);
 });
 
-bot.action(/^beli_(\d+)$/, async ctx => {
-    const id = ctx.match![1];
-    await ctx.answerCbQuery(`✅ Produk #${id} ditambahkan!`);
+bot.action(/products_(next|prev)/, async ctx => {
+    const direction = ctx.match?.[1] === 'next' ? 1 : -1;
+    ctx.session.page = Math.max(1, ctx.session.page + direction);
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageReplyMarkup(productKeyboard(ctx.session.page));
+});
+
+bot.action(/^buy_(\d+)$/, async ctx => {
+    const id = ctx.match?.[1];
+    await ctx.answerCbQuery(`Produk #${id} ditambahkan`);
 });
 ```

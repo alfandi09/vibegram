@@ -9,6 +9,37 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ---
 
+## [2.5.0] - 2026-07-07
+
+### Added
+
+- Added `dedupeUpdates()` middleware with `MemoryUpdateDedupeStore`, `UpdateDedupeStore`, default update-id keys, TTL/max-entry controls, duplicate callbacks, and the `vibegram/dedupe` package subpath.
+- Added `polling.offsetCommit` with the new `processed` mode for retrying failed updates before advancing polling offsets.
+- Added `TelegramClientOptions.maxResponseBytes` response size limits for JSON, text, buffer, and file download flows.
+- Added a production security preset helper to the official security plugin.
+- Documented the official OpenAI API provider roadmap for `vibegram/codex`.
+
+### Changed
+
+- Upgraded Vitest tooling to `3.2.7`.
+- Aligned English and Indonesian documentation across basics, API, security, state, UI, advanced, and plugin pages.
+- Updated docs and README references for Bot API 10.1 and current `vibegram` install ranges.
+
+### Fixed
+
+- Fixed command routing so commands targeting another bot, such as `/start@OtherBot`, and prefix collisions like `/codexbackup` do not trigger this bot's handlers.
+- Fixed HTTP timeout handling so timeout coverage includes body parsing, with stream cleanup on completion, error, or close.
+- Added validation for numeric queue and rate-limit options to fail fast on invalid configuration.
+- Fixed stale or incorrect documentation examples for invoices, WebApp validation defaults, I18n overrides, pagination editing, keyboard helpers, and Context command metadata.
+
+### Security
+
+- Escaped Codex plugin Markdown output that interpolates user-controlled values.
+- Added response size guards to reduce oversized response memory risk.
+- Clarified webhook secret verification, body limits, polling offset tradeoffs, and safe Markdown interpolation in documentation.
+
+---
+
 ## [2.4.0] - 2026-06-14
 
 ### Added

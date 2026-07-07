@@ -1,73 +1,79 @@
 # Penanganan Error
 
-VibeGram menyediakan hierarki kelas error khusus yang memungkinkan penanganan error yang presisi menggunakan `instanceof`.
+VibeGram menyediakan global error catcher dan class error bertipe supaya kegagalan
+bot bisa dicatat, diklasifikasi, dan dilaporkan ke user tanpa membuat process crash.
 
 ## Hierarki Error
 
-```
+```text
 Error
-└── VibeGramError (base semua error vibegram)
-    ├── TelegramApiError   — Error dari API Telegram (kode 4xx/5xx)
-    ├── NetworkError       — Kegagalan koneksi/timeout
-    ├── RateLimitError     — HTTP 429 dengan waktu retry
-    ├── InvalidTokenError  — Token bot tidak valid
-    ├── WebAppValidationError — Validasi Mini App gagal
-    └── ConversationTimeoutError — Percakapan kedaluwarsa
+  VibeGramError
+    TelegramApiError
+    NetworkError
+    RateLimitError
+    InvalidTokenError
+    WebAppValidationError
+    ConversationTimeoutError
 ```
 
 ## Global Error Handler
 
 ```typescript
 bot.catch((err, ctx) => {
-    console.error('Error:', err.message);
-    ctx.reply('Terjadi kesalahan. Coba lagi nanti. 🔧');
+    console.error(`Error untuk update ${ctx.update.update_id}:`, err);
+    ctx.reply('Terjadi kesalahan. Coba lagi nanti.').catch(() => {});
 });
 ```
+
+Jika tidak ada handler `bot.catch()`, VibeGram mencatat error ke
+`console.error`.
 
 ## Penanganan Error Bertipe
 
 ```typescript
 import {
-    VibeGramError,
-    TelegramApiError,
+    ConversationTimeoutError,
+    InvalidTokenError,
     NetworkError,
     RateLimitError,
-    InvalidTokenError,
-    ConversationTimeoutError
+    TelegramApiError,
+    VibeGramError,
 } from 'vibegram';
 
 bot.catch(async (err, ctx) => {
     if (err instanceof TelegramApiError) {
-        // Error dari API Telegram
-        console.error(`API Error ${err.errorCode}: ${err.description}`);
+        console.error(`Telegram API ${err.errorCode}: ${err.description}`);
 
         if (err.errorCode === 403) {
-            // Bot diblokir oleh pengguna
-            console.log(`Pengguna ${ctx.from?.id} memblokir bot`);
-        } else if (err.errorCode === 400) {
-            await ctx.reply('Permintaan tidak valid.');
+            console.log(`User ${ctx.from?.id} mungkin memblokir bot`);
+            return;
         }
 
-    } else if (err instanceof RateLimitError) {
-        // Terlalu banyak request — coba lagi nanti
-        console.warn(`Rate limited. Coba lagi dalam ${err.retryAfter} detik`);
-
-    } else if (err instanceof NetworkError) {
-        // Masalah koneksi
-        console.error('Koneksi gagal:', err.originalError?.message);
-
-    } else if (err instanceof ConversationTimeoutError) {
-        // Percakapan kedaluwarsa
-        console.log(`Percakapan chat ${err.chatId} kedaluwarsa`);
-
-    } else if (err instanceof VibeGramError) {
-        // Error VibeGram lainnya
-        console.error(`[${err.code}] ${err.message}`);
-
-    } else {
-        // Error tidak dikenal
-        console.error('Error tidak dikenal:', err);
+        await ctx.reply('Telegram menolak request tersebut.').catch(() => {});
+        return;
     }
+
+    if (err instanceof RateLimitError) {
+        console.warn(`Rate limited. Retry setelah ${err.retryAfter}s`);
+        return;
+    }
+
+    if (err instanceof NetworkError) {
+        console.error('Koneksi gagal:', err.originalError?.message);
+        return;
+    }
+
+    if (err instanceof ConversationTimeoutError) {
+        await ctx.reply('Conversation kedaluwarsa. Mulai lagi dari awal.').catch(() => {});
+        return;
+    }
+
+    if (err instanceof VibeGramError) {
+        console.error(`[${err.code}] ${err.message}`);
+        return;
+    }
+
+    console.error('Error tidak dikenal:', err);
 });
 ```
 
@@ -76,68 +82,86 @@ bot.catch(async (err, ctx) => {
 ### `TelegramApiError`
 
 | Properti | Tipe | Deskripsi |
-|----------|------|-----------|
+| --- | --- | --- |
 | `message` | `string` | Pesan error |
-| `errorCode` | `number` | Kode HTTP (400, 403, 429, dll) |
-| `description` | `string` | Deskripsi dari API Telegram |
-| `code` | `string` | `'TELEGRAM_403'`, dll |
+| `errorCode` | `number` | Kode seperti status Telegram/API |
+| `description` | `string` | Deskripsi dari Telegram API |
+| `code` | `string` | Kode error stabil VibeGram |
 
 ### `RateLimitError`
 
 | Properti | Tipe | Deskripsi |
-|----------|------|-----------|
-| `retryAfter` | `number` | Detik sebelum bisa coba lagi |
-| `code` | `string` | `'RATE_LIMIT'` |
+| --- | --- | --- |
+| `retryAfter` | `number` | Detik sebelum retry diizinkan |
+| `code` | `string` | Kode error stabil VibeGram |
 
 ### `NetworkError`
 
 | Properti | Tipe | Deskripsi |
-|----------|------|-----------|
-| `originalError` | `Error` | Error koneksi asli |
-| `code` | `string` | `'NETWORK_ERROR'` |
+| --- | --- | --- |
+| `originalError` | `Error | undefined` | Error transport asli |
+| `code` | `string` | Kode error stabil VibeGram |
 
 ### `ConversationTimeoutError`
 
 | Properti | Tipe | Deskripsi |
-|----------|------|-----------|
-| `chatId` | `number` | ID chat yang timeout |
-| `code` | `string` | `'CONVERSATION_TIMEOUT'` |
+| --- | --- | --- |
+| `chatId` | `number | string | undefined` | Chat tempat timeout terjadi |
+| `code` | `string` | Kode error stabil VibeGram |
 
 ## Penanganan Error Lokal
 
-Tangani error langsung di dalam handler:
+Tangani kegagalan yang sudah diperkirakan di dalam handler, lalu lempar ulang
+error yang tidak terduga ke global handler:
 
 ```typescript
-bot.command('transfer', async (ctx) => {
+bot.command('ban', async ctx => {
     try {
         await ctx.banChatMember(targetId);
-        await ctx.reply('✅ Berhasil!');
+        await ctx.reply('User diblokir.');
     } catch (err) {
         if (err instanceof TelegramApiError && err.errorCode === 400) {
-            await ctx.reply('❌ Pengguna tidak ditemukan di grup ini.');
-        } else {
-            throw err; // lempar ke global handler
+            await ctx.reply('User tidak ditemukan di chat ini.');
+            return;
         }
+
+        throw err;
     }
 });
 ```
 
-## Launch dengan Penanganan Error Token
+## Error Token Saat Launch
+
+`launch()` memvalidasi token bot dengan `getMe()` sebelum mulai. Tangani
+`InvalidTokenError` di entry point process:
 
 ```typescript
 import { InvalidTokenError } from 'vibegram';
 
-async function main() {
-    try {
-        await bot.launch();
-    } catch (err) {
-        if (err instanceof InvalidTokenError) {
-            console.error('❌ Token bot tidak valid!');
-            process.exit(1);
-        }
-        throw err;
+try {
+    await bot.launch();
+} catch (err) {
+    if (err instanceof InvalidTokenError) {
+        console.error('Token bot tidak valid.');
+        process.exit(1);
     }
-}
 
-main();
+    throw err;
+}
 ```
+
+## Isolasi Error
+
+Polling menunggu setiap update selesai sebelum lanjut ke update berikutnya, sehingga
+satu update gagal tidak membuat unhandled rejection untuk sisa batch.
+
+Webhook adapter menangkap error pemrosesan update dan mengembalikan `500 Internal
+Server Error`; gunakan observability hooks dan `bot.catch()` untuk logging dan
+respons user yang aman.
+
+## Best Practices
+
+- Daftarkan `bot.catch()` sebelum deployment produksi.
+- Log metadata terstruktur seperti `update_id`, `chat.id`, dan class error.
+- Jangan kirim stack trace atau pesan error mentah ke user.
+- Jangan rethrow dari `bot.catch()` kecuali supervisor memang harus restart process.

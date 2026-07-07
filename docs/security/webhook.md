@@ -1,46 +1,52 @@
 # Webhook Security
 
 <SecurityNote title="Production webhook rule" variant="warning">
-Every production webhook should terminate HTTPS, validate Telegram's secret token, and expose
-a lightweight health route for platform probes.
+Every production webhook should terminate HTTPS, validate Telegram's secret token, keep
+body limits explicit, and expose a lightweight health route.
 </SecurityNote>
 
-<FeatureGrid title="Webhook hardening path" description="Start with the native launch mode, then move to framework adapters when you already own the HTTP server.">
-  <FeatureCard title="Native launch mode" description="Use `bot.launch({ webhook })` when VibeGram should own the HTTP server lifecycle." href="#native-launch-mode" />
-  <FeatureCard title="Adapter health checks" description="Mount the same adapter on webhook and health routes where your framework needs both." href="#adapter-health-checks" />
-  <FeatureCard title="Framework adapters" description="Express, Fastify, Hono, Koa, and native HTTP share the same security shape." href="/adapters/express" />
+<FeatureGrid title="Webhook hardening path" description="Start with native launch mode, then move to framework adapters when you already own the HTTP server.">
+  <FeatureCard title="Native launch mode" description="Let VibeGram own the HTTP server lifecycle." href="#native-launch-mode" />
+  <FeatureCard title="Framework adapters" description="Mount a secure webhook handler in Express, Fastify, Hono, Koa, or native HTTP." href="#framework-adapters" />
+  <FeatureCard title="Body limits" description="Reject oversized payloads before JSON parsing reaches your handlers." href="#body-limits" />
 </FeatureGrid>
-
-When using webhooks, VibeGram supports Telegram's `secret_token` verification to prevent unauthorized requests.
 
 ## Setup
 
 ```typescript
 import express from 'express';
-import { Bot } from 'vibegram';
+import { Bot, createExpressMiddleware } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
-const WEBHOOK_SECRET = 'my-secure-random-secret';
-
+const bot = new Bot(process.env.BOT_TOKEN!);
 const app = express();
-app.use(express.json());
 
-// The callback validates X-Telegram-Bot-Api-Secret-Token header
-app.post('/webhook', bot.webhookCallback(WEBHOOK_SECRET));
+const webhook = createExpressMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+app.post('/webhook', express.json({ limit: '1mb' }), webhook);
+app.get('/healthz', webhook);
+
+await bot.setWebhook('https://your-domain.com/webhook', {
+    secret_token: process.env.WEBHOOK_SECRET,
+});
 
 app.listen(3000);
 ```
 
 ## How It Works
 
-1. When setting the webhook, include `secret_token` in the API call
-2. Telegram includes this token in the `X-Telegram-Bot-Api-Secret-Token` header
-3. `webhookCallback()` verifies the header matches your secret
-4. Requests with invalid or missing tokens receive `403 Forbidden`
+1. You register the webhook with Telegram and include `secret_token`.
+2. Telegram sends that value in `X-Telegram-Bot-Api-Secret-Token`.
+3. VibeGram validates the header before processing the update.
+4. Invalid or missing tokens receive `403 Forbidden`.
+5. Malformed update bodies receive `400 Bad Request`.
 
 ## Native Launch Mode
 
-For a standalone deployment, `bot.launch({ webhook })` can own the native HTTP server and register the webhook for you:
+For standalone deployments, `bot.launch({ webhook })` can create the HTTP server,
+register the webhook, and shut down gracefully:
 
 ```typescript
 await bot.launch({
@@ -50,68 +56,72 @@ await bot.launch({
         path: '/webhook',
         secretToken: process.env.WEBHOOK_SECRET,
         healthPath: '/healthz',
+        maxBodySizeBytes: 1_000_000,
     },
 });
 ```
 
-`healthPath` returns `200 OK` for uptime checks without validating the Telegram secret token or processing an update body.
+`healthPath` returns `200 OK` without validating the Telegram secret token or
+processing an update body.
 
-## Adapter Health Checks
+## Framework Adapters
 
-When you use framework adapters, pass the same `healthPath` option and mount the adapter on both routes where the framework needs it:
+All webhook adapters support the same `secretToken` and `healthPath` shape:
+
+| Adapter | Import | Notes |
+| --- | --- | --- |
+| Express | `createExpressMiddleware` | Mount body parser only on the webhook route |
+| Fastify | `createFastifyPlugin` | Use Fastify's `bodyLimit` for payload caps |
+| Hono | `createHonoHandler` | Pair with runtime/platform body limits |
+| Koa | `createKoaMiddleware` | Use `koaBody({ jsonLimit: '1mb' })` |
+| Native HTTP | `createNativeHandler` | Uses `maxBodySizeBytes` directly |
+
+## Body Limits
+
+Telegram updates are small in normal use. Keep limits tight enough to protect
+your parser and infrastructure:
+
+| Adapter | Where to set the limit |
+| --- | --- |
+| Native `bot.launch({ webhook })` / `createNativeHandler()` | `maxBodySizeBytes`, default 1 MB |
+| Express | `express.json({ limit: '1mb' })` |
+| Fastify | `Fastify({ bodyLimit: 1_000_000 })` |
+| Hono | Platform/runtime request body limit |
+| Koa | `koaBody({ jsonLimit: '1mb' })` |
+
+Do not mount a broad unlimited body parser before webhook secret validation.
+
+## Register and Remove Webhooks
 
 ```typescript
-import { createExpressMiddleware } from 'vibegram';
-
-const webhook = createExpressMiddleware(bot, {
-    secretToken: WEBHOOK_SECRET,
-    healthPath: '/healthz',
+await bot.setWebhook(`${process.env.WEBHOOK_URL}/webhook`, {
+    secret_token: process.env.WEBHOOK_SECRET,
+    max_connections: 100,
+    allowed_updates: ['message', 'callback_query'],
 });
 
-app.post('/webhook', webhook);
-app.get('/healthz', webhook);
+const info = await bot.getWebhookInfo();
+console.log(info.pending_update_count);
+
+await bot.deleteWebhook({ drop_pending_updates: true });
 ```
 
 ## Deployment Checklist
 
-1. Always terminate TLS in front of your webhook endpoint.
-2. Set a random `secret_token` when calling `setWebhook`.
-3. Restrict webhook routes to `POST` only.
-4. Use JSON body parsing only on the webhook route.
-5. Keep your bot token and webhook secret outside source control.
-6. Expose a lightweight health endpoint for load balancers and platform probes.
-
-## Adapter Hardening Notes
-
-- Native HTTP adapter rejects non-JSON requests with `415 Unsupported Media Type`.
-- Native HTTP adapter rejects oversized bodies with `413 Payload Too Large`.
-- `healthPath` responds with `200 OK` before secret validation or update parsing.
-- All adapters return `500 Internal Server Error` when update processing fails.
-- Invalid or malformed update payloads return `400 Bad Request`.
-
-## Register the Webhook
-
-```typescript
-await bot.callApi('setWebhook', {
-    url: 'https://your-domain.com/webhook',
-    secret_token: WEBHOOK_SECRET,
-    allowed_updates: ['message', 'callback_query'],
-});
-```
+1. Terminate TLS in front of the webhook endpoint.
+2. Set a random `secret_token` and keep it in environment variables.
+3. Accept `POST` only on the webhook route.
+4. Mount JSON parsing only on the webhook route with a size limit.
+5. Expose a lightweight health endpoint for platform probes.
+6. Do not log bot tokens, webhook secrets, or raw request headers.
 
 ## Without Secret Token
-
-If you don't need secret token validation:
 
 ```typescript
 app.post('/webhook', bot.webhookCallback());
 ```
 
 ::: warning
-Without a secret token, any client that knows your webhook URL can send fake updates. Always use a secret token in production.
-:::
-
-::: tip
-For native Node.js deployments, set `maxBodySizeBytes` explicitly if your platform
-requires a tighter body limit than the default 1 MB.
+Without a secret token, any client that knows your webhook URL can send fake updates.
+Always use a secret token in production.
 :::

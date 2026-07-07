@@ -19,6 +19,7 @@ const publicSubpaths = [
     ['composer', 'composer'],
     ['context', 'context'],
     ['conversation', 'conversation'],
+    ['dedupe', 'dedupe'],
     ['errors', 'errors'],
     ['filters', 'filters'],
     ['i18n', 'i18n'],

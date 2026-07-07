@@ -1,27 +1,52 @@
 # Keamanan Webhook
 
 <SecurityNote title="Aturan webhook produksi" variant="warning">
-Setiap webhook produksi harus memakai HTTPS, memvalidasi secret token Telegram, dan
-menyediakan route health check ringan untuk platform probe.
+Setiap webhook produksi harus memakai HTTPS, memvalidasi secret token Telegram,
+menetapkan body limit secara eksplisit, dan menyediakan health route ringan.
 </SecurityNote>
 
-<FeatureGrid title="Jalur hardening webhook" description="Mulai dari launch native, lalu gunakan adapter framework jika Anda sudah memiliki server HTTP sendiri.">
-  <FeatureCard title="Launch native" description="Gunakan `bot.launch({ webhook })` saat VibeGram perlu mengelola lifecycle server HTTP." href="#launch-webhook-native" cta="Buka native" />
-  <FeatureCard title="Health check adapter" description="Mount adapter yang sama pada route webhook dan route health jika framework membutuhkan keduanya." href="#health-check-adapter" cta="Buka health" />
-  <FeatureCard title="Adapter framework" description="Express, Fastify, Hono, Koa, dan native HTTP berbagi bentuk keamanan yang sama." href="/id/adapters/express" cta="Buka adapter" />
+<FeatureGrid title="Jalur hardening webhook" description="Mulai dari launch native, lalu gunakan adapter framework jika Anda sudah punya server HTTP sendiri.">
+  <FeatureCard title="Launch native" description="Biarkan VibeGram mengelola lifecycle server HTTP." href="#launch-webhook-native" cta="Buka native" />
+  <FeatureCard title="Adapter framework" description="Mount handler webhook aman di Express, Fastify, Hono, Koa, atau native HTTP." href="#adapter-framework" cta="Buka adapter" />
+  <FeatureCard title="Body limit" description="Tolak payload terlalu besar sebelum parsing JSON mencapai handler." href="#batas-ukuran-body" cta="Buka limit" />
 </FeatureGrid>
 
-Webhook adalah cara yang lebih efisien dibandingkan polling untuk lingkungan produksi — Telegram mengirim update langsung ke server Anda alih-alih server Anda yang mengambilnya.
+## Setup
 
-## Cara Kerja Webhook
+```typescript
+import express from 'express';
+import { Bot, createExpressMiddleware } from 'vibegram';
 
+const bot = new Bot(process.env.BOT_TOKEN!);
+const app = express();
+
+const webhook = createExpressMiddleware(bot, {
+    secretToken: process.env.WEBHOOK_SECRET,
+    healthPath: '/healthz',
+});
+
+app.post('/webhook', express.json({ limit: '1mb' }), webhook);
+app.get('/healthz', webhook);
+
+await bot.setWebhook('https://domain-anda.com/webhook', {
+    secret_token: process.env.WEBHOOK_SECRET,
+});
+
+app.listen(3000);
 ```
-Telegram → HTTPS POST → Server Anda → Bot Handler
-```
+
+## Cara Kerja
+
+1. Anda mendaftarkan webhook ke Telegram dengan `secret_token`.
+2. Telegram mengirim value itu di header `X-Telegram-Bot-Api-Secret-Token`.
+3. VibeGram memvalidasi header sebelum memproses update.
+4. Token yang salah atau hilang mendapat `403 Forbidden`.
+5. Body update yang malformed mendapat `400 Bad Request`.
 
 ## Launch Webhook Native
 
-Untuk deployment standalone, `bot.launch({ webhook })` bisa membuat HTTP server native, mendaftarkan webhook ke Telegram, dan ikut berhenti saat `bot.stop()` atau process signal berjalan:
+Untuk deployment standalone, `bot.launch({ webhook })` bisa membuat HTTP server,
+mendaftarkan webhook, dan shutdown dengan graceful:
 
 ```typescript
 await bot.launch({
@@ -31,204 +56,72 @@ await bot.launch({
         path: '/webhook',
         secretToken: process.env.WEBHOOK_SECRET,
         healthPath: '/healthz',
+        maxBodySizeBytes: 1_000_000,
     },
 });
 ```
 
-`healthPath` mengembalikan `200 OK` untuk uptime check tanpa validasi secret token Telegram dan tanpa memproses body update.
-
-## Health Check Adapter
-
-Untuk adapter framework, gunakan opsi `healthPath`. Pada framework yang perlu route terpisah seperti Express, mount middleware yang sama pada route webhook dan route health:
-
-```typescript
-import { createExpressMiddleware } from 'vibegram';
-
-const webhook = createExpressMiddleware(bot, {
-    secretToken: process.env.WEBHOOK_SECRET,
-    healthPath: '/healthz',
-});
-
-app.post('/webhook', webhook);
-app.get('/healthz', webhook);
-```
+`healthPath` mengembalikan `200 OK` tanpa validasi secret token Telegram dan tanpa
+memproses body update.
 
 ## Adapter Framework
 
-VibeGram menyediakan adapter untuk 5 framework populer:
+Semua adapter webhook mendukung bentuk `secretToken` dan `healthPath` yang sama:
 
-### Express.js
+| Adapter | Import | Catatan |
+| --- | --- | --- |
+| Express | `createExpressMiddleware` | Mount body parser hanya di route webhook |
+| Fastify | `createFastifyPlugin` | Gunakan `bodyLimit` Fastify untuk batas payload |
+| Hono | `createHonoHandler` | Pasangkan dengan limit body runtime/platform |
+| Koa | `createKoaMiddleware` | Gunakan `koaBody({ jsonLimit: '1mb' })` |
+| Native HTTP | `createNativeHandler` | Memakai `maxBodySizeBytes` langsung |
 
-```typescript
-import express from 'express';
-import { Bot, createExpressMiddleware } from 'vibegram';
+## Batas Ukuran Body
 
-const bot = new Bot(process.env.BOT_TOKEN!);
-const app = express();
+Update Telegram biasanya kecil. Jaga limit cukup ketat untuk melindungi parser dan
+infrastruktur:
 
-app.use(express.json());
-const webhook = createExpressMiddleware(bot, {
-    secretToken: process.env.WEBHOOK_SECRET,
-    healthPath: '/healthz',
-});
+| Adapter | Tempat mengatur limit |
+| --- | --- |
+| Native `bot.launch({ webhook })` / `createNativeHandler()` | `maxBodySizeBytes`, default 1 MB |
+| Express | `express.json({ limit: '1mb' })` |
+| Fastify | `Fastify({ bodyLimit: 1_000_000 })` |
+| Hono | Limit body dari runtime/platform |
+| Koa | `koaBody({ jsonLimit: '1mb' })` |
 
-app.post('/webhook', webhook);
-app.get('/healthz', webhook);
+Jangan mount body parser unlimited secara global sebelum validasi secret webhook.
 
-// Daftarkan webhook
-await bot.setWebhook(`https://domain.anda.com/webhook`, {
-    secret_token: process.env.WEBHOOK_SECRET,
-});
-
-app.listen(3000);
-```
-
-### Fastify
+## Mendaftarkan dan Menghapus Webhook
 
 ```typescript
-import Fastify from 'fastify';
-import { Bot, createFastifyPlugin } from 'vibegram';
-
-const bot = new Bot(process.env.BOT_TOKEN!);
-const fastify = Fastify();
-
-await fastify.register(
-    createFastifyPlugin(bot, {
-        path: '/webhook',
-        secretToken: process.env.WEBHOOK_SECRET,
-        healthPath: '/healthz',
-    })
-);
-
-await fastify.listen({ port: 3000 });
-```
-
-### Hono
-
-```typescript
-import { Hono } from 'hono';
-import { Bot, createHonoHandler } from 'vibegram';
-
-const bot = new Bot(process.env.BOT_TOKEN!);
-const app = new Hono();
-const webhook = createHonoHandler(bot, {
-    secretToken: process.env.WEBHOOK_SECRET,
-    healthPath: '/healthz',
-});
-
-app.post('/webhook', webhook);
-app.get('/healthz', webhook);
-
-export default app;
-```
-
-### Koa
-
-```typescript
-import Koa from 'koa';
-import Router from '@koa/router';
-import koaBody from 'koa-body';
-import { Bot, createKoaMiddleware } from 'vibegram';
-
-const bot = new Bot(process.env.BOT_TOKEN!);
-const app = new Koa();
-const router = new Router();
-
-app.use(koaBody());
-const webhook = createKoaMiddleware(bot, {
-    secretToken: process.env.WEBHOOK_SECRET,
-    healthPath: '/healthz',
-});
-
-router.post('/webhook', webhook);
-router.get('/healthz', webhook);
-
-app.use(router.routes());
-app.listen(3000);
-```
-
-### HTTP Native Node.js
-
-Tanpa framework, langsung menggunakan modul `http` bawaan Node.js:
-
-```typescript
-import http from 'http';
-import { Bot, createNativeHandler } from 'vibegram';
-
-const bot = new Bot(process.env.BOT_TOKEN!);
-
-const server = http.createServer(
-    createNativeHandler(bot, {
-        secretToken: process.env.WEBHOOK_SECRET,
-        healthPath: '/healthz',
-    })
-);
-
-server.listen(3000, () => {
-    console.log('Webhook server aktif di port 3000');
-});
-```
-
-## Secret Token
-
-Semua adapter mendukung `X-Telegram-Bot-Api-Secret-Token` untuk memverifikasi bahwa request berasal dari Telegram:
-
-- Semua adapter mengembalikan **HTTP 403** jika token tidak cocok
-- Semua adapter mengembalikan **HTTP 400** jika body tidak memiliki `update_id`
-- `healthPath` mengembalikan **HTTP 200** tanpa validasi token dan tanpa memanggil `bot.handleUpdate()`
-
-```typescript
-// Daftarkan webhook dengan secret token
-await bot.setWebhook('https://domain.anda.com/webhook', {
-    secret_token: 'token-rahasia-saya', // kirim ke Telegram
-});
-
-// Adapter akan memvalidasi header secara otomatis
-app.post(
-    '/webhook',
-    createExpressMiddleware(bot, {
-        secretToken: 'token-rahasia-saya', // validasi header
-    })
-);
-```
-
-## Variabel Lingkungan
-
-```bash
-# .env
-BOT_TOKEN=1234567890:ABCDefGHIjklMNOpqrSTUvwxYZ
-WEBHOOK_URL=https://domain.anda.com
-WEBHOOK_SECRET=token-rahasia-yang-aman-dan-panjang
-```
-
-## Mendaftarkan & Menghapus Webhook
-
-```typescript
-// Daftarkan webhook
 await bot.setWebhook(`${process.env.WEBHOOK_URL}/webhook`, {
     secret_token: process.env.WEBHOOK_SECRET,
-    max_connections: 100, // maksimal koneksi paralel
-    allowed_updates: ['message', 'callback_query'], // filter update
+    max_connections: 100,
+    allowed_updates: ['message', 'callback_query'],
 });
 
-// Cek info webhook aktif
 const info = await bot.getWebhookInfo();
-console.log(info); // { url, pending_update_count, ... }
+console.log(info.pending_update_count);
 
-// Hapus webhook (beralih ke polling)
 await bot.deleteWebhook({ drop_pending_updates: true });
 ```
 
-## Tips Produksi
+## Checklist Deployment
 
-::: tip Gunakan HTTPS
-Telegram hanya menerima webhook dengan HTTPS. Gunakan sertifikat SSL dari Let's Encrypt atau Cloudflare Tunnel untuk pengembangan.
-:::
+1. Terminate TLS di depan endpoint webhook.
+2. Set `secret_token` acak dan simpan di environment variable.
+3. Terima `POST` saja di route webhook.
+4. Mount JSON parser hanya di route webhook dengan size limit.
+5. Expose health endpoint ringan untuk platform probe.
+6. Jangan log bot token, webhook secret, atau raw request header.
 
-::: tip Drop Pending Updates
-Saat restart server, update yang menumpuk bisa diproses sekaligus. Gunakan `drop_pending_updates: true` saat re-register webhook untuk menghindari lonjakan.
-:::
+## Tanpa Secret Token
 
-::: tip Health Check
-Gunakan `healthPath` seperti `/healthz` untuk load balancer dan platform probe. Endpoint ini ringan dan tidak memproses update Telegram.
+```typescript
+app.post('/webhook', bot.webhookCallback());
+```
+
+::: warning
+Tanpa secret token, client mana pun yang mengetahui URL webhook bisa mengirim update palsu.
+Selalu gunakan secret token di produksi.
 :::

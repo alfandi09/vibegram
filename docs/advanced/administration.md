@@ -110,6 +110,22 @@ bot.command('lockdown', async ctx => {
 });
 ```
 
+## Forum Topics
+
+```typescript
+bot.command('topic', async ctx => {
+    await ctx.createForumTopic('Support', { icon_color: 0x6fb9f0 });
+    await ctx.reply('Forum topic created.');
+});
+
+bot.command('close-topic', async ctx => {
+    const threadId = ctx.message?.message_thread_id;
+    if (!threadId) return ctx.reply('Run this inside a forum topic.');
+
+    await ctx.closeForumTopic(threadId);
+});
+```
+
 ## All Admin Methods
 
 | Method                                          | API                      | Description                  |

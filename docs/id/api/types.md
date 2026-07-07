@@ -1,216 +1,247 @@
 # Tipe TypeScript
 
-VibeGram menyertakan 45+ interface TypeScript yang mencakup semua objek Bot API Telegram 10.1 utama.
+VibeGram mengekspor deklarasi TypeScript untuk objek utama Telegram Bot API
+10.1, helper framework, opsi middleware, dan class error.
 
-## Tipe Update & Pesan
+```ts
+import type { Update, Message, User, Chat, Context } from 'vibegram';
+```
 
-```typescript
+## Tipe Core
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `Update` | Update masuk dari Telegram. |
+| `Message` | Payload pesan. |
+| `User` | User Telegram. |
+| `Chat` | Identitas chat ringkas dari update. |
+| `ChatFullInfo` | Metadata chat lengkap dari `getChat`. |
+| `CallbackQuery` | Callback tombol inline. |
+| `InlineQuery` | Query inline mode. |
+| `Context<S>` | Context handler per update, opsional diketik dengan data session. |
+
+## Tipe Media
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `PhotoSize` | Metadata foto dengan dimensi. |
+| `Audio` | File audio. |
+| `Document` | File umum. |
+| `Video` | File video. |
+| `Voice` | Voice note. |
+| `VideoNote` | Video note bulat. |
+| `Animation` | GIF atau animasi H.264. |
+| `LivePhoto` | Payload live photo Bot API 10.0. |
+| `Sticker` | Metadata sticker. |
+| `Contact` | Kontak yang dibagikan. |
+| `Location` | Koordinat geografis. |
+
+## Tipe Interaktif
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `Poll` | Payload poll atau quiz. |
+| `PollOption` | Satu opsi poll. |
+| `PollMedia` | Media Bot API 10.0 yang melekat ke poll. |
+| `Dice` | Hasil dice animasi. |
+| `Venue` | Venue dengan lokasi. |
+| `Game` | Payload game Telegram. |
+| `WebAppData` | Data dari Mini App. |
+
+## Tipe Keyboard
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `ReplyMarkup` | Union payload reply markup yang didukung. |
+| `InlineKeyboardMarkup` | Layout inline keyboard. |
+| `InlineKeyboardButton` | Tombol inline keyboard. |
+| `ReplyKeyboardMarkup` | Layout reply keyboard native. |
+| `KeyboardButton` | Tombol reply keyboard native. |
+| `ReplyKeyboardRemove` | Payload hapus keyboard. |
+| `ForceReply` | Payload force reply. |
+
+## Tipe Entity
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `MessageEntity` | Entity teks seperti command, link, bold, code, spoiler, atau blockquote. |
+
+String entity yang didukung mencakup `mention`, `hashtag`, `bot_command`,
+`url`, `email`, `phone_number`, `bold`, `italic`, `underline`,
+`strikethrough`, `spoiler`, `code`, `pre`, `text_link`, `text_mention`,
+`custom_emoji`, `blockquote`, `expandable_blockquote`, dan `date_time`.
+
+## Tipe Update
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `ChatMemberUpdated` | Perubahan status member. |
+| `ChatJoinRequest` | Request join chat. |
+| `ShippingQuery` | Query shipping pembayaran. |
+| `PreCheckoutQuery` | Query pre-checkout pembayaran. |
+| `ChatBoostUpdated` | Event chat boost. |
+| `ChatBoostRemoved` | Event chat boost dihapus. |
+| `PaidMediaPurchased` | Event pembelian paid media. |
+
+## Tipe Extra
+
+Tipe extra mendeskripsikan parameter opsional untuk shortcut method.
+
+```ts
 import type {
-    Update,
-    Message,
-    Chat,
-    ChatFullInfo,
-    User,
-    CallbackQuery,
-    InlineQuery,
-    ShippingQuery,
-    PreCheckoutQuery,
+    ExtraReplyMessage,
+    ExtraMedia,
+    ExtraEditMessage,
+    ExtraPoll,
+    ExtraBanMember,
+    ExtraRestrictMember,
+    ExtraPromoteMember,
+    ExtraInviteLink,
 } from 'vibegram';
 ```
 
-`Chat` berisi identitas ringkas dari update. Metadata lengkap seperti `permissions`,
-`description`, `photo`, dan `accepted_gift_types` tersedia lewat `ChatFullInfo`, misalnya
-dari `ctx.getChat()`.
+## Tipe State dan Helper
 
-## Tipe Keyboard & Markup
-
-```typescript
+```ts
 import type {
-    ReplyMarkup,
-    InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-    ForceReply,
-    KeyboardButton,
-    InlineKeyboardButton,
+    BotOptions,
+    BotLaunchOptions,
+    Middleware,
+    NextFunction,
+    SessionStore,
+    RateLimitStore,
+    UpdateDedupeStore,
 } from 'vibegram';
 ```
 
-## Tipe Extra (Parameter Tambahan)
-
-Digunakan untuk mengetik parameter tambahan pada metode API:
-
-```typescript
-import type {
-    ExtraReplyMessage, // Opsi tambahan untuk sendMessage
-    ExtraMedia, // Opsi tambahan untuk sendPhoto/Video/dll
-    ExtraEditMessage, // Opsi tambahan untuk editMessageText
-    ExtraPoll, // Opsi tambahan untuk sendPoll
-    ExtraBanMember, // Opsi tambahan untuk banChatMember
-    ExtraRestrictMember, // Opsi tambahan untuk restrictChatMember
-    ExtraPromoteMember, // Opsi tambahan untuk promoteChatMember
-    ExtraInviteLink, // Opsi tambahan untuk createChatInviteLink
-} from 'vibegram';
-```
-
-## Tipe State
-
-```typescript
-import type {
-    ChatPermissions, // Izin anggota chat
-    ChatMember, // Status anggota (administrator, member, dll)
-    PhotoSize, // Metadata dimensi foto
-    File, // Objek file Telegram
-} from 'vibegram';
-```
+Gunakan tipe ini saat menulis middleware, plugin, store, atau instance bot yang
+strongly typed.
 
 ## Tipe Bot API 10.0
 
-```typescript
-import type {
-    SentGuestMessage,
-    BotAccessSettings,
-    LivePhoto,
-    InputMediaLivePhoto,
-    PollMedia,
-    SendLivePhotoOptions,
-    DeleteMessageReactionOptions,
-    DeleteAllMessageReactionsOptions,
-} from 'vibegram';
-```
-
 | Tipe | Deskripsi |
-| ---- | --------- |
-| `SentGuestMessage` | Hasil dari `answerGuestQuery` |
-| `BotAccessSettings` | Pengaturan akses managed bot |
-| `LivePhoto` | Objek live photo di message |
-| `InputMediaLivePhoto` | Payload input media live photo |
-| `PollMedia` | Media untuk poll dan explanation poll |
-| `SendLivePhotoOptions` | Opsi tambahan untuk `sendLivePhoto` |
-| `DeleteMessageReactionOptions` | Opsi menghapus satu reaction message |
-| `DeleteAllMessageReactionsOptions` | Opsi menghapus reaction terbaru |
+| --- | --- |
+| `SentGuestMessage` | Hasil dari `answerGuestQuery`. |
+| `BotAccessSettings` | Pengaturan akses managed bot. |
+| `LivePhoto` | Objek live photo di message. |
+| `InputMediaLivePhoto` | Payload input media live photo. |
+| `PollMedia` | Media untuk poll dan explanation poll. |
+| `DeleteMessageReactionOptions` | Opsi menghapus satu reaction message. |
+| `DeleteAllMessageReactionsOptions` | Opsi menghapus reaction terbaru. |
+| `SendLivePhotoOptions` | Opsi tambahan untuk `sendLivePhoto`. |
 
 ## Tipe Bot API 10.1
 
-### Rich Message
+### Rich Messages
 
 | Tipe | Deskripsi |
-| ---- | --------- |
-| `RichMessage` | Pesan terformat kaya (`blocks` + `is_rtl` opsional) |
-| `InputRichMessage` | Rich message yang dikirim; pakai salah satu dari `html` atau `markdown` |
-| `InputRichMessageContent` | Konten rich message untuk hasil inline query |
-| `RichText` | String biasa, array `RichText`, atau elemen `RichText*` |
-| `RichBlock` | Union dari 21 tipe blok (`paragraph`, `heading`, `table`, `photo`, …) |
-| `RichBlockCaption` | Caption (`text` + `credit` opsional) untuk blok media |
-| `RichBlockTableCell` | Satu sel pada `RichBlockTable` |
-| `RichBlockListItem` | Satu item pada `RichBlockList` |
+| --- | --- |
+| `RichMessage` | Pesan rich (`blocks` + `is_rtl` opsional). |
+| `InputRichMessage` | Rich message yang dikirim; pakai tepat satu dari `html` atau `markdown`. |
+| `InputRichMessageContent` | Konten rich message untuk hasil inline query. |
+| `RichText` | String biasa, array `RichText`, atau elemen `RichText*`. |
+| `RichBlock` | Union block rich seperti paragraph, heading, table, dan photo. |
+| `RichBlockCaption` | Caption (`text` + `credit` opsional) untuk block media. |
+| `RichBlockTableCell` | Sel pada `RichBlockTable`. |
+| `RichBlockListItem` | Item pada `RichBlockList`. |
 
-25 tipe elemen inline `RichText*` (`RichTextBold`, `RichTextItalic`, `RichTextUrl`, `RichTextCustomEmoji`, …) dan 21 tipe blok `RichBlock*` semuanya di-export terpisah untuk typing yang presisi.
+Tipe inline `RichText*` dan block `RichBlock*` diekspor satu per satu untuk
+typing yang presisi.
 
-### Join Request Query & Poll
+### Join Request Queries dan Polls
 
 | Tipe | Deskripsi |
-| ---- | --------- |
-| `ChatJoinRequestQueryResult` | Hasil `'approve' \| 'decline' \| 'queue'` untuk `answerChatJoinRequestQuery` |
-| `Link` | Objek HTTP link (`url`) |
-| `InputMediaLink` | Media link yang bisa dipakai sebagai media opsi poll |
+| --- | --- |
+| `ChatJoinRequestQueryResult` | Hasil `'approve' \| 'decline' \| 'queue'` untuk `answerChatJoinRequestQuery`. |
+| `Link` | Objek HTTP link (`url`). |
+| `InputMediaLink` | Media link yang bisa dipakai sebagai media opsi poll. |
 
-> Field baru pada tipe yang sudah ada: `User.supports_join_request_queries`, `ChatFullInfo.guard_bot`, `ChatJoinRequest.query_id`, dan `Message.rich_message`.
+Field baru pada tipe lama mencakup `User.supports_join_request_queries`,
+`ChatFullInfo.guard_bot`, `ChatJoinRequest.query_id`, dan
+`Message.rich_message`.
 
 ## Interface Pagination
 
-```typescript
+```ts
 import type { PaginationItem, PaginationOptions } from 'vibegram';
 
-// PaginationItem
-interface PaginationItem {
-    text: string;
-    callback_data: string;
-}
-
-// PaginationOptions
-interface PaginationOptions {
-    currentPage: number;
-    itemsPerPage: number;
-    actionNext: string;
-    actionPrev: string;
-    pageIndicatorPattern?: string;
-    columns?: number;
-}
+const item: PaginationItem = {
+    text: 'Produk',
+    callback_data: 'product:1',
+};
 ```
+
+`PaginationOptions` mengatur nomor halaman, ukuran halaman, callback data
+navigasi, pola label halaman opsional, dan kolom grid opsional.
 
 ## Interface Session
 
-```typescript
+```ts
 import type { SessionStore } from 'vibegram';
 
-// Implementasikan untuk session store kustom
-interface SessionStore<T = any> {
-    get(key: string): Promise<T | undefined>;
-    set(key: string, value: T): Promise<void>;
-    delete(key: string): Promise<void>;
+class RedisSessionStore implements SessionStore {
+    async get(key: string) {
+        const value = await redis.get(key);
+        return value ? JSON.parse(value) : undefined;
+    }
+
+    async set(key: string, value: unknown) {
+        await redis.set(key, JSON.stringify(value));
+    }
+
+    async delete(key: string) {
+        await redis.del(key);
+    }
 }
 ```
 
-## Menggunakan Generic untuk Session
+Gunakan `MemorySessionStore` untuk storage in-memory lokal atau implementasikan
+`SessionStore` untuk Redis, SQL, atau store eksternal lain.
 
-```typescript
-interface DataSesi {
-    hitungan: number;
-    bahasa: string;
-    keranjang: string[];
-    terakhirDilihat?: Date;
-}
+## Session Bertipe
 
-// Session bertipe penuh
+```ts
+type MySession = {
+    count: number;
+    language: string;
+};
+
 bot.use(
-    session<DataSesi>({
-        initial: () => ({
-            hitungan: 0,
-            bahasa: 'id',
-            keranjang: [],
-        }),
+    session<MySession>({
+        initial: () => ({ count: 0, language: 'id' }),
     })
 );
-
-// ctx.session.hitungan dikenali sebagai `number`
-// ctx.session.keranjang dikenali sebagai `string[]`
 ```
+
+Typing middleware session membuat `ctx.session` strongly typed di handler
+berikutnya.
 
 ## Extending Context
 
-Tambahkan properti kustom ke Context:
-
-```typescript
+```ts
 import type { Context } from 'vibegram';
 
-// Definisikan interface Context kustom
-interface ContextBot extends Context {
-    session: DataSesi;
-    pengguna?: PenggunaDariDB;
+interface AppContext extends Context<MySession> {
+    user?: { id: string; role: 'admin' | 'member' };
 }
 
-const bot = new Bot<ContextBot>(process.env.BOT_TOKEN!);
-
-// Middleware untuk melampirkan data pengguna
-bot.use(async (ctx, next) => {
-    if (ctx.from?.id) {
-        ctx.pengguna = await db.pengguna.findById(ctx.from.id);
-    }
-    await next();
-});
+const bot = new Bot<AppContext>(process.env.BOT_TOKEN!);
 ```
+
+Gunakan tipe context kustom saat middleware menempelkan data aplikasi sendiri.
 
 ## Tipe Error
 
-```typescript
+```ts
 import {
-    VibeGramError,
-    TelegramApiError,
+    ConversationTimeoutError,
+    InvalidTokenError,
     NetworkError,
     RateLimitError,
-    InvalidTokenError,
+    TelegramApiError,
+    VibeGramError,
     WebAppValidationError,
-    ConversationTimeoutError,
 } from 'vibegram';
 ```
+
+Catch subclass spesifik saat perilaku recovery berbeda per kategori error.

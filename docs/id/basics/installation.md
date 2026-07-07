@@ -19,40 +19,44 @@ Jangan commit file `.env` atau token Telegram asli.
 
 ## Prasyarat
 
-- **Node.js** versi 18.0 atau lebih baru
-- **npm** atau **yarn**
+- Node.js v18.0 atau lebih baru
+- npm atau yarn
+- Token bot Telegram dari BotFather
 
-Cek versi Node.js Anda:
+Cek versi Node.js:
 
 ```bash
-node --version   # harus >= 18.0.0
+node --version
 ```
 
-## Install Package
+## Install
 
 ```bash
 npm install vibegram
 ```
 
-Atau menggunakan yarn:
+Atau dengan yarn:
 
 ```bash
 yarn add vibegram
 ```
 
-## Inisialisasi Proyek TypeScript
+## Setup TypeScript
 
-Jika belum ada proyek TypeScript:
+VibeGram ditulis dengan TypeScript dan sudah membawa deklarasi tipe. Tidak perlu
+package `@types` tambahan untuk VibeGram.
+
+Untuk project TypeScript baru:
 
 ```bash
 mkdir my-bot && cd my-bot
 npm init -y
 npm install vibegram
-npm install -D typescript @types/node ts-node
+npm install -D typescript ts-node @types/node
 npx tsc --init
 ```
 
-Konfigurasi `tsconfig.json` yang direkomendasikan:
+`tsconfig.json` yang direkomendasikan:
 
 ```json
 {
@@ -69,18 +73,15 @@ Konfigurasi `tsconfig.json` yang direkomendasikan:
 }
 ```
 
-## Mendapatkan Token Bot
+## Token Environment
 
-1. Buka Telegram dan cari **@BotFather**
-2. Kirim `/newbot` dan ikuti petunjuknya
-3. Simpan token yang diberikan di variabel lingkungan
+Buat bot lewat `@BotFather` di Telegram, lalu simpan token di environment runtime:
 
 ```bash
-# .env
-BOT_TOKEN=1234567890:ABCDefGHIjklMNOpqrSTUvwxYZ
+BOT_TOKEN=1234567890:ganti-token
 ```
 
-Gunakan `dotenv` untuk memuat `.env`:
+Untuk memuat `.env` lokal:
 
 ```bash
 npm install dotenv
@@ -90,25 +91,30 @@ npm install dotenv
 import 'dotenv/config';
 ```
 
-## Bot Pertama Anda
+## Bot Pertama
 
-Buat file `src/index.ts`:
+Buat `src/index.ts`:
 
 ```typescript
+import 'dotenv/config';
 import { Bot } from 'vibegram';
 
-const bot = new Bot(process.env.BOT_TOKEN!);
+const token = process.env.BOT_TOKEN;
 
-bot.command('start', async ctx => {
-    const nama = ctx.from?.first_name || 'kawan';
-    await ctx.reply(`👋 Halo ${nama}! Selamat datang di bot saya.`);
+if (!token) {
+    throw new Error('BOT_TOKEN wajib diisi');
+}
+
+const bot = new Bot(token);
+
+bot.start(async ctx => {
+    const name = ctx.from?.first_name ?? 'teman';
+    await ctx.reply(`Halo ${name}. Selamat datang di bot.`);
 });
 
-bot.hears(/halo|hai/i, async ctx => {
-    await ctx.reply('Halo! Ada yang bisa saya bantu?');
-});
+bot.hears(/halo|hai/i, ctx => ctx.reply('Halo. Ada yang bisa saya bantu?'));
 
-bot.launch().then(() => console.log('Bot berjalan! 🚀'));
+await bot.launch();
 ```
 
 Jalankan:
@@ -117,27 +123,33 @@ Jalankan:
 npx ts-node src/index.ts
 ```
 
-## Struktur Proyek yang Direkomendasikan
+## Struktur Project
 
-```
+Project VibeGram untuk produksi biasanya dimulai seperti ini:
+
+```text
 my-bot/
-├── src/
-│   ├── index.ts          # Entry point bot
-│   ├── handlers/
-│   │   ├── commands.ts   # Handler command (/start, /help, dll)
-│   │   ├── actions.ts    # Handler callback query
-│   │   └── conversations.ts  # Conversation engine
-│   ├── middlewares/
-│   │   └── auth.ts       # Middleware kustom
-│   └── scenes/
-│       └── checkout.ts   # Scene wizard
-├── .env
-├── package.json
-└── tsconfig.json
+  src/
+    index.ts
+    handlers/
+      commands.ts
+      actions.ts
+    middlewares/
+      auth.ts
+    scenes/
+      checkout.ts
+  .env
+  package.json
+  tsconfig.json
 ```
+
+## Verifikasi Instalasi
+
+Kirim `/start` ke bot Anda di Telegram. Jika bot membalas, instalasi package,
+loading token, dan polling sudah berjalan.
 
 ## Langkah Selanjutnya
 
-- [Instansi Bot & Polling](/id/basics/instance) — Pelajari opsi konfigurasi
-- [Pipeline Middleware](/id/core/middleware) — Pahami cara kerja routing
-- [Session](/id/state/session) — Simpan data per-pengguna
+- [Instansi Bot & Polling](/id/basics/instance) - konfigurasi opsi launch.
+- [Pipeline Middleware](/id/core/middleware) - pahami urutan middleware.
+- [Session](/id/state/session) - simpan state per-user atau per-chat.

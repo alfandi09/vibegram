@@ -11,6 +11,13 @@ import {
 // Basic limiting
 // ---------------------------------------------------------------------------
 describe('rateLimit() middleware', () => {
+    it('validates numeric limit options', () => {
+        expect(() => rateLimit({ windowMs: 0 })).toThrow('windowMs');
+        expect(() => rateLimit({ windowMs: -1 })).toThrow('windowMs');
+        expect(() => rateLimit({ limit: 0 })).toThrow('limit');
+        expect(() => rateLimit({ limit: 1.5 })).toThrow('limit');
+    });
+
     it('passes the first request in a window', async () => {
         const mw = rateLimit({ windowMs: 1000, limit: 2 });
         const { ctx } = createContext(makeMessageUpdate('hi'));

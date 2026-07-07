@@ -1,97 +1,168 @@
 # Sessions
 
-Sessions persist user data across updates. They are stored per-user, per-chat and remain in memory until evicted.
+The `session()` middleware adds `ctx.session` to every update with a resolvable
+chat/user key. It is designed for small per-user state such as preferences,
+wizard progress, or temporary form data.
 
 ## Quick Start
 
-```typescript
+```ts
 import { Bot, session } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
+const bot = new Bot(process.env.BOT_TOKEN!);
 
-bot.use(session({
-    initial: () => ({ counter: 0 })
-}));
+bot.use(session());
 
-bot.on('message', async (ctx) => {
-    ctx.session.counter++;
-    await ctx.reply(`Messages sent: ${ctx.session.counter}`);
+bot.command('count', async ctx => {
+    ctx.session.count = (ctx.session.count ?? 0) + 1;
+    await ctx.reply(`Count: ${ctx.session.count}`);
 });
 ```
+
+Session state is loaded before downstream middleware runs and saved after
+`next()` completes.
 
 ## Typed Sessions
 
-Use TypeScript generics for IDE autocompletion and type safety:
+```ts
+type MySession = {
+    count: number;
+    locale?: string;
+};
 
-```typescript
-interface MySession {
-    counter: number;
-    cart: string[];
-    locale: string;
-}
+bot.use(
+    session<MySession>({
+        initial: () => ({ count: 0 }),
+    })
+);
 
-bot.use(session<MySession>({
-    initial: () => ({ counter: 0, cart: [], locale: 'en' })
-}));
-
-// ctx.session is now typed as MySession
-bot.on('message', async (ctx) => {
-    ctx.session.cart.push('item');  // ✅ autocomplete works
+bot.command('lang', ctx => {
+    ctx.session.locale = 'id';
 });
 ```
 
+Use `initial()` to avoid defensive checks in every handler.
+
 ## Session Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `store` | `SessionStore` | Custom storage adapter |
-| `getSessionKey` | `(ctx) => string` | Custom key generator (default: `chatId:userId`) |
-| `initial` | `() => S` | Factory for default session state |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `store` | `SessionStore` | `new MemorySessionStore()` | Storage adapter for session data. |
+| `getSessionKey` | `(ctx) => string \| undefined` | `${chatId}:${fromId}` | Generates the storage key. |
+| `initial` | `() => S` | `{}` | Creates a new session when no record exists. |
 
-## Custom Storage Adapters
-
-Implement the `SessionStore` interface for external databases:
-
-```typescript
-import { SessionStore } from 'vibegram';
-
-class RedisAdapter implements SessionStore {
-    async get(key: string) {
-        const data = await redis.get(key);
-        return data ? JSON.parse(data) : undefined;
-    }
-
-    async set(key: string, value: any) {
-        await redis.set(key, JSON.stringify(value), 'EX', 86400);
-    }
-
-    async delete(key: string) {
-        await redis.del(key);
-    }
-}
-
-bot.use(session({
-    store: new RedisAdapter(),
-    initial: () => ({ counter: 0 })
-}));
-```
+If `getSessionKey()` returns `undefined`, the update continues without
+`ctx.session` persistence.
 
 ## Concurrency Safety
 
-The `session()` middleware serializes the load → handler → save cycle **per session key**. Concurrent updates for the same `chatId:userId` are processed one at a time, so two rapid messages from the same user can't read the same starting state and overwrite each other's changes (last-writer-wins). Updates for *different* keys still run in parallel.
+The middleware serializes load-handler-save cycles per session key. Two updates
+for the same user do not save over each other from the same starting state.
+Different session keys can still run concurrently.
+
+## MemorySessionStore
+
+```ts
+import { MemorySessionStore, session } from 'vibegram';
+
+bot.use(
+    session({
+        store: new MemorySessionStore(
+            24 * 60 * 60 * 1000, // ttlMs
+            10_000, // maxEntries
+            60_000 // cleanupIntervalMs
+        ),
+    })
+);
+```
+
+The built-in store is volatile. It is useful for development, single-process
+bots, and short-lived state. It expires records by TTL and evicts the
+least-recently-used entry when `maxEntries` is reached.
+
+## Redis Adapter
+
+Use an external store for production bots that run on multiple workers or need
+state to survive restarts.
+
+```ts
+const redisStore = {
+    async get(key: string) {
+        const value = await redis.get(key);
+        return value ? JSON.parse(value) : undefined;
+    },
+    async set(key: string, value: unknown) {
+        await redis.set(key, JSON.stringify(value), { EX: 60 * 60 * 24 });
+    },
+    async delete(key: string) {
+        await redis.del(key);
+    },
+};
+
+bot.use(session({ store: redisStore }));
+```
+
+## Clearing Sessions
+
+Assign `null` or `undefined` to `ctx.session` to delete the stored session after
+the handler finishes.
+
+```ts
+bot.command('reset', async ctx => {
+    ctx.session = null;
+    await ctx.reply('Session cleared.');
+});
+```
+
+## Custom Session Keys
+
+```ts
+bot.use(
+    session({
+        getSessionKey: ctx => {
+            if (!ctx.chat) return undefined;
+            return `chat:${ctx.chat.id}`;
+        },
+    })
+);
+```
+
+Use chat-level keys for shared group state and chat+user keys for private user
+state.
+
+## Custom Storage Adapters
+
+```ts
+import type { SessionStore } from 'vibegram';
+
+class DatabaseSessionStore implements SessionStore {
+    async get(key: string) {
+        return db.session.findUnique({ where: { key } });
+    }
+
+    async set(key: string, value: unknown) {
+        await db.session.upsert({
+            where: { key },
+            create: { key, value },
+            update: { value },
+        });
+    }
+
+    async delete(key: string) {
+        await db.session.delete({ where: { key } });
+    }
+}
+```
+
+Adapters should use parameterized queries, TTL or cleanup policies, and stable
+JSON serialization for values.
 
 ## Memory Management
 
-The built-in `MemorySessionStore` enforces a hard cap of **10,000 entries** (configurable) with true LRU eviction — reading a session refreshes its recency, so the least-recently-used entry is evicted first:
+For long-running processes, prefer one of these:
 
-```typescript
-import { MemorySessionStore } from 'vibegram';
-
-// Constructor: (ttlMs, maxEntries, cleanupIntervalMs)
-const store = new MemorySessionStore(86_400_000, 5000); // 24h TTL, max 5,000 sessions
-bot.use(session({ store }));
-```
-
-::: warning
-The default in-memory store is volatile — data is lost on restart. Use a persistent adapter (Redis, MongoDB) for production deployments.
-:::
+- Keep the default `MemorySessionStore` limits for small bots.
+- Tune `ttlMs` and `maxEntries` for expected traffic.
+- Call `store.close()` during graceful shutdown if you created a
+  `MemorySessionStore` manually.
+- Use Redis or another external store for horizontally scaled production bots.

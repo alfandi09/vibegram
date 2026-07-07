@@ -1,27 +1,27 @@
 # Quickstart
 
-This guide builds a small production-shaped bot: commands, middleware, session state,
-error handling, and graceful shutdown.
+This guide builds a small production-shaped bot: commands, middleware, session
+state, error handling, and graceful shutdown.
 
 <PackageStats />
 
 <InstallTabs />
 
 <SecurityNote title="Production baseline" variant="tip">
-Use this guide as a minimal production shape: token from environment variables, global
-error handling, rate limiting, session state, and graceful shutdown.
+Use this guide as a minimal production shape: token from environment variables,
+global error handling, rate limiting, session state, and graceful shutdown.
 </SecurityNote>
 
 <FeatureGrid title="What this quickstart covers" description="Move from package install to a running bot without skipping the safety pieces you will need later.">
   <FeatureCard title="Install and configure" description="Add the package and store bot tokens outside source control." href="/basics/installation" />
-  <FeatureCard title="Compose middleware" description="Use rate limiting and session middleware before handlers." href="/core/middleware" />
+  <FeatureCard title="Compose middleware" description="Use dedupe, rate limiting, and session middleware before handlers." href="/core/middleware" />
   <FeatureCard title="Launch safely" description="Start polling locally, then move to webhooks for production." href="/basics/instance" />
 </FeatureGrid>
 
 ## Install
 
 ```bash
-npm install vibegram
+npm install vibegram dotenv
 ```
 
 Create a `.env` file in your application project:
@@ -30,14 +30,16 @@ Create a `.env` file in your application project:
 BOT_TOKEN=123456:replace-me
 ```
 
-Do not commit `.env` files. In production, configure the same variable in your host's
-secret manager.
+Do not commit `.env` files. In production, configure the same variable in your
+host's secret manager.
 
 ## Bot
 
+Create `src/bot.ts`:
+
 ```typescript
 import 'dotenv/config';
-import { Bot, session, rateLimit } from 'vibegram';
+import { Bot, dedupeUpdates, rateLimit, session } from 'vibegram';
 
 const token = process.env.BOT_TOKEN;
 
@@ -46,6 +48,9 @@ if (!token) {
 }
 
 const bot = new Bot(token, {
+    polling: {
+        offsetCommit: 'processed',
+    },
     observability: {
         hooks: {
             onPollingError: ({ error }) => console.error('Polling failed', error),
@@ -54,6 +59,7 @@ const bot = new Bot(token, {
     },
 });
 
+bot.use(dedupeUpdates());
 bot.use(rateLimit());
 bot.use(session({ initial: () => ({ visits: 0 }) }));
 
@@ -82,12 +88,13 @@ await bot.launch();
 npx ts-node src/bot.ts
 ```
 
-For long-running deployments, run the bot under a process manager and keep logs outside
-the source tree.
+For long-running deployments, run the bot under a process manager and keep logs
+outside the source tree.
 
 ## Checklist
 
 - Store secrets in environment variables.
 - Register `bot.catch()` before deployment.
+- Use `dedupeUpdates()` when retries or processed-offset polling can replay updates.
 - Use `rateLimit()` for public bots.
 - Run `npm test` and `npm run build` before releasing your own bot.

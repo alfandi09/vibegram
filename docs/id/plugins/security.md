@@ -25,7 +25,7 @@ Untuk saat ini, gunakan package repository sebagai local file dependency:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/security": "file:../vibegram/plugins/security"
   }
 }
@@ -35,13 +35,12 @@ Untuk saat ini, gunakan package repository sebagai local file dependency:
 
 ```typescript
 import { Bot } from 'vibegram';
-import { security } from '@vibegram/security';
+import { productionSecurity } from '@vibegram/security';
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.use(security({
+bot.use(productionSecurity({
     allowUsers: [123456789],
-    safeErrors: true,
     spam: {
         limit: 8,
         windowMs: 10_000,
@@ -52,6 +51,11 @@ bot.on('message:text', ctx => ctx.reply('Allowed.'));
 ```
 
 User yang tidak masuk daftar akan diblok sebelum handler berjalan, dan error downstream dibalas dengan pesan generik.
+
+`productionSecurity()` adalah preset yang direkomendasikan untuk bot production. Preset ini
+merangkai allow user/chat guard, `spamGuard()`, dan default `safeErrors()` tanpa menambahkan
+admin check implisit. Gunakan `requireAdmin()` secara eksplisit hanya pada command yang memang
+butuh hak administrator chat.
 
 ## Command Admin
 
@@ -135,6 +139,11 @@ Key default yang di-redact mencakup `token`, `bot_token`, `access_token`, `autho
 | `safeErrors` | `boolean \| SafeErrorsOptions` | disabled | Catch error dan reply aman |
 | `onDenied` | `(ctx, reason) => void` | none | Hook denied bersama |
 
+### `productionSecurity(options)`
+
+Opsi sama seperti `security(options)`, tetapi `spam` dan `safeErrors` aktif secara default. Gunakan
+`spam: false` atau `safeErrors: false` hanya jika layer middleware lain sudah menangani hal itu.
+
 ### `spamGuard(options)`
 
 | Option | Type | Default | Deskripsi |
@@ -146,7 +155,7 @@ Key default yang di-redact mencakup `token`, `bot_token`, `access_token`, `autho
 
 ## API TypeScript
 
-Export utama: `security()`, `allowUsers()`, `allowChats()`, `requireAdmin()`, `spamGuard()`, `safeErrors()`, `verifyWebhookSecret()`, `redactValue()`, `redactError()`, `isAdministrator()`, `SecurityFlavor`, dan `SecurityGuardReason`.
+Export utama: `security()`, `productionSecurity()`, `allowUsers()`, `allowChats()`, `requireAdmin()`, `spamGuard()`, `safeErrors()`, `verifyWebhookSecret()`, `redactValue()`, `redactError()`, `isAdministrator()`, `SecurityFlavor`, dan `SecurityGuardReason`.
 
 ## Failure Mode
 

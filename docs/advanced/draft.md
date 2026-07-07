@@ -17,6 +17,17 @@ bot.command('draft', async ctx => {
 
 ## Use Cases
 
+### Guided Input Templates
+
+```typescript
+bot.command('support', async ctx => {
+    await ctx.replyWithDraft('/ticket title priority description');
+});
+```
+
+Use draft templates when users should edit a structured command before sending
+it.
+
 ### AI Text Streaming
 
 ```typescript

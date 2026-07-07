@@ -38,6 +38,18 @@ interface BroadcastJobState {
     cancelled: boolean;
 }
 
+function validatePositiveIntegerOption(name: string, value: number): void {
+    if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer.`);
+    }
+}
+
+function validateNonNegativeIntegerOption(name: string, value: number): void {
+    if (!Number.isInteger(value) || value < 0) {
+        throw new TypeError(`${name} must be a non-negative integer.`);
+    }
+}
+
 /**
  * Rate-limited job queue for safe mass broadcasting and scheduling.
  *
@@ -62,9 +74,15 @@ export class BotQueue {
 
     constructor(client: TelegramClient, options?: QueueOptions) {
         this.client = client;
+        const concurrency = options?.concurrency ?? 25;
+        const delayMs = options?.delayMs ?? 1000;
+
+        validatePositiveIntegerOption('concurrency', concurrency);
+        validateNonNegativeIntegerOption('delayMs', delayMs);
+
         this.options = {
-            concurrency: options?.concurrency ?? 25,
-            delayMs: options?.delayMs ?? 1000,
+            concurrency,
+            delayMs,
             onError: options?.onError,
             onProgress: options?.onProgress,
         };
@@ -88,6 +106,9 @@ export class BotQueue {
         const onError = options?.onError ?? this.options.onError;
         const onProgress = options?.onProgress ?? this.options.onProgress;
         const broadcastId = options?.broadcastId ?? this.createBroadcastId();
+
+        validatePositiveIntegerOption('concurrency', concurrency);
+        validateNonNegativeIntegerOption('delayMs', delayMs);
 
         const startTime = Date.now();
         let success = 0;
@@ -146,7 +167,7 @@ export class BotQueue {
     async broadcastMessage(
         chatIds: (number | string)[],
         text: string,
-        extra?: any
+        extra?: Record<string, unknown>
     ): Promise<BroadcastResult> {
         return this.broadcast(chatIds, async chatId => {
             await this.client.callApi('sendMessage', {
@@ -165,6 +186,7 @@ export class BotQueue {
         intervalMs: number,
         handler: () => void | Promise<void>
     ): ScheduledJob {
+        validatePositiveIntegerOption('intervalMs', intervalMs);
         this.cancelScheduled(id);
 
         let running = false;
@@ -200,6 +222,7 @@ export class BotQueue {
      * Schedule a one-time delayed job.
      */
     scheduleOnce(id: string, delayMs: number, handler: () => void | Promise<void>): ScheduledJob {
+        validateNonNegativeIntegerOption('delayMs', delayMs);
         this.cancelScheduled(id);
 
         const job: ScheduledJob = {

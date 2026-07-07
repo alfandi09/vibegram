@@ -60,6 +60,18 @@ bot.command('faq', ctx => ctx.scene?.enter('faq'));
 bot.command('contact', ctx => ctx.scene?.enter('contact'));
 ```
 
+## Practical Scenario: Main Menu
+
+```typescript
+const menuScene = new Scene('menu');
+
+menuScene.hears('profile', ctx => ctx.reply('Opening profile...'));
+menuScene.hears('orders', ctx => ctx.reply('Opening orders...'));
+menuScene.hears('back', ctx => ctx.scene?.leave());
+
+bot.command('menu', ctx => ctx.scene?.enter('menu'));
+```
+
 ::: tip
 Register `bot.use(session())` **before** `bot.use(stage.middleware())` — the Stage depends on session data.
 :::

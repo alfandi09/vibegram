@@ -1,6 +1,6 @@
 {
     "name": "vibegram",
-    "version": "2.4.0",
+    "version": "2.5.0",
     "description": "Modern, production-ready Telegram Bot Framework for Node.js — Broad Bot API 10.1 coverage with built-in middleware, sessions, and webhook adapters",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -50,6 +50,11 @@
             "import": "./dist/esm/conversation.js",
             "require": "./dist/cjs/conversation.js",
             "types": "./dist/types/conversation.d.ts"
+        },
+        "./dedupe": {
+            "import": "./dist/esm/dedupe.js",
+            "require": "./dist/cjs/dedupe.js",
+            "types": "./dist/types/dedupe.d.ts"
         },
         "./errors": {
             "import": "./dist/esm/errors.js",
@@ -191,7 +196,7 @@
         "@types/node": "^25.5.2",
         "@typescript-eslint/eslint-plugin": "^8.58.1",
         "@typescript-eslint/parser": "^8.58.1",
-        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/coverage-v8": "^3.2.7",
         "@vueuse/core": "^14.2.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -207,7 +212,7 @@
         "typedoc": "^0.28.0",
         "typescript": "^6.0.2",
         "vitepress": "^1.6.4",
-        "vitest": "^3.2.4",
+        "vitest": "^3.2.7",
         "vue": "^3.5.32"
     }
 }

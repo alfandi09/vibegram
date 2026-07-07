@@ -95,6 +95,44 @@ describe('HTTP transport', () => {
         expect([...response.data]).toEqual([1, 2, 3]);
     });
 
+    it('should reject oversized JSON responses', async () => {
+        const baseUrl = await startServer((_, res) => {
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, text: 'x'.repeat(100) }));
+        });
+        const transport = createHttpTransport();
+
+        await expect(
+            transport.request({
+                url: `${baseUrl}/large-json`,
+                responseType: 'json',
+                maxResponseBytes: 20,
+            })
+        ).rejects.toMatchObject({
+            name: 'HttpRequestError',
+            message: expect.stringContaining('maximum size'),
+        });
+    });
+
+    it('should reject oversized text responses', async () => {
+        const baseUrl = await startServer((_, res) => {
+            res.writeHead(200, { 'content-type': 'text/plain' });
+            res.end('x'.repeat(100));
+        });
+        const transport = createHttpTransport();
+
+        await expect(
+            transport.request({
+                url: `${baseUrl}/large-text`,
+                responseType: 'text',
+                maxResponseBytes: 20,
+            })
+        ).rejects.toMatchObject({
+            name: 'HttpRequestError',
+            message: expect.stringContaining('maximum size'),
+        });
+    });
+
     it('should return a Node readable stream when responseType is stream', async () => {
         const baseUrl = await startServer((_, res) => {
             res.writeHead(200, { 'content-type': 'text/plain' });
@@ -140,6 +178,20 @@ describe('HTTP transport', () => {
 
         await expect(
             transport.request({ url: `${baseUrl}/slow`, timeoutMs: 10, responseType: 'text' })
+        ).rejects.toBeInstanceOf(HttpRequestError);
+    });
+
+    it('should keep timeout active while reading the response body', async () => {
+        const baseUrl = await startServer(async (_, res) => {
+            res.writeHead(200, { 'content-type': 'text/plain' });
+            res.write('early ');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            res.end('late');
+        });
+        const transport = createHttpTransport();
+
+        await expect(
+            transport.request({ url: `${baseUrl}/slow-body`, timeoutMs: 10, responseType: 'text' })
         ).rejects.toBeInstanceOf(HttpRequestError);
     });
 

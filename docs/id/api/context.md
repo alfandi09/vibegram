@@ -1,220 +1,276 @@
-# Referensi API — Context (ctx)
+# Context (ctx)
 
 <ApiMethodCard title="Shortcut Context" endpoint="ctx per update" since="1.0.0" returns="Context" method="API">
   Context dibuat untuk setiap update dan membungkus Telegram client scoped, field update,
-  session, helper scene/wizard, dan shortcut reply.
+  state session, helper scene/wizard, dan shortcut reply.
 </ApiMethodCard>
 
 <FeatureGrid title="Permukaan Context" description="Gunakan halaman ini sebagai peta metode per-update yang paling sering dipakai.">
-  <FeatureCard title="Pesan" description="Kirim teks, HTML, Markdown, draft, dan media." href="#metode-pesan-media" cta="Buka pesan" />
-  <FeatureCard title="Interaksi" description="Jawab callback query, inline query, poll, invoice, dan chat action." href="#callback-query" cta="Buka interaksi" />
-  <FeatureCard title="Administrasi" description="Kelola member, permission, invite link, hadiah, dan Stars." href="#administrasi-grup" cta="Buka admin" />
+  <FeatureCard title="Pesan" description="Kirim teks, HTML, Markdown, draft, dan media." href="#pesan" />
+  <FeatureCard title="Interaksi" description="Jawab callback query, inline query, pembayaran, dan chat action." href="#callback-query" />
+  <FeatureCard title="Administrasi" description="Kelola member, permission, invite link, gift, dan Stars." href="#administrasi-grup" />
 </FeatureGrid>
 
-Objek `Context` (biasa disebut `ctx`) dibuat untuk setiap update yang diterima bot. Objek ini berisi semua informasi tentang update tersebut dan menyediakan metode shortcut untuk berinteraksi dengan pengguna.
+`Context` dibuat untuk setiap update masuk. Objek ini mengekspos update mentah,
+getter praktis yang dicache, akses Telegram API scoped, dan shortcut untuk
+operasi Bot API yang umum.
 
 ## Properti
 
-| Properti       | Tipe                       | Deskripsi                                           |
-| -------------- | -------------------------- | --------------------------------------------------- |
-| `ctx.update`   | `Update`                   | Objek update mentah dari Telegram                   |
-| `ctx.message`  | `Message`                  | Pesan dari update (jika ada)                        |
-| `ctx.chat`     | `Chat`                     | Chat tempat update terjadi                          |
-| `ctx.from`     | `User`                     | Pengguna yang mengirim update                       |
-| `ctx.match`    | `RegExpMatchArray \| null` | Hasil regex dari `hears()` / `action()`             |
-| `ctx.command`  | `{ name, args }`           | Data command dari `command()`                       |
-| `ctx.telegram` | `TelegramClient`           | Client Telegram API langsung yang scoped per update |
-| `ctx.session`  | —                          | Data session (jika middleware session dipasang)     |
-| `ctx.scene`    | —                          | Kontrol scene (jika middleware stage dipasang)      |
-| `ctx.wizard`   | —                          | Kontrol wizard (jika wizard dipasang)               |
+| Properti | Tipe | Deskripsi |
+| --- | --- | --- |
+| `ctx.update` | `Update` | Update mentah dari Telegram. |
+| `ctx.updateType` | `string` | Field update utama, tanpa `update_id`. |
+| `ctx.message` | `Message \| undefined` | Payload pesan dari message, edited message, channel post, atau business message. |
+| `ctx.chat` | `Chat \| undefined` | Chat tempat update terjadi. |
+| `ctx.from` | `User \| undefined` | User yang memicu update. |
+| `ctx.businessConnectionId` | `string \| undefined` | Business connection ID jika ada. |
+| `ctx.match` | `RegExpMatchArray \| null \| undefined` | Hasil regex dari `hears()` atau `action()`. |
+| `ctx.command` | `{ name: string; args: string[] } \| undefined` | Data command dari `command()`. |
+| `ctx.client` | `TelegramClient` | Telegram client scoped untuk update ini. |
+| `ctx.telegram` | `TelegramClient` | Alias untuk `ctx.client`. |
+| `ctx.session` | `S` | Data session jika middleware `session()` dipasang. |
+| `ctx.scene` | `object \| undefined` | Kontrol scene jika middleware scene dipasang. |
+| `ctx.wizard` | `object \| undefined` | Kontrol wizard jika middleware wizard dipasang. |
+| `ctx.i18n` | `object \| undefined` | Helper i18n jika `I18n.middleware()` dipasang. |
 
-## Metode Pesan & Media
+## Pesan
 
-### Teks
-
-```typescript
+```ts
 await ctx.reply('Halo!');
-await ctx.replyWithHTML('<b>Tebal</b> dan <i>miring</i>');
-await ctx.replyWithMarkdown('**Tebal** dan _miring_');
+await ctx.replyQuote('Membalas pesan kamu.');
+await ctx.replyWithHTML('<b>Tebal</b>');
+await ctx.replyWithMarkdown('*Tebal*');
+await ctx.replyWithMarkdownV2('*Tebal*');
+await ctx.replyWithDraft('Teks draft awal');
 ```
 
-### Media
+Gunakan `Markup.escapeHTML()`, `Markup.escapeMarkdownV2()`, atau
+`Markup.escapeMarkdown()` sebelum menyisipkan nilai tidak tepercaya ke pesan
+berformat.
 
-```typescript
+## Media
+
+```ts
 await ctx.replyWithPhoto('file_id_atau_url');
 await ctx.replyWithLivePhoto('live_photo_file_id', 'photo_file_id', {
-    caption: 'Live photo Bot API 10.0',
+    caption: 'Live photo',
 });
 await ctx.replyWithVideo('file_id');
 await ctx.replyWithAudio('file_id');
 await ctx.replyWithDocument('file_id');
 await ctx.replyWithVoice('file_id');
+await ctx.replyWithVideoNote('file_id');
+await ctx.replyWithAnimation('file_id');
 await ctx.replyWithSticker('file_id');
-await ctx.replyWithAnimation('file_id'); // GIF
-await ctx.replyWithDice('🎲'); // Dadu animasi
-
-// Rich message Bot API 10.1 (sumber HTML atau Markdown — pilih salah satu)
-await ctx.replyWithRichMessage({
-    html: '<h2>Selamat datang</h2><p>Ini pesan <b>kaya</b>.</p>',
-});
+await ctx.replyWithMediaGroup([{ type: 'photo', media: 'file_id' }]);
+await ctx.replyWithPaidMedia(15, [{ type: 'photo', media: 'file_id' }]);
 ```
 
-### Pesan Interaktif
+Argumen file bisa berupa file ID, URL, buffer, stream, atau bentuk `InputFile`
+yang didukung.
 
-```typescript
-// Poll/Kuis
-await ctx.replyWithPoll('Pertanyaan?', [{ text: 'Pilihan A' }, { text: 'Pilihan B' }]);
-await ctx.replyWithPoll('Ibu kota Indonesia?', [{ text: 'Jakarta' }, { text: 'Surabaya' }], {
-    type: 'quiz',
-    correct_option_ids: [0],
-});
+## Pesan Interaktif
 
-// Venue & Lokasi
-await ctx.replyWithVenue(latitude, longitude, 'Nama Tempat', 'Alamat');
+```ts
+await ctx.replyWithPoll('Ship it?', [{ text: 'Ya' }, { text: 'Perlu review' }]);
+await ctx.stopPoll();
+await ctx.replyWithDice();
+await ctx.replyWithGame('game_short_name');
 await ctx.replyWithLocation(latitude, longitude);
-
-// Kontak
-await ctx.replyWithContact('08123456789', 'Nama', 'Depan');
+await ctx.replyWithVenue(latitude, longitude, 'Nama tempat', 'Alamat');
+await ctx.replyWithContact('+6281234567890', 'Ada');
+await ctx.replyWithChecklist('Tugas rilis', [{ text: 'Jalankan test' }]);
+await ctx.replyWithRichMessage({
+    html: '<h2>Selamat datang</h2><p>Ini pesan <b>rich</b>.</p>',
+});
 ```
+
+`replyWithRichMessage()` menerima tepat satu format source rich yang didukung
+oleh payload Telegram Bot API saat ini.
 
 ## Metode Edit
 
-```typescript
-// Edit teks pesan
+```ts
 await ctx.editMessageText('Teks baru');
-await ctx.editMessageText('Teks baru', { parse_mode: 'HTML' });
-
-// Edit keyboard
-await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([...]));
-
-// Edit caption media
+await ctx.editMessageReplyMarkup(Markup.inlineKeyboard([[Markup.button.callback('OK', 'ok')]]));
 await ctx.editMessageCaption('Caption baru');
-
-// Hapus pesan
+await ctx.editMessageMedia({ type: 'photo', media: 'new_file_id' });
+await ctx.editMessageLiveLocation(latitude, longitude);
+await ctx.stopMessageLiveLocation();
+await ctx.editMessageChecklist({
+    title: 'Checklist baru',
+    tasks: [{ text: 'Verifikasi docs' }],
+});
 await ctx.deleteMessage();
-await ctx.deleteMessage(messageId); // hapus pesan spesifik
+await ctx.deleteMessages([101, 102]);
 ```
+
+Helper edit menargetkan pesan saat ini atau pesan callback query jika tersedia.
+Helper akan melempar error jika identitas chat/message yang diperlukan tidak
+ada.
 
 ## Callback Query
 
-```typescript
-// Jawab callback query (wajib untuk menghentikan loading indicator)
+```ts
 await ctx.answerCbQuery();
-await ctx.answerCbQuery('Berhasil! ✅', false); // teks tanpa alert
-await ctx.answerCbQuery('Perhatian!', true); // tampilkan sebagai alert
+await ctx.answerCbQuery('Tersimpan');
+await ctx.answerCbQuery('Perlu perhatian', true);
 ```
+
+Jawab callback query untuk menghentikan loading indicator Telegram setelah klik
+tombol inline.
 
 ## Inline Query
 
-```typescript
+```ts
 await ctx.answerInlineQuery(results, {
     cache_time: 300,
     is_personal: true,
 });
 ```
 
-## Aksi Chat
+Helper ini hanya valid di update `inline_query`.
 
-```typescript
-// Tampilkan indikator aksi (mengetik, merekam, dll)
+## Chat Actions
+
+```ts
 await ctx.sendChatAction('typing');
 await ctx.sendChatAction('upload_photo');
 await ctx.sendChatAction('record_video');
 ```
 
-## Reaksi
+Chat action adalah indikator sementara di client. Ini tidak tersimpan sebagai
+pesan.
 
-```typescript
-// Tambahkan reaksi emoji ke pesan
+## Reactions
+
+```ts
 await ctx.setReaction('👍');
-await ctx.setReaction('🔥', true); // ukuran besar
+await ctx.setReaction([{ type: 'emoji', emoji: '🔥' }], true);
 await ctx.deleteMessageReaction(messageId, { user_id: userId });
 await ctx.deleteAllMessageReactions({ actor_chat_id: channelId });
 ```
 
-## Forum Topic
+Helper reaksi membutuhkan target chat dan message.
 
-```typescript
-await ctx.createForumTopic('Topik Baru', { icon_color: 0x6fb9f0 });
+## Forum Topics
+
+```ts
+await ctx.createForumTopic('Topik baru', { icon_color: 0x6fb9f0 });
+await ctx.editForumTopic(messageThreadId, { name: 'Topik diperbarui' });
 await ctx.closeForumTopic(messageThreadId);
 await ctx.reopenForumTopic(messageThreadId);
 await ctx.deleteForumTopic(messageThreadId);
-await ctx.editGeneralForumTopic('Diskusi Umum');
+await ctx.editGeneralForumTopic('Diskusi umum');
+await ctx.getForumTopicIconStickers();
 ```
+
+Helper forum topic membutuhkan kemampuan supergroup/forum dari Telegram.
 
 ## Administrasi Grup
 
-```typescript
-await ctx.banChatMember(userId);
-await ctx.banChatMember(userId, { until_date: timestamp, revoke_messages: true });
-
+```ts
+await ctx.banChatMember(userId, { revoke_messages: true });
 await ctx.unbanChatMember(userId);
 await ctx.restrictChatMember(userId, permissions);
 await ctx.promoteChatMember(userId, { can_delete_messages: true });
 await ctx.setChatAdministratorCustomTitle(userId, 'Moderator');
 await ctx.setChatPermissions({ can_send_messages: true });
-
 await ctx.getChatMember(userId);
 await ctx.getChatMembersCount();
-await ctx.getChatAdministrators();
 await ctx.getChatAdministrators({ return_bots: true });
-await ctx.leaveChat();
 await ctx.approveChatJoinRequest(userId);
 await ctx.declineChatJoinRequest(userId);
+await ctx.leaveChat();
 ```
 
-## Undangan & Info Chat
+Telegram mengharuskan bot memiliki admin rights yang sesuai sebelum metode ini
+bisa berhasil.
 
-```typescript
-const link = await ctx.createChatInviteLink({
-    name: 'Link VIP',
-    expire_date: timestamp,
+## Undangan dan Info Chat
+
+```ts
+const invite = await ctx.createChatInviteLink({
+    name: 'VIP',
     member_limit: 50,
 });
 
 await ctx.exportChatInviteLink();
-await ctx.getChat(); // info chat lengkap
+await ctx.createChatSubscriptionInviteLink(2_592_000, 100, { name: 'Grup berbayar' });
+await ctx.getChat();
 await ctx.getUserChatBoosts(userId);
 ```
 
-## Star & Hadiah
+Gunakan `ctx.telegram.callApi()` untuk metode Bot API langka yang belum punya
+shortcut.
 
-```typescript
+## Stars dan Gift
+
+```ts
 await ctx.getAvailableGifts();
 await ctx.sendGift(userId, giftId, { text: 'Selamat!' });
 await ctx.sendGiftToChat('@channel', giftId);
 await ctx.getUserGifts(userId, { limit: 10 });
 await ctx.getBusinessAccountGifts(businessConnectionId, { limit: 10 });
-await ctx.getStarBalance();
+await ctx.getMyStarBalance();
 await ctx.refundStarPayment(userId, chargeId);
-await ctx.getStarTransactions();
+await ctx.getStarTransactions({ limit: 10 });
 ```
+
+`ctx.getStarBalance()` tetap ada sebagai alias kompatibilitas. Pakai
+`ctx.getMyStarBalance()` untuk kode baru.
 
 ## Akses API Langsung
 
-```typescript
+```ts
 await ctx.telegram.callApi('sendChatAction', {
     chat_id: ctx.chat!.id,
     action: 'typing',
 });
 ```
 
+Client scoped dibuat per update, jadi middleware bisa mendekorasinya tanpa
+membocorkan state ke update lain.
+
 ## Verifikasi
 
-```typescript
-await ctx.verifyUser(userId, { custom_description: 'Anggota terverifikasi' });
+```ts
+await ctx.verifyUser(userId, { custom_description: 'Member terverifikasi' });
 await ctx.removeUserVerification(userId);
 await ctx.verifyChat(chatId);
 await ctx.removeChatVerification(chatId);
 ```
 
+Metode verifikasi merepresentasikan organisasi di balik bot.
+
 ## File
 
-```typescript
-// Dapatkan URL unduhan file
+```ts
 const url = await ctx.getFileLink(fileId);
 
-// Unduh langsung ke buffer atau file
 const buffer = await ctx.downloadFile(fileId);
-await ctx.downloadFile(fileId, './gambar.jpg'); // simpan ke disk
+await ctx.downloadFile(fileId, './image.jpg');
+```
+
+Tanpa `destPath`, `downloadFile()` resolve dengan `Buffer`. Dengan `destPath`,
+file ditulis ke disk dan resolve setelah write selesai.
+
+## Contoh
+
+```ts
+await ctx.replyWithPhoto('https://contoh.com/image.jpg', {
+    caption: '<b>Produk</b>\nHarga: $9.99',
+    parse_mode: 'HTML',
+    reply_markup: Markup.inlineKeyboard([[Markup.button.callback('Beli sekarang', 'buy_1')]]),
+});
+
+await ctx.replyWithInvoice(
+    'Keanggotaan Pro',
+    'Akses 30 hari',
+    'pro_30d',
+    'USD',
+    [{ label: 'Keanggotaan Pro', amount: 999 }],
+    { provider_token: process.env.PAYMENT_PROVIDER_TOKEN! }
+);
 ```

@@ -95,6 +95,12 @@ export interface BotOptions<C extends Context = Context> {
         interval?: number;
         limit?: number;
         timeout?: number;
+        /**
+         * Controls when polling offset is advanced.
+         * `received` preserves the historical behavior. `processed` advances
+         * only after an update handler succeeds.
+         */
+        offsetCommit?: 'received' | 'processed';
         /** Specify the types of updates you want to receive. If not set, all types are received. */
         allowed_updates?: UpdateType[];
     };
@@ -285,6 +291,14 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         ) {
             throw new TypeError('updateTimeout must be a non-negative number.');
         }
+        const offsetCommit = this.options?.polling?.offsetCommit;
+        if (
+            offsetCommit !== undefined &&
+            offsetCommit !== 'received' &&
+            offsetCommit !== 'processed'
+        ) {
+            throw new TypeError('polling.offsetCommit must be either "received" or "processed".');
+        }
         this.client = new TelegramClient(token, { hooks: this.options?.observability?.client });
     }
 
@@ -340,6 +354,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             throw new InvalidTokenError();
         }
 
+        this.setBotUsername(me.username);
         return me;
     }
 
@@ -532,6 +547,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         const interval = this.options?.polling?.interval ?? 300;
         const limit = this.options?.polling?.limit ?? 100;
         const timeout = this.options?.polling?.timeout ?? 30;
+        const offsetCommit = this.options?.polling?.offsetCommit ?? 'received';
         const allowedUpdates = this.options?.polling?.allowed_updates;
 
         while (this.isPolling) {
@@ -550,8 +566,19 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                         if (!this.isPolling) {
                             break;
                         }
-                        this.pollingOffset = Math.max(this.pollingOffset, update.update_id + 1);
+                        if (offsetCommit === 'received') {
+                            this.pollingOffset = Math.max(
+                                this.pollingOffset,
+                                update.update_id + 1
+                            );
+                        }
                         await this.handleUpdate(update);
+                        if (offsetCommit === 'processed') {
+                            this.pollingOffset = Math.max(
+                                this.pollingOffset,
+                                update.update_id + 1
+                            );
+                        }
                     }
                 }
             } catch (error) {

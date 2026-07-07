@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     allowChats,
     allowUsers,
+    productionSecurity,
     redactError,
     redactValue,
     requireAdmin,
@@ -38,6 +39,31 @@ describe('@vibegram/security', () => {
         })(ctx, next);
 
         expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('should compose production defaults from existing allow, spam, and safe error guards', async () => {
+        const allowed = createContext({ fromId: 42, chatId: -100 });
+        const denied = createContext({ fromId: 7, chatId: -100 });
+        const failed = createContext({ fromId: 42, chatId: -100 });
+        const deniedReasons: SecurityGuardReason[] = [];
+        const errors: unknown[] = [];
+        const guard = productionSecurity({
+            allowUsers: [42],
+            allowChats: [-100],
+            spam: { limit: 2, windowMs: 60_000 },
+            safeErrors: { reply: 'Safe failure.', onError: (_ctx, error) => errors.push(error) },
+            onDenied: (_ctx, reason) => deniedReasons.push(reason),
+        });
+
+        await guard(allowed, vi.fn(async () => undefined));
+        await guard(denied, vi.fn(async () => undefined));
+        await guard(failed, async () => {
+            throw new Error('database password leaked');
+        });
+
+        expect(deniedReasons).toEqual(['user_not_allowed']);
+        expect(failed.replies).toEqual(['Safe failure.']);
+        expect(errors).toHaveLength(1);
     });
 
     it('should block non-admin users and use chatMembers cache when available', async () => {

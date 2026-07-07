@@ -34,6 +34,9 @@ Methods available directly on the `Bot` instance (no Context required).
 | `bot.getMyCommands(extra?)`               | Get command list                             |
 | `bot.deleteMyCommands(extra?)`            | Delete command menu                          |
 
+Constructor polling options are configured with `new Bot(token, options)`.
+Runtime launch options are passed to `bot.launch(options?)`.
+
 ## Routing Methods
 
 Inherited from `Composer`:
@@ -134,3 +137,45 @@ await bot.callApi('setWebhook', {
     secret_token: 'my-secret',
 });
 ```
+
+## Constructor and Launch Options
+
+```ts
+const bot = new Bot(process.env.BOT_TOKEN!, {
+    polling: {
+        allowed_updates: ['message', 'callback_query'],
+        offsetCommit: 'processed',
+    },
+});
+
+await bot.launch({
+    onStart: me => {
+        console.log(`@${me.username} online`);
+    },
+});
+```
+
+Use `offsetCommit: 'received'` for historical polling behavior. Use
+`offsetCommit: 'processed'` when failed update handlers should be retried by the
+next polling cycle.
+
+## Plugin API
+
+```ts
+import { Preset, createPlugin } from 'vibegram';
+
+const greetingPlugin = createPlugin('greeting', (bot, options: { message: string }) => {
+    bot.command('hello', ctx => ctx.reply(options.message));
+});
+
+bot.plugin(greetingPlugin({ message: 'Hello!' }));
+
+const productionPreset = new Preset('production', [
+    greetingPlugin({ message: 'Hello!' }),
+]);
+
+bot.plugin(productionPreset);
+```
+
+Plugins install against the same composer surface as the bot, so they can
+register middleware, commands, listeners, and error handlers.

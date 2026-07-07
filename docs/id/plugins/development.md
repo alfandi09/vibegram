@@ -38,7 +38,7 @@ Saat pengembangan lokal, gunakan file dependency dari repository ini:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/runner": "file:../vibegram/plugins/runner"
   }
 }
@@ -116,7 +116,7 @@ Gunakan `vibegram` sebagai peer dependency agar user plugin tetap mengontrol ver
 ```json
 {
   "peerDependencies": {
-    "vibegram": ">=2.1.0"
+    "vibegram": ">=2.4.0"
   }
 }
 ```

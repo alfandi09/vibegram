@@ -25,7 +25,7 @@ Today, use the repository package as a local file dependency:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/security": "file:../vibegram/plugins/security"
   }
 }
@@ -35,13 +35,12 @@ Today, use the repository package as a local file dependency:
 
 ```typescript
 import { Bot } from 'vibegram';
-import { security } from '@vibegram/security';
+import { productionSecurity } from '@vibegram/security';
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.use(security({
+bot.use(productionSecurity({
     allowUsers: [123456789],
-    safeErrors: true,
     spam: {
         limit: 8,
         windowMs: 10_000,
@@ -52,6 +51,10 @@ bot.on('message:text', ctx => ctx.reply('Allowed.'));
 ```
 
 This blocks unlisted users before handlers run and catches downstream errors with a generic user-facing reply.
+
+`productionSecurity()` is the recommended preset for production bots. It composes the existing
+allow user/chat guards, `spamGuard()`, and `safeErrors()` defaults without adding an implicit admin
+requirement. Use `requireAdmin()` explicitly on commands that truly need chat administrator rights.
 
 ## Admin Commands
 
@@ -135,6 +138,11 @@ Default redacted keys include `token`, `bot_token`, `access_token`, `authorizati
 | `safeErrors` | `boolean \| SafeErrorsOptions` | disabled | Catch errors and reply safely |
 | `onDenied` | `(ctx, reason) => void` | none | Shared denied hook |
 
+### `productionSecurity(options)`
+
+Same options as `security(options)`, but `spam` and `safeErrors` are enabled by default. Pass
+`spam: false` or `safeErrors: false` only when another middleware layer already handles that concern.
+
 ### `spamGuard(options)`
 
 | Option | Type | Default | Description |
@@ -146,7 +154,7 @@ Default redacted keys include `token`, `bot_token`, `access_token`, `authorizati
 
 ## TypeScript API
 
-Exports include `security()`, `allowUsers()`, `allowChats()`, `requireAdmin()`, `spamGuard()`, `safeErrors()`, `verifyWebhookSecret()`, `redactValue()`, `redactError()`, `isAdministrator()`, `SecurityFlavor`, and `SecurityGuardReason`.
+Exports include `security()`, `productionSecurity()`, `allowUsers()`, `allowChats()`, `requireAdmin()`, `spamGuard()`, `safeErrors()`, `verifyWebhookSecret()`, `redactValue()`, `redactError()`, `isAdministrator()`, `SecurityFlavor`, and `SecurityGuardReason`.
 
 ## Failure Modes
 

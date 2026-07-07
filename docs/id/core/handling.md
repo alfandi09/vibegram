@@ -1,120 +1,128 @@
 # Routing & Listeners
 
-VibeGram menyediakan berbagai listener untuk menangani semua jenis update dari Telegram.
+VibeGram merutekan update masuk melalui middleware dan helper listener di `Bot`
+dan `Composer`.
 
 ## Command
 
-Tangani command bot (pesan yang diawali `/`):
-
-```typescript
-bot.command('start', async (ctx) => {
-    await ctx.reply('Halo! Saya siap membantu.');
+```ts
+bot.command('start', async ctx => {
+    await ctx.reply('Halo!');
 });
 
-// Beberapa command sekaligus
-bot.command(['bantuan', 'help', 'info'], async (ctx) => {
-    await ctx.reply('Daftar command: /start /bantuan');
+bot.command(['help', 'info'], async ctx => {
+    await ctx.reply('Command tersedia: /start /help');
 });
 ```
 
-### Argument Command
+Handler command menerima metadata terparse di `ctx.command`.
 
-```typescript
-bot.command('kirim', async (ctx) => {
-    const args = ctx.command?.args; // ['arg1', 'arg2']
-    const namaCommand = ctx.command?.name; // 'kirim'
-    await ctx.reply(`Argument: ${args?.join(', ')}`);
+## Argumen Command
+
+```ts
+bot.command('ban', async ctx => {
+    const target = ctx.command?.args[0];
+    const reason = ctx.command?.args.slice(1).join(' ');
+
+    await ctx.reply(`Target: ${target}, alasan: ${reason}`);
 });
 ```
 
-## Hears — Pencocokan Teks
+Command dengan suffix username bot sudah target-aware. `/start` tetap cocok,
+`/start@YourBot` cocok untuk bot ini, dan `/start@OtherBot` diabaikan setelah
+username bot diketahui dari `getMe()`.
 
-Tangani pesan yang mengandung teks tertentu:
+## Pencocokan Teks
 
-```typescript
-// String — cocok persis
-bot.hears('ping', ctx => ctx.reply('Pong! 🏓'));
+```ts
+bot.hears('ping', ctx => ctx.reply('Pong!'));
 
-// RegExp — dengan capture group via ctx.match
-bot.hears(/^pesan (.+)$/, async (ctx) => {
-    const isi = ctx.match![1]; // teks yang ditangkap
-    await ctx.reply(`Anda mengirim: "${isi}"`);
+bot.hears(/^harga (\d+)/i, ctx => {
+    const amount = ctx.match?.[1];
+    return ctx.reply(`Harga cocok: ${amount}`);
 });
 
-// Array trigger
-bot.hears(['halo', 'hai', /^hey/i], ctx => ctx.reply('Hai!'));
+bot.hears(['halo', 'hai', /^hey/i], ctx => ctx.reply('Halo!'));
 ```
 
-::: info ctx.match
-Saat trigger berupa RegExp, `ctx.match` berisi hasil `regex.exec(text)` — capture group tersedia via `ctx.match![1]`, `ctx.match![2]`, dst.
-:::
+Saat trigger berupa regular expression, capture group tersedia melalui
+`ctx.match`.
 
-## Action — Callback Query
+## Callback Actions
 
-Tangani klik tombol inline keyboard:
-
-```typescript
-bot.action('konfirmasi', async (ctx) => {
-    await ctx.answerCbQuery('✅ Dikonfirmasi!');
+```ts
+bot.action('confirm_order', async ctx => {
+    await ctx.answerCbQuery('Pesanan dikonfirmasi');
     await ctx.editMessageText('Pesanan dikonfirmasi.');
 });
 
-// RegExp dengan capture group
-bot.action(/^produk_(\d+)$/, async (ctx) => {
-    const id = ctx.match![1];
-    await ctx.answerCbQuery(`Produk #${id} dipilih`);
+bot.action(/^item_(\d+)$/, async ctx => {
+    const itemId = ctx.match?.[1];
+    await ctx.answerCbQuery(`Item ${itemId} dipilih`);
 });
 ```
 
-## On — Tipe Update Spesifik
+`bot.action()` tidak auto-answer callback query. Panggil `ctx.answerCbQuery()`
+di dalam handler untuk menghentikan loading indicator Telegram.
 
-Tangani tipe update atau properti pesan tertentu:
+## Event Listeners
 
-```typescript
-// Tipe update level root
+```ts
 bot.on('message', ctx => {
-    console.log('Ada pesan baru!');
+    console.log('Pesan baru', ctx.message?.message_id);
 });
 
-bot.on('callback_query', ctx => {
-    console.log('Ada klik tombol!');
+bot.on('photo', ctx => ctx.reply('Foto diterima.'));
+bot.on('document', ctx => ctx.reply('Dokumen diterima.'));
+bot.on('callback_query', ctx => ctx.answerCbQuery());
+
+bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media diterima.'));
+```
+
+`bot.on()` menerima tipe update root dan properti pesan umum.
+
+## Inline Queries
+
+```ts
+bot.on('inline_query', async ctx => {
+    await ctx.answerInlineQuery([
+        {
+            type: 'article',
+            id: '1',
+            title: 'Result 1',
+            input_message_content: { message_text: 'Halo!' },
+        },
+    ]);
 });
-
-// Properti dalam pesan
-bot.on('photo', ctx => ctx.reply('Foto diterima! 📸'));
-bot.on('video', ctx => ctx.reply('Video diterima! 🎬'));
-bot.on('document', ctx => ctx.reply('Dokumen diterima! 📄'));
-bot.on('sticker', ctx => ctx.reply('Stiker keren! 🎭'));
-bot.on('voice', ctx => ctx.reply('Pesan suara diterima! 🎙️'));
-bot.on('location', ctx => ctx.reply('Lokasi diterima! 📍'));
-bot.on('contact', ctx => ctx.reply('Kontak diterima! 👤'));
-
-// Array tipe
-bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media diterima!'));
 ```
 
-## Urutan Prioritas
+Handler inline query harus menjawab dengan objek result yang didukung Telegram.
 
-Middleware dan listener dieksekusi **sesuai urutan pendaftaran**. Yang pertama didaftarkan, pertama dieksekusi:
+## Urutan Eksekusi
 
-```typescript
-bot.use(logger());         // 1. Logger (selalu berjalan)
-bot.on('message', ...);    // 2. Pesan apa saja
-bot.command('start', ...); // 3. Hanya /start
-bot.hears(/hi/, ...);      // 4. Hanya teks "hi"
+Middleware dan listener berjalan sesuai urutan pendaftaran.
+
+```ts
+bot.use(logger());         // 1. Berjalan untuk setiap update
+bot.on('message', handle); // 2. Berjalan untuk message
+bot.command('start', fn);  // 3. Berjalan untuk /start
+bot.hears(/hi/i, fn);      // 4. Berjalan untuk teks yang cocok
 ```
+
+Letakkan middleware security, logging, session, dan rate-limit sebelum handler
+yang membutuhkannya.
 
 ## Menggabungkan Listener
 
-Gunakan `Composer` untuk mengelola listener dalam grup:
-
-```typescript
+```ts
 import { Composer } from 'vibegram';
 
-const mediaHandler = new Composer();
-mediaHandler.on('photo', handlePhoto);
-mediaHandler.on('video', handleVideo);
-mediaHandler.on('document', handleDocument);
+const media = new Composer();
+media.on('photo', handlePhoto);
+media.on('video', handleVideo);
+media.on('document', handleDocument);
 
-bot.use(mediaHandler);
+bot.use(media);
 ```
+
+Gunakan `Composer` untuk mengelompokkan route terkait ke module atau plugin.

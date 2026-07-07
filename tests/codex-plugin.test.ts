@@ -232,6 +232,43 @@ describe('vibegram/codex plugin', () => {
         );
     });
 
+    it('should not treat commands that only start with the command prefix as Codex commands', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codexbackup status');
+
+        const next = await runMiddleware(ctx, provider, { autoReply: false });
+
+        expect(provider.ask).not.toHaveBeenCalled();
+        expect(ctx.reply).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('should ignore Codex commands targeted at another bot username', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex@OtherBot status');
+
+        const next = await runMiddleware(ctx, provider, {
+            autoReply: false,
+            botUsername: 'mybot',
+        });
+
+        expect(provider.status).not.toHaveBeenCalled();
+        expect(ctx.reply).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledOnce();
+    });
+
+    it('should escape user-controlled Markdown in personality command replies', async () => {
+        const provider = createProvider('reply');
+        const ctx = createCtx('/codex personality *bold* [link](tg://user?id=1) `code`');
+
+        await runMiddleware(ctx, provider);
+
+        expect(ctx.reply).toHaveBeenCalledWith(
+            expect.stringContaining('\\*bold\\* \\[link\\](tg://user?id=1) \\`code\\`'),
+            { parse_mode: 'Markdown' }
+        );
+    });
+
     it('should export auth.json only for auth admins in private chats', async () => {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vibegram-codex-'));
         const authJsonPath = path.join(tmpDir, 'auth.json');

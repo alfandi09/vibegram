@@ -95,6 +95,12 @@ export interface SecurityOptions<C extends SecurityContext = SecurityContext> {
     onDenied?: (ctx: C, reason: SecurityGuardReason) => MaybePromise<void>;
 }
 
+export interface ProductionSecurityOptions<C extends SecurityContext = SecurityContext>
+    extends SecurityOptions<C> {
+    spam?: boolean | SpamGuardOptions<C>;
+    safeErrors?: boolean | SafeErrorsOptions<C>;
+}
+
 export interface RedactOptions {
     redact?: readonly string[];
     replacement?: string;
@@ -157,6 +163,23 @@ export function security<C extends SecurityContext = SecurityContext>(
     }
 
     return body;
+}
+
+/** Compose recommended production defaults without adding implicit admin checks. */
+export function productionSecurity<C extends SecurityContext = SecurityContext>(
+    options: ProductionSecurityOptions<C> = {}
+): SecurityMiddleware<C> {
+    const {
+        spam = { limit: 5, windowMs: 10_000 },
+        safeErrors = true,
+        ...rest
+    } = options;
+
+    return security({
+        ...rest,
+        spam,
+        safeErrors,
+    });
 }
 
 /** Allow only selected Telegram user IDs through the middleware chain. */

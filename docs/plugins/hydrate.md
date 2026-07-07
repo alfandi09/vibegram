@@ -34,7 +34,7 @@ Today, use the repository package as a local file dependency:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.1.0",
+    "vibegram": "^2.4.0",
     "@vibegram/hydrate": "file:../vibegram/plugins/hydrate"
   }
 }

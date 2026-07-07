@@ -68,6 +68,8 @@ const bot = new Bot(process.env.BOT_TOKEN!, {
 
 const client = new TelegramClient(process.env.BOT_TOKEN!, {
     networkRetries: 2,
+    maxJsonPayloadBytes: 50 * 1024 * 1024,
+    maxResponseBytes: 50 * 1024 * 1024,
     hooks: {
         onNetworkRetry: ({ method, retryAfterMs, remainingRetries }) => {
             console.warn(
@@ -84,3 +86,4 @@ const client = new TelegramClient(process.env.BOT_TOKEN!, {
 2. Middleware bawaan `logger()` tetap berguna untuk trace yang mudah dibaca manusia; hooks lebih cocok untuk metrics, tracing, dan structured logging.
 3. `rateLimit()` juga menyediakan `onLimitExceeded`, yang bisa dipakai sebagai sinyal throttling khusus.
 4. Retry network bersifat opt-in di `TelegramClient` melalui `networkRetries`; default-nya `0` untuk menghindari duplikasi request Bot API non-idempotent.
+5. `maxJsonPayloadBytes` membatasi payload JSON keluar, sedangkan `maxResponseBytes` membatasi response JSON/text/buffer masuk. Response API yang terlalu besar gagal sebagai `NetworkError` dengan token bot tetap di-redact.

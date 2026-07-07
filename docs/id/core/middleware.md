@@ -91,12 +91,35 @@ bot.catch((err, ctx) => {
 VibeGram menyertakan middleware siap pakai:
 
 ```typescript
-import { session, rateLimit, logger } from 'vibegram';
+import { session, rateLimit, logger, dedupeUpdates } from 'vibegram';
 
 bot.use(logger());           // Log setiap update
+bot.use(dedupeUpdates());    // Drop update Telegram duplikat
 bot.use(session());          // Aktifkan session per-pengguna
 bot.use(rateLimit());        // Batasi request berlebihan
 ```
+
+## Proteksi Update Duplikat
+
+Gunakan `dedupeUpdates()` saat deployment bisa menerima update yang sama lebih dari sekali,
+terutama dengan `polling.offsetCommit: 'processed'`, retry webhook, atau handler multi-step yang
+harus idempotent.
+
+```typescript
+import { Bot, dedupeUpdates } from 'vibegram';
+
+const bot = new Bot(process.env.BOT_TOKEN!, {
+    polling: { offsetCommit: 'processed' },
+});
+
+bot.use(dedupeUpdates({
+    ttlMs: 24 * 60 * 60 * 1000,
+    maxEntries: 10_000,
+}));
+```
+
+Secara default key memakai `ctx.update.update_id`. Untuk bot multi-process, berikan
+`UpdateDedupeStore` custom berbasis Redis atau datastore bersama.
 
 ## Komposisi Middleware
 

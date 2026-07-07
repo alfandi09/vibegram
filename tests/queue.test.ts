@@ -3,6 +3,22 @@ import { BotQueue } from '../src/queue';
 import { createMockClient } from './helpers/mock';
 
 describe('BotQueue', () => {
+    it('validates constructor and per-broadcast numeric options', async () => {
+        expect(() => new BotQueue(createMockClient(), { concurrency: 0 })).toThrow('concurrency');
+        expect(() => new BotQueue(createMockClient(), { delayMs: -1 })).toThrow('delayMs');
+
+        const queue = new BotQueue(createMockClient());
+
+        await expect(queue.broadcast([1], async () => undefined, { concurrency: 0 })).rejects.toThrow(
+            'concurrency'
+        );
+        await expect(queue.broadcast([1], async () => undefined, { delayMs: -1 })).rejects.toThrow(
+            'delayMs'
+        );
+        expect(() => queue.scheduleInterval('bad', 0, () => undefined)).toThrow('intervalMs');
+        expect(() => queue.scheduleOnce('bad', -1, () => undefined)).toThrow('delayMs');
+    });
+
     it('cancels only the targeted broadcast job', async () => {
         const queue = new BotQueue(createMockClient(), { concurrency: 1, delayMs: 0 });
         const callsA: Array<number | string> = [];

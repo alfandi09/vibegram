@@ -1,8 +1,8 @@
 # Instansi Bot & Polling
 
 <FeatureGrid title="Pilih mode launch lebih dulu" description="Gunakan polling untuk pengembangan lokal dan webhook native atau adapter untuk deployment produksi.">
-  <FeatureCard title="Polling" description="Long polling sederhana untuk lokal atau worker persistent." href="#mode-polling-pengembangan" cta="Buka polling" />
-  <FeatureCard title="Webhook native" description="VibeGram membuat server HTTP, mendaftarkan webhook, menyediakan health check, dan ikut graceful shutdown." href="#mode-webhook-produksi" cta="Buka webhook" />
+  <FeatureCard title="Polling" description="Long polling sederhana untuk lokal atau worker persistent." href="#opsi-polling" cta="Buka polling" />
+  <FeatureCard title="Webhook native" description="VibeGram mengelola server HTTP, registrasi webhook, health check, dan shutdown." href="#mode-webhook" cta="Buka webhook" />
   <FeatureCard title="Adapter framework" description="Mount handler webhook di Express, Fastify, Hono, Koa, atau native HTTP." href="/id/adapters/express" cta="Buka adapter" />
 </FeatureGrid>
 
@@ -11,42 +11,70 @@ Gunakan polling saat pengembangan lokal. Untuk produksi, gunakan webhook HTTPS d
 secret token dan endpoint health check.
 </SecurityNote>
 
-## Membuat Instansi Bot
+## Membuat Bot
 
 ```typescript
 import { Bot } from 'vibegram';
 
-const bot = new Bot('TOKEN_BOT_ANDA');
+const bot = new Bot(process.env.BOT_TOKEN!);
 ```
 
-::: tip Gunakan Variabel Lingkungan
-Jangan pernah hardcode token langsung di kode. Gunakan `.env` dan `process.env.BOT_TOKEN`.
-:::
+Simpan token di environment variable. `launch()` memvalidasi token dengan `getMe()`
+sebelum polling atau webhook dimulai.
 
-## Opsi Launch
+## Opsi Polling
 
-### Mode Polling (Pengembangan)
-
-Polling cocok untuk pengembangan lokal — bot mengambil update secara berkala dari Telegram.
+Konfigurasi polling lewat constructor:
 
 ```typescript
-bot.launch();
-```
-
-Dengan callback saat bot online:
-
-```typescript
-bot.launch({
-    onStart: me => {
-        console.log(`✅ Bot @${me.username} online!`);
-        console.log(`   ID: ${me.id}`);
+const bot = new Bot(process.env.BOT_TOKEN!, {
+    polling: {
+        interval: 300,
+        limit: 100,
+        timeout: 30,
+        offsetCommit: 'received',
+        allowed_updates: ['message', 'callback_query', 'chat_member'],
     },
 });
 ```
 
-### Mode Webhook (Produksi)
+`offsetCommit` menentukan kapan offset polling Telegram dinaikkan:
 
-Untuk produksi, gunakan webhook agar Telegram mengirim update langsung ke server Anda. Mode native ini membuat HTTP server, mendaftarkan webhook ke Telegram, dan tetap memakai graceful shutdown dari `bot.stop()`:
+| Nilai | Perilaku | Tradeoff |
+| --- | --- | --- |
+| `'received'` | Offset naik sebelum handler berjalan. | Kompatibel dengan perilaku lama dan menghindari update gagal berulang, tetapi crash bisa membuat update terlewat. |
+| `'processed'` | Offset naik hanya setelah `handleUpdate()` sukses. | Lebih aman untuk pemrosesan at-least-once, tetapi handler gagal dapat menerima update yang sama lagi. Gunakan handler idempotent atau `dedupeUpdates()`. |
+
+Mulai polling dengan callback startup opsional:
+
+```typescript
+await bot.launch({
+    onStart: me => {
+        console.log(`Bot @${me.username} aktif`);
+    },
+});
+```
+
+## Launch & Shutdown
+
+`launch()` mendaftarkan graceful shutdown handler untuk `SIGINT` dan `SIGTERM`.
+Anda juga bisa menghentikan bot secara manual:
+
+```typescript
+await bot.launch();
+await bot.stop('Maintenance');
+```
+
+Untuk process handling custom:
+
+```typescript
+process.once('SIGINT', () => void bot.stop('SIGINT'));
+process.once('SIGTERM', () => void bot.stop('SIGTERM'));
+```
+
+## Mode Webhook
+
+Untuk deployment produksi, gunakan webhook sebagai pengganti polling:
 
 ```typescript
 await bot.launch({
@@ -60,14 +88,18 @@ await bot.launch({
 });
 ```
 
-Jika Anda sudah punya server Express, Fastify, Hono, Koa, atau native HTTP sendiri, gunakan adapter framework lalu daftarkan webhook secara manual:
+`launch({ webhook })` menjalankan server HTTP native VibeGram, mendaftarkan webhook
+ke Telegram, dan berhenti dengan graceful saat `bot.stop()` atau process signal berjalan.
+
+Jika Anda sudah punya server Express, Fastify, Hono, Koa, atau native HTTP sendiri,
+mount adapter webhook dan daftarkan Telegram secara manual:
 
 ```typescript
 import express from 'express';
 import { createExpressMiddleware } from 'vibegram';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 const webhook = createExpressMiddleware(bot, {
     secretToken: process.env.WEBHOOK_SECRET,
@@ -77,80 +109,30 @@ const webhook = createExpressMiddleware(bot, {
 app.post('/webhook', webhook);
 app.get('/healthz', webhook);
 
-await bot.setWebhook(`https://domain-anda.com/webhook`, {
+await bot.setWebhook('https://domain-anda.com/webhook', {
     secret_token: process.env.WEBHOOK_SECRET,
 });
 
-app.listen(3000, () => console.log('Server webhook aktif di port 3000'));
-```
-
-## Graceful Shutdown
-
-VibeGram secara otomatis menangani sinyal `SIGINT` dan `SIGTERM` saat `launch()` dipanggil — semua update yang sedang diproses akan diselesaikan sebelum proses berhenti.
-
-```typescript
-// Sinyal ditangani secara otomatis, tidak perlu konfigurasi tambahan.
-bot.launch();
-
-// Hentikan bot secara manual jika diperlukan:
-await bot.stop();
-```
-
-## Validasi Token
-
-Saat `launch()` dipanggil, VibeGram otomatis memvalidasi token bot dengan memanggil `getMe()`. Jika token tidak valid, `InvalidTokenError` akan dilempar sebelum polling dimulai:
-
-```typescript
-import { InvalidTokenError } from 'vibegram';
-
-try {
-    await bot.launch();
-} catch (err) {
-    if (err instanceof InvalidTokenError) {
-        console.error('Token bot tidak valid! Periksa kembali token Anda.');
-        process.exit(1);
-    }
-}
+app.listen(3000);
 ```
 
 ## Metode Bot Level-Tinggi
 
-| Metode                        | Deskripsi                                                       |
-| ----------------------------- | --------------------------------------------------------------- |
-| `bot.launch(opts?)`           | Mulai polling atau native webhook dan daftarkan signal handlers |
-| `bot.stop()`                  | Hentikan polling/webhook dengan graceful (async)                |
-| `bot.handleUpdate(update)`    | Proses update secara manual                                     |
-| `bot.setWebhook(url, opts?)`  | Daftarkan URL webhook ke Telegram                               |
-| `bot.deleteWebhook(opts?)`    | Hapus webhook aktif                                             |
-| `bot.getWebhookInfo()`        | Ambil info webhook aktif                                        |
-| `bot.getMe()`                 | Ambil info bot                                                  |
-| `bot.setMyCommands(commands)` | Atur daftar command yang terlihat di menu                       |
-| `bot.deleteMyCommands()`      | Hapus daftar command                                            |
-| `bot.use(...middlewares)`     | Daftarkan middleware global                                     |
-| `bot.command(cmd, handler)`   | Tangani command `/cmd`                                          |
-| `bot.hears(trigger, handler)` | Cocokkan teks/regex                                             |
-| `bot.action(data, handler)`   | Tangani callback query                                          |
-| `bot.on(type, handler)`       | Tangani tipe update tertentu                                    |
+Metode ini tersedia langsung di instansi `Bot`:
 
-## Contoh Lengkap
-
-```typescript
-import { Bot, session, rateLimit } from 'vibegram';
-import 'dotenv/config';
-
-const bot = new Bot(process.env.BOT_TOKEN!);
-
-// Pasang middleware global
-bot.use(session({ initial: () => ({ count: 0 }) }));
-bot.use(rateLimit());
-
-// Handler
-bot.command('start', ctx => ctx.reply('Halo! 👋'));
-bot.command('hitung', async ctx => {
-    ctx.session.count++;
-    await ctx.reply(`Hitungan: ${ctx.session.count}`);
-});
-
-// Jalankan
-bot.launch({ onStart: me => console.log(`@${me.username} aktif`) });
-```
+| Metode | Deskripsi |
+| --- | --- |
+| `bot.launch(opts?)` | Mulai polling atau native webhook |
+| `bot.stop(reason?)` | Hentikan polling atau webhook secara graceful |
+| `bot.handleUpdate(update)` | Proses update secara manual |
+| `bot.setWebhook(url, opts?)` | Daftarkan URL webhook ke Telegram |
+| `bot.deleteWebhook(opts?)` | Hapus webhook aktif |
+| `bot.getWebhookInfo()` | Ambil informasi webhook aktif |
+| `bot.getMe()` | Ambil identitas bot |
+| `bot.setMyCommands(commands)` | Atur menu command yang terlihat |
+| `bot.deleteMyCommands()` | Hapus menu command yang terlihat |
+| `bot.use(...middlewares)` | Daftarkan middleware global |
+| `bot.command(cmd, handler)` | Tangani `/cmd` |
+| `bot.hears(trigger, handler)` | Cocokkan teks atau regex |
+| `bot.action(data, handler)` | Tangani callback query data |
+| `bot.on(type, handler)` | Tangani tipe update tertentu |

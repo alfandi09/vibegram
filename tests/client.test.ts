@@ -280,6 +280,35 @@ describe('TelegramClient', () => {
         expect(request).not.toHaveBeenCalled();
     });
 
+    it('rejects oversized Telegram API JSON responses', async () => {
+        const token = '123456:secret-token';
+        const client = new TelegramClient(token, { maxResponseBytes: 20 });
+        setMockTransport(
+            client,
+            vi.fn().mockResolvedValue(makeResponse({ ok: true, result: { text: 'x'.repeat(100) } }))
+        );
+
+        let thrown: unknown;
+        try {
+            await client.callApi('sendMessage');
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(NetworkError);
+        expect((thrown as Error).message).toContain('response exceeds maximum size');
+        expect((thrown as Error).message).not.toContain(token);
+    });
+
+    it('validates maxResponseBytes option', () => {
+        expect(() => new TelegramClient('test-token', { maxResponseBytes: 0 })).toThrow(
+            'maxResponseBytes'
+        );
+        expect(() => new TelegramClient('test-token', { maxResponseBytes: Number.NaN })).toThrow(
+            'maxResponseBytes'
+        );
+    });
+
     it('does not apply JSON size limits to multipart uploads', async () => {
         const client = new TelegramClient('test-token', { maxJsonPayloadBytes: 1 });
         const request = vi.fn().mockResolvedValue(makeResponse({ ok: true, result: true }));

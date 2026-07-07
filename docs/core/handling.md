@@ -1,84 +1,128 @@
 # Routing & Listeners
 
-VibeGram provides several methods for routing incoming updates to handler functions.
+VibeGram routes incoming updates through middleware and listener helpers on
+`Bot` and `Composer`.
 
 ## Commands
 
-```typescript
-bot.command('start', async (ctx) => {
+```ts
+bot.command('start', async ctx => {
     await ctx.reply('Hello!');
 });
 
-// Access parsed arguments
-bot.command('ban', async (ctx) => {
-    const args = ctx.command?.args; // ['@user', 'spam']
-    const target = args?.[0];
-    const reason = args?.slice(1).join(' ');
+bot.command(['help', 'info'], async ctx => {
+    await ctx.reply('Available commands: /start /help');
 });
 ```
+
+Command handlers receive parsed metadata in `ctx.command`.
+
+## Command Arguments
+
+```ts
+bot.command('ban', async ctx => {
+    const target = ctx.command?.args[0];
+    const reason = ctx.command?.args.slice(1).join(' ');
+
+    await ctx.reply(`Target: ${target}, reason: ${reason}`);
+});
+```
+
+Commands with bot username suffixes are target-aware. `/start` still matches,
+`/start@YourBot` matches this bot, and `/start@OtherBot` is ignored after the
+bot username is known from `getMe()`.
 
 ## Text Matching
 
-```typescript
-// Exact string match
-bot.hears('hello', ctx => ctx.reply('Hi!'));
+```ts
+bot.hears('ping', ctx => ctx.reply('Pong!'));
 
-// Regex match
-bot.hears(/price (\d+)/i, ctx => ctx.reply('Price matched!'));
+bot.hears(/^price (\d+)/i, ctx => {
+    const amount = ctx.match?.[1];
+    return ctx.reply(`Price matched: ${amount}`);
+});
+
+bot.hears(['hello', 'hi', /^hey/i], ctx => ctx.reply('Hello!'));
 ```
 
-## Event Listeners
-
-Listen for specific update types using `bot.on()`:
-
-```typescript
-bot.on('message', ctx => { /* any message */ });
-bot.on('photo', ctx => { /* photo messages */ });
-bot.on('document', ctx => { /* document messages */ });
-bot.on('sticker', ctx => { /* sticker messages */ });
-bot.on('voice', ctx => { /* voice messages */ });
-bot.on('video', ctx => { /* video messages */ });
-bot.on('video_note', ctx => { /* circular video notes */ });
-bot.on('animation', ctx => { /* GIF/animations */ });
-bot.on('contact', ctx => { /* shared contacts */ });
-bot.on('location', ctx => { /* shared locations */ });
-bot.on('poll', ctx => { /* poll updates */ });
-bot.on('callback_query', ctx => { /* inline button presses */ });
-bot.on('inline_query', ctx => { /* inline mode queries */ });
-bot.on('edited_message', ctx => { /* edited messages */ });
-bot.on('channel_post', ctx => { /* channel posts */ });
-bot.on('chat_member', ctx => { /* member status changes */ });
-bot.on('chat_join_request', ctx => { /* join requests */ });
-```
+When the trigger is a regular expression, capture groups are available through
+`ctx.match`.
 
 ## Callback Actions
 
-Handle inline keyboard button presses:
-
-```typescript
-// Exact match
-bot.action('confirm_order', async (ctx) => {
-    await ctx.answerCbQuery('Order confirmed!');
+```ts
+bot.action('confirm_order', async ctx => {
+    await ctx.answerCbQuery('Order confirmed');
+    await ctx.editMessageText('Order confirmed.');
 });
 
-// Regex match — capture groups are injected into ctx.match
-bot.action(/item_(\d+)/, async (ctx) => {
-    const itemId = ctx.match![1];
+bot.action(/^item_(\d+)$/, async ctx => {
+    const itemId = ctx.match?.[1];
     await ctx.answerCbQuery(`Selected item ${itemId}`);
 });
 ```
 
-::: warning
-Since v1.1, `bot.action()` no longer auto-answers callback queries. You must call `ctx.answerCbQuery()` manually in your handler to dismiss the loading indicator.
-:::
+`bot.action()` does not auto-answer callback queries. Call `ctx.answerCbQuery()`
+inside the handler to dismiss Telegram's loading indicator.
+
+## Event Listeners
+
+```ts
+bot.on('message', ctx => {
+    console.log('New message', ctx.message?.message_id);
+});
+
+bot.on('photo', ctx => ctx.reply('Photo received.'));
+bot.on('document', ctx => ctx.reply('Document received.'));
+bot.on('callback_query', ctx => ctx.answerCbQuery());
+
+bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media received.'));
+```
+
+`bot.on()` accepts root update types and common message properties.
 
 ## Inline Queries
 
-```typescript
-bot.on('inline_query', async (ctx) => {
-    const results = [
-        { type: 'article', id: '1', title: 'Result 1', input_message_content: { message_text: 'Hello!' } }
-    ];
-    await ctx.answerInlineQuery(results);
+```ts
+bot.on('inline_query', async ctx => {
+    await ctx.answerInlineQuery([
+        {
+            type: 'article',
+            id: '1',
+            title: 'Result 1',
+            input_message_content: { message_text: 'Hello!' },
+        },
+    ]);
 });
 ```
+
+Inline query handlers must answer with result objects supported by Telegram.
+
+## Execution Order
+
+Middleware and listeners run in registration order.
+
+```ts
+bot.use(logger());         // 1. Runs for every update
+bot.on('message', handle); // 2. Runs for messages
+bot.command('start', fn);  // 3. Runs for /start
+bot.hears(/hi/i, fn);      // 4. Runs for matching text
+```
+
+Put security, logging, session, and rate-limit middleware before handlers that
+depend on them.
+
+## Composing Listeners
+
+```ts
+import { Composer } from 'vibegram';
+
+const media = new Composer();
+media.on('photo', handlePhoto);
+media.on('video', handleVideo);
+media.on('document', handleDocument);
+
+bot.use(media);
+```
+
+Use `Composer` to group related routes into modules or plugins.

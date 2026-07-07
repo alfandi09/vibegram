@@ -1,159 +1,169 @@
 # Session
 
-Session memungkinkan bot menyimpan data per-pengguna yang persisten di antara update. VibeGram menggunakan pola **adapter** sehingga Anda bisa menyimpan session di memori, Redis, MongoDB, atau penyimpanan lainnya.
+Middleware `session()` menambahkan `ctx.session` ke setiap update yang memiliki
+key chat/user. Gunakan untuk state kecil per user seperti preferensi, progress
+wizard, atau data form sementara.
 
-## Setup Dasar
+## Memulai Cepat
 
-```typescript
+```ts
 import { Bot, session } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-// Pasang session dengan nilai awal
-bot.use(session({
-    initial: () => ({ count: 0, bahasa: 'id' })
-}));
+bot.use(session());
 
-bot.command('hitung', async (ctx) => {
-    ctx.session.count++;
-    await ctx.reply(`Anda telah mengirim ${ctx.session.count} pesan.`);
+bot.command('count', async ctx => {
+    ctx.session.count = (ctx.session.count ?? 0) + 1;
+    await ctx.reply(`Count: ${ctx.session.count}`);
 });
 ```
 
-## Session Bertipe (TypeScript)
+State session dimuat sebelum middleware berikutnya berjalan dan disimpan setelah
+`next()` selesai.
 
-Definisikan interface untuk session Anda:
+## Session Bertipe
 
-```typescript
-interface SessionData {
+```ts
+type MySession = {
     count: number;
-    bahasa: string;
-    keranjang: string[];
-    lastSeen?: Date;
-}
+    locale?: string;
+};
 
-bot.use(session<SessionData>({
-    initial: () => ({
-        count: 0,
-        bahasa: 'id',
-        keranjang: []
+bot.use(
+    session<MySession>({
+        initial: () => ({ count: 0 }),
     })
-}));
+);
 
-// ctx.session.count dikenali sebagai `number`
-// ctx.session.keranjang dikenali sebagai `string[]`
+bot.command('lang', ctx => {
+    ctx.session.locale = 'id';
+});
 ```
 
-## Opsi Konfigurasi
+Gunakan `initial()` supaya handler tidak perlu banyak pengecekan defensif.
 
-```typescript
-bot.use(session({
-    // Nilai awal untuk session baru
-    initial: () => ({ count: 0 }),
+## Opsi Session
 
-    // Kunci session kustom (default: `${chatId}:${fromId}`)
-    getSessionKey: (ctx) => {
-        return ctx.from?.id?.toString(); // per-pengguna global
-    },
+| Opsi | Tipe | Default | Deskripsi |
+| --- | --- | --- | --- |
+| `store` | `SessionStore` | `new MemorySessionStore()` | Adapter storage untuk data session. |
+| `getSessionKey` | `(ctx) => string \| undefined` | `${chatId}:${fromId}` | Membuat key storage. |
+| `initial` | `() => S` | `{}` | Membuat session baru saat record belum ada. |
 
-    // Adapter penyimpanan kustom (default: MemorySessionStore)
-    store: myCustomStore,
-}));
-```
+Jika `getSessionKey()` mengembalikan `undefined`, update tetap lanjut tanpa
+persistensi `ctx.session`.
 
 ## Keamanan Konkurensi
 
-Middleware `session()` menserialkan siklus muat → handler → simpan **per kunci session**. Update bersamaan untuk `chatId:userId` yang sama diproses satu per satu, jadi dua pesan beruntun dari pengguna yang sama tidak akan membaca state awal yang sama lalu saling menimpa perubahan (last-writer-wins). Update untuk kunci berbeda tetap berjalan paralel.
+Middleware menserialisasi siklus load-handler-save per session key. Dua update
+untuk user yang sama tidak menyimpan ulang dari state awal yang sama. Session
+key berbeda tetap bisa berjalan paralel.
 
-## MemorySessionStore (Bawaan)
+## MemorySessionStore
 
-VibeGram menggunakan `MemorySessionStore` secara default dengan:
-- **TTL**: 24 jam (dapat dikonfigurasi)
-- **Eviksi LRU**: membaca session menyegarkan posisinya, jadi entri yang paling lama tak dipakai dihapus lebih dulu saat kapasitas penuh (default: 10.000)
+```ts
+import { MemorySessionStore, session } from 'vibegram';
 
-```typescript
-import { MemorySessionStore } from 'vibegram';
-
-const store = new MemorySessionStore(
-    3600_000,  // TTL: 1 jam (dalam ms)
-    5000       // Maksimal 5.000 session
+bot.use(
+    session({
+        store: new MemorySessionStore(
+            24 * 60 * 60 * 1000, // ttlMs
+            10_000, // maxEntries
+            60_000 // cleanupIntervalMs
+        ),
+    })
 );
-
-bot.use(session({ store }));
 ```
+
+Store bawaan bersifat volatile. Cocok untuk development, bot single-process,
+dan state pendek. Record kedaluwarsa berdasarkan TTL dan entry
+least-recently-used akan dieviction saat `maxEntries` tercapai.
 
 ## Adapter Redis
 
-Untuk lingkungan produksi, gunakan Redis agar session persisten saat restart:
+Gunakan store eksternal untuk bot produksi yang berjalan di banyak worker atau
+perlu state bertahan setelah restart.
 
-```typescript
-import Redis from 'ioredis';
-import { createRedisStore } from './examples/redis-session';
+```ts
+const redisStore = {
+    async get(key: string) {
+        const value = await redis.get(key);
+        return value ? JSON.parse(value) : undefined;
+    },
+    async set(key: string, value: unknown) {
+        await redis.set(key, JSON.stringify(value), { EX: 60 * 60 * 24 });
+    },
+    async delete(key: string) {
+        await redis.del(key);
+    },
+};
 
-const redis = new Redis(process.env.REDIS_URL!);
-
-bot.use(session({
-    store: createRedisStore(redis, { ttlSeconds: 7 * 24 * 3600 }), // 7 hari
-    initial: () => ({ count: 0 }),
-}));
+bot.use(session({ store: redisStore }));
 ```
 
 ## Menghapus Session
 
-Set session ke `null` untuk menghapus data pengguna:
+Isi `ctx.session` dengan `null` atau `undefined` untuk menghapus session
+tersimpan setelah handler selesai.
 
-```typescript
-bot.command('reset', async (ctx) => {
-    ctx.session = null as any; // hapus dari store
-    await ctx.reply('Session direset! ♻️');
+```ts
+bot.command('reset', async ctx => {
+    ctx.session = null;
+    await ctx.reply('Session dihapus.');
 });
 ```
 
-## Kunci Session Kustom
+## Key Session Kustom
 
-Secara default, kunci session adalah `${chatId}:${fromId}`. Ubah ini jika perlu:
-
-```typescript
-// Session per-pengguna (dibagikan di semua chat)
-bot.use(session({
-    getSessionKey: (ctx) => ctx.from?.id?.toString(),
-}));
-
-// Session per-chat (dibagikan di semua anggota)
-bot.use(session({
-    getSessionKey: (ctx) => ctx.chat?.id?.toString(),
-}));
+```ts
+bot.use(
+    session({
+        getSessionKey: ctx => {
+            if (!ctx.chat) return undefined;
+            return `chat:${ctx.chat.id}`;
+        },
+    })
+);
 ```
 
-## Membuat Adapter Kustom
+Gunakan key per chat untuk state grup bersama dan key chat+user untuk state user
+pribadi.
 
-Implementasikan interface `SessionStore`:
+## Adapter Storage Kustom
 
-```typescript
+```ts
 import type { SessionStore } from 'vibegram';
 
-class MongoSessionStore implements SessionStore {
-    private collection: any;
-
-    constructor(collection: any) {
-        this.collection = collection;
-    }
-
+class DatabaseSessionStore implements SessionStore {
     async get(key: string) {
-        const doc = await this.collection.findOne({ _id: key });
-        return doc?.data ?? undefined;
+        return db.session.findUnique({ where: { key } });
     }
 
-    async set(key: string, value: any) {
-        await this.collection.updateOne(
-            { _id: key },
-            { $set: { data: value, updatedAt: new Date() } },
-            { upsert: true }
-        );
+    async set(key: string, value: unknown) {
+        await db.session.upsert({
+            where: { key },
+            create: { key, value },
+            update: { value },
+        });
     }
 
     async delete(key: string) {
-        await this.collection.deleteOne({ _id: key });
+        await db.session.delete({ where: { key } });
     }
 }
 ```
+
+Adapter sebaiknya memakai parameterized query, TTL atau kebijakan cleanup, dan
+serialisasi JSON yang stabil.
+
+## Manajemen Memori
+
+Untuk proses long-running, pilih salah satu:
+
+- Pertahankan limit default `MemorySessionStore` untuk bot kecil.
+- Sesuaikan `ttlMs` dan `maxEntries` dengan traffic yang diharapkan.
+- Panggil `store.close()` saat graceful shutdown jika membuat
+  `MemorySessionStore` secara manual.
+- Gunakan Redis atau store eksternal lain untuk bot produksi yang scale
+  horizontal.

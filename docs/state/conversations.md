@@ -1,142 +1,147 @@
 # Conversations
 
-<FeatureGrid title="Use conversations for non-linear flows" description="Conversation handlers stay readable because waits, validation, branching, and timeouts live in normal async code.">
-  <FeatureCard title="Typed wait helpers" description="Wait for text, media, callback queries, contacts, locations, or mixed input." href="#wait-methods" />
-  <FeatureCard title="Validation and retries" description="Re-prompt users when input does not match your validation rules." href="#validation" />
-  <FeatureCard title="Branching logic" description="Use normal if/else, loops, and try/catch for complex support or order flows." href="#branching" />
-</FeatureGrid>
+Conversations model free-form multi-step flows where users can answer with text,
+buttons, or media. Use them when the next step depends on runtime input and a
+linear wizard would be too rigid.
 
-<MethodSignature
-  name="Conversation.waitForAny"
-  signature="const input = await c.waitForAny(options)"
-  returns="Promise&lt;ConversationWaitForAnyResult&gt;"
-  :params="[
-    { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validation, and validation error message.' }
-  ]"
-/>
+```ts
+import { Bot, Conversation } from 'vibegram';
 
-Conversations provide a fluent, `await`-based API for building multi-step dialogues. Unlike Wizards (which use sequential step arrays), Conversations let you write natural async/await code with branching, loops, and validation.
+const bot = new Bot(process.env.BOT_TOKEN!);
+const conversations = new Conversation();
+
+bot.use(conversations.middleware());
+```
 
 ## Quick Start
 
-```typescript
-import { Bot, session, Conversation } from 'vibegram';
+```ts
+conversations.define('profile', async (ctx, conv) => {
+    await ctx.reply('What is your name?');
+    const name = await conv.waitForText();
 
-const bot = new Bot('YOUR_BOT_TOKEN');
-bot.use(session());
+    await ctx.reply('Send a profile photo.');
+    const photo = await conv.waitForPhoto();
 
-const conv = new Conversation();
-
-conv.define('order', async (ctx, c) => {
-    await ctx.reply('What product do you want?');
-    const product = await c.waitForText();
-
-    await ctx.reply('How many?');
-    const qty = await c.waitForText({
-        validate: ctx => !isNaN(parseInt(ctx.message?.text || '')),
-        validationError: 'Please enter a valid number.',
-    });
-
-    await ctx.reply(`Order confirmed: ${parseInt(qty)}x ${product}`);
+    await ctx.reply(`Saved ${name} with ${photo.length} photo sizes.`);
 });
 
-bot.use(conv.middleware());
-bot.command('order', ctx => conv.enter('order', ctx));
+bot.command('profile', ctx => conversations.enter('profile', ctx));
 ```
+
+When a chat enters a conversation, later updates for the same chat/user are
+delivered to the active wait step before normal handlers run.
+
+## Conversation Options
+
+```ts
+const conversations = new Conversation({
+    defaultTimeout: 5 * 60 * 1000,
+});
+```
+
+`defaultTimeout` controls how long an idle active conversation can stay in
+memory. The default is 5 minutes.
 
 ## Wait Methods
 
-| Method                             | Returns             | Waits for                            |
-| ---------------------------------- | ------------------- | ------------------------------------ |
-| `conv.waitForText(opts?)`          | `string`            | Text message                         |
-| `conv.waitForPhoto(opts?)`         | `PhotoSize[]`       | Photo message                        |
-| `conv.waitForCallbackQuery(opts?)` | `string`            | Inline button press                  |
-| `conv.waitForContact(opts?)`       | `Contact`           | Shared contact                       |
-| `conv.waitForLocation(opts?)`      | `Location`          | Shared location                      |
-| `conv.waitForAny(opts?)`           | discriminated union | Text, callback data, or common media |
-| `conv.wait(opts?)`                 | `Context`           | Any update (raw)                     |
+| Method | Resolves with | Notes |
+| --- | --- | --- |
+| `conv.wait()` | `Context` | Raw next update for the same chat/user. |
+| `conv.waitForText()` | `string` | Requires a text message. |
+| `conv.waitForPhoto()` | `PhotoSize[]` | Requires a photo message. |
+| `conv.waitForCallbackQuery()` | `string` | Requires callback query data. |
+| `conv.waitForContact()` | `Contact` | Requires a shared contact. |
+| `conv.waitForLocation()` | `Location` | Requires a shared location. |
+| `conv.waitForAny()` | Discriminated union | Text, callback data, or common media. |
+
+Every wait method accepts `timeout`, `validate`, and `validationError`.
 
 ## Mixed Input
 
-Use `waitForAny()` when one step accepts several input types:
+```ts
+const result = await conv.waitForAny();
 
-```typescript
-const input = await c.waitForAny({
-    validationError: 'Send text, press a button, or attach media.',
-});
+if (result.type === 'text') {
+    await result.ctx.reply(`Text: ${result.text}`);
+}
 
-if (input.type === 'text') {
-    await ctx.reply(`Text: ${input.text}`);
-} else if (input.type === 'callback') {
-    await ctx.reply(`Button: ${input.data}`);
-} else if (input.mediaType === 'photo') {
-    await ctx.reply(`Photo variants: ${input.media.length}`);
-} else {
-    await ctx.reply(`Media type: ${input.mediaType}`);
+if (result.type === 'callback') {
+    await result.ctx.answerCallbackQuery();
+}
+
+if (result.type === 'media') {
+    await result.ctx.reply(`Media type: ${result.mediaType}`);
 }
 ```
+
+`waitForAny()` is useful when one step accepts multiple Telegram input types.
 
 ## Validation
 
-If validation fails, the user is re-prompted automatically:
-
-```typescript
-const email = await c.waitForText({
-    validate: ctx => /\S+@\S+\.\S+/.test(ctx.message?.text || ''),
-    validationError: 'Please enter a valid email address.',
+```ts
+const quantity = await conv.waitForText({
+    validate: ctx => Number.isInteger(Number(ctx.message?.text)),
+    validationError: 'Send a whole number.',
 });
 ```
+
+When validation fails, the update is consumed, `validationError` is sent if
+provided, and the conversation keeps waiting.
 
 ## Timeouts
 
-```typescript
+```ts
 try {
-    const answer = await c.waitForText({ timeout: 30000 }); // 30 seconds
-    await ctx.reply(`You said: ${answer}`);
-} catch (err) {
-    if (err instanceof ConversationTimeout) {
-        await ctx.reply('Time is up! Conversation cancelled.');
-    }
+    const email = await conv.waitForText({ timeout: 30_000 });
+    await ctx.reply(`Email saved: ${email}`);
+} catch (error) {
+    await ctx.reply('Timed out. Start again when ready.');
 }
 ```
 
+Use per-step `timeout` for user-facing deadlines. Use `defaultTimeout` for
+memory cleanup of idle conversations.
+
 ## Branching
 
-Because conversations are plain async functions, you can use any control flow:
+```ts
+await ctx.reply('Choose: basic or pro');
+const plan = await conv.waitForText();
 
-```typescript
-conv.define('support', async (ctx, c) => {
-    await ctx.reply('What do you need help with?\n1. Billing\n2. Technical');
-    const choice = await c.waitForText();
+if (plan === 'pro') {
+    await ctx.reply('Send company name.');
+    const company = await conv.waitForText();
+    await ctx.reply(`Pro plan for ${company}.`);
+} else {
+    await ctx.reply('Basic plan selected.');
+}
+```
 
-    if (choice === '1') {
-        await ctx.reply('Describe your billing issue:');
-        const issue = await c.waitForText();
-        await ctx.reply(`Billing ticket created: "${issue}"`);
-    } else {
-        await ctx.reply('Describe the technical problem:');
-        const issue = await c.waitForText();
-        await ctx.reply('Attach a screenshot if possible:');
-        try {
-            const photo = await c.waitForPhoto({ timeout: 60000 });
-            await ctx.reply('Screenshot received. Ticket created.');
-        } catch {
-            await ctx.reply('No screenshot provided. Ticket created without attachment.');
-        }
-    }
+Because the handler is plain async TypeScript, you can use normal `if`, `switch`,
+loops, and helper functions.
+
+## Status and Exit
+
+```ts
+bot.command('cancel', ctx => {
+    conversations.leave(ctx);
+    return ctx.reply('Conversation cancelled.');
+});
+
+bot.command('status', ctx => {
+    return ctx.reply(conversations.isActive(ctx) ? 'Active' : 'No active conversation');
 });
 ```
 
+Call `cancelAll()` during graceful shutdown if you need to clear timers before
+closing external resources.
+
 ## Conversation vs Wizard
 
-| Feature     | Wizard                   | Conversation                             |
-| ----------- | ------------------------ | ---------------------------------------- |
-| Code style  | Array of step functions  | Single async function                    |
-| Branching   | Manual cursor jumping    | Native if/else                           |
-| Validation  | Manual (don't call next) | Built-in validate/retry                  |
-| Timeouts    | Not built-in             | Built-in                                 |
-| Input types | Text only                | Text, photo, callback, contact, location |
-
-::: tip
-Use **Wizards** for simple linear forms. Use **Conversations** for complex flows with branching, validation, and multiple input types.
-:::
+| Use Conversations when... | Use Wizards when... |
+| --- | --- |
+| Steps branch heavily. | Steps are mostly linear. |
+| You want `await`-style flow control. | You want explicit step handlers. |
+| A step can accept multiple input types. | Each step has a fixed expected input. |
+| The flow is easier to read as one async function. | The flow is easier to split into steps. |

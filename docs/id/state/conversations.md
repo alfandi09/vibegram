@@ -1,195 +1,147 @@
 # Conversation
 
-<FeatureGrid title="Gunakan conversation untuk flow non-linear" description="Handler conversation tetap mudah dibaca karena wait, validasi, branching, dan timeout ditulis sebagai kode async biasa.">
-  <FeatureCard title="Wait helper bertipe" description="Tunggu teks, media, callback query, kontak, lokasi, atau input campuran." href="#metode-wait" cta="Buka wait" />
-  <FeatureCard title="Validasi dan retry" description="Minta pengguna mengirim ulang saat input tidak cocok dengan aturan validasi." href="#c-waitfortext-opts" cta="Buka validasi" />
-  <FeatureCard title="Branching normal" description="Gunakan if/else, loop, dan try/catch untuk flow order atau support yang kompleks." href="#contoh-form-pembelian" cta="Buka contoh" />
-</FeatureGrid>
+Conversation memodelkan flow multi-step bebas saat user bisa menjawab dengan
+teks, tombol, atau media. Gunakan saat langkah berikutnya bergantung pada input
+runtime dan wizard linear terasa terlalu kaku.
 
-<MethodSignature
-  name="Conversation.waitForAny"
-  signature="const input = await c.waitForAny(options)"
-  returns="Promise&lt;ConversationWaitForAnyResult&gt;"
-  :params="[
-    { name: 'options', type: 'WaitOptions', required: false, description: 'Timeout, validasi, dan pesan error validasi.' }
-  ]"
-/>
-
-Conversation memungkinkan bot menjalankan dialog interaktif secara linear menggunakan sintaks `async/await` — bot bisa "menunggu" respons pengguna tanpa callback yang rumit.
-
-## Konsep Dasar
-
-```typescript
-import { Conversation, Bot, session } from 'vibegram';
+```ts
+import { Bot, Conversation } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
-bot.use(session());
+const conversations = new Conversation();
 
-const conv = new Conversation();
+bot.use(conversations.middleware());
+```
 
-conv.define('daftar', async (ctx, c) => {
-    // Langkah 1: Tanya nama
-    await ctx.reply('Siapa nama Anda?');
-    const nama = await c.waitForText();
+## Memulai Cepat
 
-    // Langkah 2: Tanya usia
-    await ctx.reply(`Halo ${nama}! Berapa usia Anda?`);
-    const usia = await c.waitForText({
-        validate: ctx => !isNaN(Number(ctx.message?.text)),
-        validationError: 'Masukkan angka yang valid:',
-    });
+```ts
+conversations.define('profile', async (ctx, conv) => {
+    await ctx.reply('Siapa nama kamu?');
+    const name = await conv.waitForText();
 
-    await ctx.reply(`✅ Terdaftar: ${nama}, ${usia} tahun.`);
+    await ctx.reply('Kirim foto profil.');
+    const photo = await conv.waitForPhoto();
+
+    await ctx.reply(`Tersimpan: ${name}, ${photo.length} ukuran foto.`);
 });
 
-bot.use(conv.middleware());
-bot.command('daftar', ctx => conv.enter('daftar', ctx));
+bot.command('profile', ctx => conversations.enter('profile', ctx));
 ```
+
+Saat chat masuk ke conversation, update berikutnya untuk chat/user yang sama
+dikirim ke step yang sedang menunggu sebelum handler normal berjalan.
 
 ## Opsi Conversation
 
-```typescript
-const conv = new Conversation({
-    defaultTimeout: 5 * 60 * 1000, // 5 menit (default)
+```ts
+const conversations = new Conversation({
+    defaultTimeout: 5 * 60 * 1000,
 });
 ```
 
-::: tip Auto Cleanup
-Saat pengguna meninggalkan percakapan tanpa menyelesaikannya, conversation otomatis dibersihkan setelah `defaultTimeout` berlalu — mencegah memory leak.
-:::
+`defaultTimeout` mengatur berapa lama conversation aktif yang idle boleh berada
+di memori. Default-nya 5 menit.
 
 ## Metode Wait
 
-### `c.waitForText(opts?)`
+| Method | Resolve menjadi | Catatan |
+| --- | --- | --- |
+| `conv.wait()` | `Context` | Update mentah berikutnya untuk chat/user yang sama. |
+| `conv.waitForText()` | `string` | Membutuhkan pesan teks. |
+| `conv.waitForPhoto()` | `PhotoSize[]` | Membutuhkan pesan foto. |
+| `conv.waitForCallbackQuery()` | `string` | Membutuhkan data callback query. |
+| `conv.waitForContact()` | `Contact` | Membutuhkan share contact. |
+| `conv.waitForLocation()` | `Location` | Membutuhkan share location. |
+| `conv.waitForAny()` | Discriminated union | Teks, callback data, atau media umum. |
 
-Tunggu pesan teks dari pengguna:
+Semua wait method menerima `timeout`, `validate`, dan `validationError`.
 
-```typescript
-const jawaban = await c.waitForText({
-    // Validasi input (opsional)
-    validate: ctx => ctx.message?.text?.length > 2,
-    validationError: 'Terlalu pendek! Coba lagi:',
-    // Timeout khusus (opsional)
-    timeout: 30_000, // 30 detik
+## Input Campuran
+
+```ts
+const result = await conv.waitForAny();
+
+if (result.type === 'text') {
+    await result.ctx.reply(`Teks: ${result.text}`);
+}
+
+if (result.type === 'callback') {
+    await result.ctx.answerCallbackQuery();
+}
+
+if (result.type === 'media') {
+    await result.ctx.reply(`Tipe media: ${result.mediaType}`);
+}
+```
+
+`waitForAny()` berguna saat satu step menerima beberapa tipe input Telegram.
+
+## Validasi
+
+```ts
+const quantity = await conv.waitForText({
+    validate: ctx => Number.isInteger(Number(ctx.message?.text)),
+    validationError: 'Kirim angka bulat.',
 });
 ```
 
-### `c.wait(opts?)`
+Saat validasi gagal, update dikonsumsi, `validationError` dikirim jika ada, dan
+conversation tetap menunggu.
 
-Tunggu update apa pun:
+## Timeout
 
-```typescript
-const update = await c.wait({ timeout: 60_000 });
-const foto = update.message?.photo;
+```ts
+try {
+    const email = await conv.waitForText({ timeout: 30_000 });
+    await ctx.reply(`Email tersimpan: ${email}`);
+} catch (error) {
+    await ctx.reply('Waktu habis. Mulai lagi saat siap.');
+}
 ```
 
-### `c.waitForAny(opts?)`
+Gunakan `timeout` per step untuk deadline yang terlihat user. Gunakan
+`defaultTimeout` untuk cleanup memori conversation yang idle.
 
-Tunggu teks, tombol inline, atau media umum dalam satu langkah:
+## Branching
 
-```typescript
-const input = await c.waitForAny({
-    validationError: 'Kirim teks, tekan tombol, atau lampirkan media.',
-});
+```ts
+await ctx.reply('Pilih: basic atau pro');
+const plan = await conv.waitForText();
 
-if (input.type === 'text') {
-    await ctx.reply(`Teks: ${input.text}`);
-} else if (input.type === 'callback') {
-    await ctx.reply(`Tombol: ${input.data}`);
-} else if (input.mediaType === 'photo') {
-    await ctx.reply(`Jumlah varian foto: ${input.media.length}`);
+if (plan === 'pro') {
+    await ctx.reply('Kirim nama perusahaan.');
+    const company = await conv.waitForText();
+    await ctx.reply(`Plan pro untuk ${company}.`);
 } else {
-    await ctx.reply(`Tipe media: ${input.mediaType}`);
+    await ctx.reply('Plan basic dipilih.');
 }
 ```
 
-### `c.waitForCallbackQuery(data?)`
+Karena handler adalah async TypeScript biasa, kamu bisa memakai `if`, `switch`,
+loop, dan helper function normal.
 
-Tunggu klik tombol inline:
+## Status dan Keluar
 
-```typescript
-import { Markup } from 'vibegram';
-
-await ctx.reply('Pilih satu:', {
-    reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('Ya ✅', 'ya'), Markup.button.callback('Tidak ❌', 'tidak')],
-    ]),
+```ts
+bot.command('cancel', ctx => {
+    conversations.leave(ctx);
+    return ctx.reply('Conversation dibatalkan.');
 });
 
-const pilihan = await c.waitForCallbackQuery(); // 'ya' atau 'tidak'
-await ctx.answerCbQuery();
-```
-
-## Contoh: Form Pembelian
-
-```typescript
-conv.define('beli', async (ctx, c) => {
-    // Langkah 1: Nama produk
-    await ctx.reply('📦 Produk apa yang ingin Anda beli?');
-    const produk = await c.waitForText();
-
-    // Langkah 2: Jumlah dengan validasi
-    await ctx.reply('🔢 Berapa jumlahnya? (1-100)');
-    const jumlah = await c.waitForText({
-        validate: ctx => {
-            const n = Number(ctx.message?.text);
-            return Number.isInteger(n) && n >= 1 && n <= 100;
-        },
-        validationError: '❌ Masukkan angka antara 1-100:',
-    });
-
-    // Langkah 3: Konfirmasi
-    await ctx.reply(
-        `Konfirmasi pesanan:\n` + `Produk: ${produk}\nJumlah: ${jumlah}\n\n` + `Lanjutkan?`,
-        {
-            reply_markup: Markup.inlineKeyboard([
-                [
-                    Markup.button.callback('✅ Ya, pesan!', 'konfirm'),
-                    Markup.button.callback('❌ Batal', 'batal'),
-                ],
-            ]),
-        }
-    );
-
-    const pilihan = await c.waitForCallbackQuery(); // 'konfirm' atau 'batal'
-    await ctx.answerCbQuery();
-
-    if (pilihan === 'konfirm') {
-        await ctx.reply(`🎉 Pesanan ${jumlah}x ${produk} dikonfirmasi!`);
-    } else {
-        await ctx.reply('❌ Pemesanan dibatalkan.');
-    }
+bot.command('status', ctx => {
+    return ctx.reply(conversations.isActive(ctx) ? 'Aktif' : 'Tidak ada conversation aktif');
 });
 ```
 
-## Memeriksa Status Conversation
+Panggil `cancelAll()` saat graceful shutdown jika perlu membersihkan timer
+sebelum menutup resource eksternal.
 
-```typescript
-// Apakah pengguna sedang dalam percakapan?
-if (conv.isActive(ctx)) {
-    await ctx.reply('Selesaikan percakapan saat ini terlebih dahulu.');
-}
+## Conversation vs Wizard
 
-// Jumlah percakapan yang aktif
-console.log(`Percakapan aktif: ${conv.activeCount}`);
-```
-
-## Keluar dari Conversation
-
-Keluar dari conversation secara paksa:
-
-```typescript
-// Dari luar handler
-conv.leave(ctx);
-
-// Dari dalam handler conversation
-conv.define('tanya', async (ctx, c) => {
-    await ctx.reply('Ketik /batal untuk keluar.');
-    // c tidak memiliki metode leave — gunakan conv langsung
-});
-
-bot.command('batal', ctx => {
-    conv.leave(ctx);
-    ctx.reply('Percakapan dibatalkan. ❌');
-});
-```
+| Gunakan Conversation saat... | Gunakan Wizard saat... |
+| --- | --- |
+| Step banyak bercabang. | Step kebanyakan linear. |
+| Kamu ingin flow control gaya `await`. | Kamu ingin handler step eksplisit. |
+| Satu step bisa menerima beberapa tipe input. | Tiap step punya input yang tetap. |
+| Flow lebih mudah dibaca sebagai satu async function. | Flow lebih mudah dipisah per step. |

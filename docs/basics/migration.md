@@ -1,18 +1,18 @@
 # Migration from Telegraf and grammY
 
-VibeGram follows familiar Telegram bot patterns while keeping sessions, scenes, wizards,
-menus, queues, caching, and adapters in one package.
+VibeGram follows familiar Telegram bot patterns while keeping sessions, scenes,
+wizards, menus, queues, caching, and adapters in one package.
 
 ## Common Mapping
 
-| Telegraf                  | grammY                                    | VibeGram                                                              |
-| ------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
-| `bot.start(handler)`      | `bot.command('start', handler)`           | `bot.start(handler)`                                                  |
-| `bot.help(handler)`       | `bot.command('help', handler)`            | `bot.help(handler)`                                                   |
-| `ctx.replyWithHTML(text)` | `ctx.reply(text, { parse_mode: 'HTML' })` | `ctx.replyWithHTML(text)`                                             |
-| `Scenes.WizardScene`      | conversations plugin                      | `new Wizard(id, steps)`                                               |
-| session middleware        | session plugin                            | `session()`                                                           |
-| custom webhook handler    | adapter/plugin setup                      | `createExpressMiddleware`, `createFastifyPlugin`, `createHonoHandler` |
+| Telegraf | grammY | VibeGram |
+| --- | --- | --- |
+| `bot.start(handler)` | `bot.command('start', handler)` | `bot.start(handler)` |
+| `bot.help(handler)` | `bot.command('help', handler)` | `bot.help(handler)` |
+| `ctx.replyWithHTML(text)` | `ctx.reply(text, { parse_mode: 'HTML' })` | `ctx.replyWithHTML(text)` |
+| `Scenes.WizardScene` | conversations plugin | `new Wizard(id, steps)` |
+| session middleware | session plugin | `session()` |
+| custom webhook handler | adapter/plugin setup | `createExpressMiddleware`, `createFastifyPlugin`, `createHonoHandler` |
 
 ## Command Handlers
 
@@ -24,6 +24,9 @@ bot.start(ctx => ctx.reply('Hello'));
 bot.start(ctx => ctx.reply('Hello'));
 bot.command('status', ctx => ctx.reply('OK'));
 ```
+
+Commands targeted at another bot are ignored. For example, `/start@OtherBot`
+does not trigger a handler after VibeGram knows this bot's username from `getMe()`.
 
 ## Sessions
 

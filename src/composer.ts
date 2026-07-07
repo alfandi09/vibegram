@@ -6,11 +6,55 @@ export type Middleware<C extends Context = Context> = (
     next: NextFunction
 ) => Promise<void> | void;
 
+export interface ComposerOptions {
+    /**
+     * Bot username used to route Telegram commands suffixed as `/start@bot`.
+     * Commands targeting a different bot are ignored.
+     */
+    botUsername?: string;
+}
+
+interface ParsedCommand {
+    name: string;
+    target?: string;
+    args: string[];
+}
+
+function normalizeBotUsername(username: string | undefined): string | undefined {
+    const normalized = username?.replace(/^@/, '').trim().toLowerCase();
+    return normalized || undefined;
+}
+
+function parseTelegramCommand(text: string): ParsedCommand | undefined {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith('/')) return undefined;
+
+    const [rawCommand, ...args] = trimmed.split(/\s+/);
+    const commandText = rawCommand.slice(1);
+    if (!commandText) return undefined;
+
+    const separatorIndex = commandText.indexOf('@');
+    if (separatorIndex === -1) {
+        return { name: commandText, args };
+    }
+
+    const name = commandText.slice(0, separatorIndex);
+    const target = normalizeBotUsername(commandText.slice(separatorIndex + 1));
+    if (!name || !target) return undefined;
+
+    return { name, target, args };
+}
+
 /**
  * Composer is responsible for building and executing the middleware stack.
  */
 export class Composer<C extends Context> {
     private middlewares: Middleware<C>[] = [];
+    private botUsername?: string;
+
+    constructor(options?: ComposerOptions) {
+        this.setBotUsername(options?.botUsername);
+    }
 
     private static cloneTriggerRegex(regex: RegExp): RegExp {
         if (!regex.global && !regex.sticky) {
@@ -18,6 +62,15 @@ export class Composer<C extends Context> {
         }
 
         return new RegExp(regex.source, regex.flags);
+    }
+
+    protected setBotUsername(username: string | undefined): void {
+        this.botUsername = normalizeBotUsername(username);
+    }
+
+    private acceptsCommandTarget(target: string | undefined): boolean {
+        if (!target) return true;
+        return this.botUsername !== undefined && target === this.botUsername;
     }
 
     /**
@@ -39,15 +92,12 @@ export class Composer<C extends Context> {
             const msg = ctx.message;
             if (!msg || !msg.text) return next();
 
-            const text = msg.text;
-            if (!text.startsWith('/')) return next();
+            const parsed = parseTelegramCommand(msg.text);
+            if (!parsed || !this.acceptsCommandTarget(parsed.target)) return next();
 
-            const parts = text.split(' ');
-            const cmd = parts[0].substring(1).split('@')[0];
-
-            if (commands.includes(cmd)) {
+            if (commands.includes(parsed.name)) {
                 // Inject parsed command arguments into the context object.
-                ctx.command = { name: cmd, args: parts.slice(1) };
+                ctx.command = { name: parsed.name, args: parsed.args };
                 return Composer.compose(fns)(ctx, next);
             }
             return next();

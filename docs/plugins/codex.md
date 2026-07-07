@@ -29,7 +29,7 @@ Usage counts against the Codex quota available to the signed-in ChatGPT account.
 Install the latest VibeGram release. Codex is included in the main `vibegram` package and is imported from the `vibegram/codex` subpath:
 
 ```bash
-npm install vibegram@^2.3.0
+npm install vibegram@^2.4.0
 ```
 
 ```typescript
@@ -466,6 +466,20 @@ This is useful for secret managers or test environments, but it does not persist
 | `accountId` | auto-detected | ChatGPT account ID header |
 | `deviceId` | random UUID | `oai-device-id` header |
 | `autoRefresh` | `true` when `refresh_token` exists | Auto-refresh expired tokens via OAuth2 |
+
+## Roadmap: Official OpenAI API Provider
+
+The current `codexProvider()` uses a ChatGPT session `auth.json` and the ChatGPT Codex backend.
+The next provider track is an optional official OpenAI API provider that uses an API key and does
+not depend on ChatGPT session cookies or refresh tokens.
+
+Based on the current OpenAI developer docs, the planned provider should target the
+[Responses API](https://developers.openai.com/api/reference/responses/overview/) first, with an
+[Agents SDK](https://developers.openai.com/api/docs/guides/agents) integration as a higher-level
+option for workflows that need tool orchestration, tracing, or handoffs. Chat Completions can remain
+a compatibility path, but OpenAI's API reference recommends trying Responses for new projects.
+
+This provider should stay optional and must not become a runtime dependency of VibeGram core.
 
 ## Troubleshooting
 
