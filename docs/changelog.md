@@ -4,6 +4,37 @@ Release notes for VibeGram. This page highlights the changes most useful for dev
 
 For the complete release log, see the repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.5.0
+
+Released on 2026-07-07.
+
+### Added
+
+- `dedupeUpdates()` middleware with memory and custom stores, TTL/max-entry controls, duplicate callbacks, and the `vibegram/dedupe` subpath.
+- `polling.offsetCommit` with the new `processed` mode for retrying failed updates before advancing polling offsets.
+- `TelegramClientOptions.maxResponseBytes` for JSON, text, buffer, and file download response size limits.
+- A production security preset helper in the official `@vibegram/security` plugin.
+- Official OpenAI API provider roadmap notes for `vibegram/codex`.
+
+### Changed
+
+- Upgraded Vitest tooling to `3.2.7`.
+- Aligned English and Indonesian docs across basics, API, security, state, UI, advanced, and plugin pages.
+- Updated install guidance for the current `vibegram` release range.
+
+### Fixed
+
+- Command routing now ignores commands aimed at other bots, such as `/start@OtherBot`, and avoids prefix collisions such as `/codexbackup`.
+- HTTP timeout handling now includes body parsing, with stream cleanup on completion, error, or close.
+- Queue and rate-limit numeric options now validate invalid values early.
+- Documentation examples were corrected for invoices, WebApp validation defaults, I18n overrides, pagination editing, keyboard helpers, and Context command metadata.
+
+### Security
+
+- Codex plugin Markdown output now escapes user-controlled values.
+- Response size guards reduce oversized response memory risk.
+- Webhook secret verification, body limits, polling offset tradeoffs, and safe Markdown interpolation are documented more clearly.
+
 ## 2.4.0
 
 ### Added

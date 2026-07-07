@@ -26,7 +26,7 @@ Untuk saat ini, gunakan package repository sebagai local file dependency:
 ```json
 {
   "dependencies": {
-    "vibegram": "^2.4.0",
+    "vibegram": "^2.5.0",
     "@vibegram/storage-redis": "file:../vibegram/plugins/storage-redis",
     "redis": "^5.0.0"
   }

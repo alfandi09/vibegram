@@ -29,7 +29,7 @@ Penggunaan dihitung dari kuota Codex pada akun ChatGPT yang login.
 Install rilis VibeGram terbaru. Codex sudah termasuk di package utama `vibegram` dan diimport dari subpath `vibegram/codex`:
 
 ```bash
-npm install vibegram@^2.4.0
+npm install vibegram@^2.5.0
 ```
 
 ```typescript

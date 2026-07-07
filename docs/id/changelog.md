@@ -4,6 +4,37 @@ Catatan rilis VibeGram. Halaman ini menyorot perubahan yang paling berguna untuk
 
 Untuk log rilis lengkap, lihat repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.5.0
+
+Dirilis pada 2026-07-07.
+
+### Added
+
+- Middleware `dedupeUpdates()` dengan memory/custom store, kontrol TTL/max-entry, callback duplicate, dan subpath `vibegram/dedupe`.
+- `polling.offsetCommit` dengan mode baru `processed` untuk retry update yang gagal sebelum offset polling dinaikkan.
+- `TelegramClientOptions.maxResponseBytes` untuk batas ukuran response JSON, text, buffer, dan download file.
+- Helper production security preset di plugin resmi `@vibegram/security`.
+- Catatan roadmap provider OpenAI API resmi untuk `vibegram/codex`.
+
+### Changed
+
+- Upgrade tooling Vitest ke `3.2.7`.
+- Penyelarasan docs Inggris dan Indonesia di halaman basics, API, security, state, UI, advanced, dan plugin.
+- Panduan install diperbarui ke range rilis `vibegram` saat ini.
+
+### Fixed
+
+- Routing command kini mengabaikan command untuk bot lain seperti `/start@OtherBot`, dan mencegah tabrakan prefix seperti `/codexbackup`.
+- Timeout HTTP kini mencakup parsing body, dengan cleanup stream saat selesai, error, atau close.
+- Opsi numerik queue dan rate-limit kini divalidasi lebih awal.
+- Contoh docs diperbaiki untuk invoice, default validasi WebApp, override I18n, editing pagination, helper keyboard, dan metadata command Context.
+
+### Security
+
+- Output Markdown plugin Codex kini meng-escape nilai yang berasal dari user.
+- Guard ukuran response mengurangi risiko memori dari response terlalu besar.
+- Verifikasi secret webhook, body limit, tradeoff offset polling, dan interpolasi Markdown aman dijelaskan lebih jelas.
+
 ## 2.4.0
 
 ### Added

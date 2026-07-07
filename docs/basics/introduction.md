@@ -79,17 +79,18 @@ VibeGram targets Telegram Bot API 10.1 with:
 - Support for Telegram Stars, Draft Messages, Managed Bots, Rich Messages,
   Join Request Queries, and poll link media.
 
-## What's New in 2.4.0
+## What's New in 2.5.0
 
-- Bot API 10.1 Rich Messages: `sendRichMessage()`, `sendRichMessageDraft()`,
-  and `ctx.replyWithRichMessage()`.
-- Bot API 10.1 Join Request Queries: `answerChatJoinRequestQuery()` and
-  `sendChatJoinRequestWebApp()`.
-- Safe interpolation helpers: `Markup.escapeHTML()`, `escapeMarkdownV2()`,
-  and `escapeMarkdown()`.
-- Atomic `RateLimitStore.increment()` support for shared stores.
-- Per-key session serialization and LRU memory stores.
-- Multipart header-injection hardening.
+- Duplicate update protection with `dedupeUpdates()`,
+  `MemoryUpdateDedupeStore`, and the `vibegram/dedupe` subpath.
+- Polling offset commit control with `polling.offsetCommit: 'processed'` for
+  retrying failed updates before advancing offsets.
+- Response size limits with `TelegramClientOptions.maxResponseBytes`.
+- Safer command routing for bot mentions and command prefix collisions.
+- HTTP timeout coverage now includes body parsing and stream cleanup.
+- Queue and rate-limit options now fail fast on invalid numeric values.
+- Codex plugin Markdown interpolation is escaped for user-controlled values.
+- The security plugin now includes a production preset helper.
 
 See the full [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md)
 for release details.
