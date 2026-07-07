@@ -6,23 +6,38 @@ routing, state, keamanan, webhook, plugin, dan broadcasting.
 
 ## Mengapa VibeGram?
 
-| Fitur | VibeGram | grammY | Telegraf | API Mentah |
-| --- | :---: | :---: | :---: | :---: |
-| Pipeline middleware | ya | ya | ya | manual |
-| TypeScript native | ya | ya | ya | manual |
-| Manajemen session | ya | plugin | plugin | manual |
-| Conversation | ya | plugin | plugin | manual |
-| Rate limiting | ya | plugin | manual | manual |
-| Paginasi bawaan | ya | manual | manual | manual |
-| `Markup.grid()` | ya | manual | manual | manual |
-| Auto-inject `ctx.match` | ya | ya | ya | manual |
-| Menu builder | ya | plugin | manual | manual |
-| Queue broadcasting | ya | manual | manual | manual |
-| Cache response API | ya | manual | manual | manual |
-| Keamanan WebApp | HMAC-SHA256 | manual | manual | manual |
-| Filter combinator | and/or/not | manual | manual | manual |
-| Adapter framework | 5 adapter | manual | manual | manual |
-| Hierarki class error | `instanceof` | manual | manual | manual |
+Tabel ini membandingkan bagaimana fitur umum bot dikemas, bukan klaim bahwa
+framework lain tidak bisa mengimplementasikannya. Tabel dicek terhadap
+`grammy@1.44.0`, `telegraf@4.16.3`, dan dokumentasi resmi mereka pada
+2026-07-07; package komunitas di luar docs resmi tidak didata secara
+menyeluruh.
+
+| Area | VibeGram | grammY | Telegraf | API Bot Mentah |
+| --- | --- | --- | --- | --- |
+| Pipeline middleware | Core | Core | Core | Manual |
+| Tipe TypeScript | Core | Core | Core | Manual |
+| State session | Core `session()` | Plugin session built-in | Core `session()` | Manual |
+| Alur conversation | Core `Conversation`, `Scene`, `Wizard` | Official `@grammyjs/conversations` | Core `Scenes` / `WizardScene` | Manual |
+| Rate limiting masuk | Core `rateLimit()` | Official `@grammyjs/ratelimiter` | Middleware eksternal atau custom | Manual |
+| Flood control keluar | Core `BotQueue`; official `@vibegram/throttler` | Official `@grammyjs/transformer-throttler` + `runner` | Middleware eksternal atau custom | Manual |
+| Menu interaktif | Core `Menu` | Official `@grammyjs/menu` | Primitive keyboard atau library menu eksternal | Manual |
+| Helper layout keyboard | Core `Markup.grid()` | `InlineKeyboard` / `Keyboard` dengan `row()` / `from()` | `Markup.inlineKeyboard(..., { columns, wrap })` | Manual |
+| Cache response API | Core `apiCache()` | Transformer atau middleware custom | Middleware custom | Manual |
+| Validasi init-data WebApp | Helper HMAC core | Validasi custom/manual | Validasi custom/manual | Manual |
+| Integrasi framework webhook | Adapter Express, Fastify, Hono, Koa, Native HTTP | `webhookCallback()` untuk web framework | Helper launch/create webhook plus contoh | Manual |
+| Model error | Hierarki class error VibeGram | Class error framework | Class error framework | Manual |
+
+Referensi yang dipakai untuk perbandingan ini: [plugin grammY](https://grammy.dev/plugins/),
+[session grammY](https://grammy.dev/plugins/session),
+[menu grammY](https://grammy.dev/plugins/menu),
+[conversation grammY](https://grammy.dev/plugins/conversations),
+[rate limiter grammY](https://grammy.dev/plugins/ratelimiter),
+[flood control grammY](https://grammy.dev/plugins/transformer-throttler),
+[webhook callback grammY](https://grammy.dev/ref/core/webhookcallback),
+[docs Telegraf](https://telegraf.js.org/),
+[session Telegraf](https://telegraf.js.org/functions/session.html),
+[Telegraf WizardScene](https://telegraf.js.org/classes/Scenes.WizardScene.html),
+dan [Telegraf inline keyboard](https://telegraf.js.org/functions/Markup.inlineKeyboard.html).
 
 ## Gambaran Arsitektur
 

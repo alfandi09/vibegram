@@ -6,23 +6,37 @@ security, webhooks, plugins, and broadcasting.
 
 ## Why VibeGram?
 
-| Feature | VibeGram | grammY | Telegraf | Raw API |
-| --- | :---: | :---: | :---: | :---: |
-| Middleware pipeline | yes | yes | yes | manual |
-| TypeScript native | yes | yes | yes | manual |
-| Session management | yes | plugin | plugin | manual |
-| Conversations | yes | plugin | plugin | manual |
-| Rate limiting | yes | plugin | manual | manual |
-| Built-in pagination | yes | manual | manual | manual |
-| `Markup.grid()` | yes | manual | manual | manual |
-| `ctx.match` auto-inject | yes | yes | yes | manual |
-| Menu builder | yes | plugin | manual | manual |
-| Broadcasting queue | yes | manual | manual | manual |
-| API response cache | yes | manual | manual | manual |
-| WebApp security | HMAC-SHA256 | manual | manual | manual |
-| Filter combinators | and/or/not | manual | manual | manual |
-| Framework adapters | 5 adapters | manual | manual | manual |
-| Error class hierarchy | `instanceof` | manual | manual | manual |
+This table compares how common bot-building features are packaged, not whether
+other frameworks can implement them at all. It was checked against
+`grammy@1.44.0`, `telegraf@4.16.3`, and their official docs on 2026-07-07;
+community packages outside the official docs are not exhaustively listed.
+
+| Area | VibeGram | grammY | Telegraf | Raw Bot API |
+| --- | --- | --- | --- | --- |
+| Middleware pipeline | Core | Core | Core | Manual |
+| TypeScript types | Core | Core | Core | Manual |
+| Session state | Core `session()` | Built-in session plugin | Core `session()` | Manual |
+| Conversation flows | Core `Conversation`, `Scene`, `Wizard` | Official `@grammyjs/conversations` | Core `Scenes` / `WizardScene` | Manual |
+| Incoming rate limiting | Core `rateLimit()` | Official `@grammyjs/ratelimiter` | External middleware or custom | Manual |
+| Outgoing flood control | Core `BotQueue`; official `@vibegram/throttler` | Official `@grammyjs/transformer-throttler` + `runner` | External middleware or custom | Manual |
+| Interactive menus | Core `Menu` | Official `@grammyjs/menu` | Keyboard primitives or external menu libs | Manual |
+| Keyboard layout helpers | Core `Markup.grid()` | `InlineKeyboard` / `Keyboard` with `row()` / `from()` | `Markup.inlineKeyboard(..., { columns, wrap })` | Manual |
+| API response cache | Core `apiCache()` | Custom transformer or middleware | Custom middleware | Manual |
+| WebApp init-data validation | Core HMAC helper | Custom/manual validation | Custom/manual validation | Manual |
+| Webhook framework integration | Express, Fastify, Hono, Koa, Native HTTP adapters | `webhookCallback()` for web frameworks | Webhook launch/create helpers plus examples | Manual |
+| Error model | VibeGram error class hierarchy | Framework error classes | Framework error classes | Manual |
+
+References used for this comparison: [grammY plugins](https://grammy.dev/plugins/),
+[grammY sessions](https://grammy.dev/plugins/session),
+[grammY menus](https://grammy.dev/plugins/menu),
+[grammY conversations](https://grammy.dev/plugins/conversations),
+[grammY rate limiter](https://grammy.dev/plugins/ratelimiter),
+[grammY flood control](https://grammy.dev/plugins/transformer-throttler),
+[grammY webhook callback](https://grammy.dev/ref/core/webhookcallback),
+[Telegraf docs](https://telegraf.js.org/),
+[Telegraf session](https://telegraf.js.org/functions/session.html),
+[Telegraf WizardScene](https://telegraf.js.org/classes/Scenes.WizardScene.html),
+and [Telegraf inline keyboard](https://telegraf.js.org/functions/Markup.inlineKeyboard.html).
 
 ## Architecture Overview
 
