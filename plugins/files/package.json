@@ -7,14 +7,16 @@
     "types": "./dist/types/index.d.ts",
     "exports": {
         ".": {
+            "types": "./dist/types/index.d.ts",
             "import": "./dist/esm/index.js",
-            "require": "./dist/cjs/index.js",
-            "types": "./dist/types/index.d.ts"
-        }
+            "require": "./dist/cjs/index.js"
+        },
+        "./package.json": "./package.json"
     },
     "files": [
         "dist",
-        "README.md"
+        "README.md",
+        "LICENSE"
     ],
     "sideEffects": false,
     "engines": {
@@ -26,7 +28,8 @@
         "write:package-markers": "node scripts/postbuild.js",
         "build": "npm run build:cjs && npm run build:esm && npm run write:package-markers",
         "test": "npx --no-install vitest run tests",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "prepack": "node -e \"require('fs').copyFileSync('../../LICENSE','LICENSE')\""
     },
     "keywords": [
         "vibegram",
@@ -38,13 +41,25 @@
     ],
     "author": "Alfa",
     "license": "ISC",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alfandi09/vibegram.git",
+        "directory": "plugins/files"
+    },
+    "bugs": {
+        "url": "https://github.com/alfandi09/vibegram/issues"
+    },
+    "homepage": "https://alfandi09.github.io/vibegram/",
     "peerDependencies": {
-        "vibegram": ">=2.1.0"
+        "vibegram": "^2.6.0"
     },
     "devDependencies": {
         "@types/node": "^25.5.2",
         "typescript": "^6.0.2",
         "vitest": "^3.2.4",
         "vibegram": "file:../.."
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
