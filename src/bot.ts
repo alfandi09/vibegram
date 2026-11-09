@@ -1653,13 +1653,14 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     }
 
     /**
-     * Set a user's game score.
+     * Set a user's game score. Resolves to the edited Message when the game
+     * message was sent by the bot, otherwise `true` (inline messages).
      */
     async setGameScore(
         userId: number,
         score: number,
         extra?: Record<string, unknown>
-    ): Promise<boolean> {
+    ): Promise<Message | true> {
         return this.client.callApi('setGameScore', { user_id: userId, score, ...extra });
     }
 

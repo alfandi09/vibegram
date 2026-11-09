@@ -58,7 +58,7 @@ import type {
 describe('modern Telegram types', () => {
     it('accepts monetization and suggested-post service payloads', () => {
         const gift: GiftInfo = {
-            gift: { gift_id: 'gift-1', star_count: 100 },
+            gift: { id: 'gift-1', star_count: 100 },
             owned_gift_id: 'owned-1',
             can_be_upgraded: true,
         };

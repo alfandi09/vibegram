@@ -2,6 +2,7 @@ import { TelegramClient } from './client';
 import {
     Update,
     Message,
+    MessageId,
     User,
     Chat,
     ChatInviteLink,
@@ -1002,7 +1003,7 @@ export class Context<S = any> {
         toChatId: number | string,
         messageIds: number[],
         extra?: Record<string, unknown>
-    ): Promise<number[]> {
+    ): Promise<MessageId[]> {
         if (!this.chat) throw new Error('Cannot copy messages: Origin Chat ID is not available');
         return this.client.callApi('copyMessages', {
             chat_id: toChatId,
@@ -1035,7 +1036,7 @@ export class Context<S = any> {
         toChatId: number | string,
         messageIds: number[],
         extra?: Record<string, unknown>
-    ): Promise<number[]> {
+    ): Promise<MessageId[]> {
         if (!this.chat) throw new Error('Cannot forward messages: Origin Chat ID is not available');
         return this.client.callApi('forwardMessages', {
             chat_id: toChatId,

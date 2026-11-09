@@ -675,8 +675,16 @@ export interface UniqueGiftColors {
     dark_theme_other_colors: number[];
 }
 
+/** A unique message identifier, returned by copyMessage(s) and forwardMessages. */
+export interface MessageId {
+    message_id: number;
+}
+
 export interface Gift {
-    gift_id: string;
+    /** Unique identifier of the gift. */
+    id: string;
+    /** @deprecated Not part of the Bot API (always undefined at runtime). Use `id`. */
+    gift_id?: string;
     name?: string;
     sticker?: Sticker;
     star_count?: number;

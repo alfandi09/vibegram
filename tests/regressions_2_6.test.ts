@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -8,7 +8,7 @@ import { TelegramClient } from '../src/client';
 import { InvalidTokenError, NetworkError, RateLimitError, TelegramApiError } from '../src/errors';
 import { HttpRequestError, type HttpResponse, type HttpTransport } from '../src/http';
 import { hasStreamUpload, prepareRequestPayload } from '../src/multipart';
-import type { Update } from '../src/types';
+import type { Gift, Message, MessageId, Update } from '../src/types';
 
 function makeResponse<T>(data: T): HttpResponse<T> {
     return { data, headers: {}, status: 200 };
@@ -305,5 +305,31 @@ describe('Bot: processed offset commit skips poison updates', () => {
         expect(offsets.slice(0, 3)).toEqual([0, 0, 12]);
         expect(handled).toContain(11);
         expect(onPollingError).toHaveBeenCalled();
+    });
+});
+
+describe('API return types match the Bot API spec', () => {
+    it('types copyMessages/forwardMessages as MessageId[], setGameScore as Message | true', async () => {
+        const { Context } = await import('../src/context');
+        const { createMockClient } = await import('./helpers/mock');
+        const client = createMockClient([{ message_id: 5 }]);
+        const ctx = new Context(
+            { update_id: 1, message: { message_id: 1, date: 1, chat: { id: 1, type: 'private' } } },
+            client
+        );
+
+        const copied = await ctx.copyMessages(2, [1]);
+        const forwarded = await ctx.forwardMessages(2, [1]);
+        expectTypeOf(copied).toEqualTypeOf<MessageId[]>();
+        expectTypeOf(forwarded).toEqualTypeOf<MessageId[]>();
+        expect(copied[0].message_id).toBe(5);
+
+        const bot = new Bot('token');
+        expectTypeOf(bot.setGameScore).returns.resolves.toEqualTypeOf<Message | true>();
+    });
+
+    it('uses Gift.id as in the Bot API', () => {
+        const gift: Gift = { id: 'gift-1', sticker: undefined, star_count: 10 };
+        expectTypeOf(gift.id).toEqualTypeOf<string>();
     });
 });

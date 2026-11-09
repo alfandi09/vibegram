@@ -13,6 +13,8 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Fixed
 
+- `ctx.copyMessages()` / `ctx.forwardMessages()` are typed as `Promise<MessageId[]>` (was `number[]`) and `bot.setGameScore()` as `Promise<Message | true>` (was `boolean`), matching what Telegram returns. Added the `MessageId` type.
+- `Gift` now has the spec's `id` field; the non-existent `gift_id` is kept only as a deprecated optional alias.
 - Package `exports` now list the `types` condition first, expose `./package.json`, and add `typesVersions` so subpath types resolve under `moduleResolution: node10`.
 
 ---
