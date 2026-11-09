@@ -1,5 +1,6 @@
 import { TelegramClient, TelegramClientHooks, TelegramClientOptions } from './client';
 import { Composer, Middleware } from './composer';
+import type { Filter, FilterQuery } from './filter-query';
 import { Context } from './context';
 import * as http from 'http';
 import {
@@ -363,8 +364,13 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         return this;
     }
 
-    override on(updateType: string | string[], ...fns: Middleware<C>[]): this {
-        super.on(updateType, ...fns);
+    override on<Q extends FilterQuery>(
+        query: Q | readonly Q[],
+        ...fns: Middleware<Filter<C, Q>>[]
+    ): this;
+    override on(updateType: string | readonly string[], ...fns: Middleware<C>[]): this;
+    override on(updateType: string | readonly string[], ...fns: Middleware<never>[]): this {
+        super.on(updateType, ...(fns as unknown as Middleware<C>[]));
         this._composedMiddleware = null;
         return this;
     }

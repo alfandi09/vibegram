@@ -7,6 +7,14 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ## [Unreleased]
 
+### Added
+
+- Type-narrowing filter queries for `bot.on()` / `Composer.on()`: `'message:photo'`, `':text'` (any message-like update), `'edited_message:text'`, `'callback_query:data'`, and plain update types narrow `ctx.message`, `ctx.chat`, and `ctx.update` so handlers no longer need `?.` or `!`. Malformed queries throw at registration. Exported `FilterQuery`, `Filter`, and `matchFilterQuery`.
+
+### Fixed
+
+- Package `exports` now list the `types` condition first, expose `./package.json`, and add `typesVersions` so subpath types resolve under `moduleResolution: node10`.
+
 ---
 
 ## [2.6.0] - 2026-11-09

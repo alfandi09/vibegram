@@ -81,6 +81,34 @@ bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media diterima.'));
 
 `bot.on()` menerima tipe update root dan properti pesan umum.
 
+## Filter Query {#filter-query}
+
+Pakai filter query untuk mencocokkan update **sekaligus** mempersempit tipe
+`ctx`, sehingga tidak perlu `?.` atau `!` di dalam handler:
+
+```ts
+bot.on('message:photo', ctx => {
+    const terbesar = ctx.message.photo.at(-1); // PhotoSize[] — dijamin ada
+    return ctx.reply(`Foto ${terbesar?.width}px di chat ${ctx.chat.id}`);
+});
+
+bot.on(':text', ctx => ctx.reply(ctx.message.text.toUpperCase())); // semua update berbentuk pesan
+bot.on('edited_message:text', ctx => console.log('Diedit:', ctx.message.text));
+bot.on('callback_query:data', ctx => console.log(ctx.update.callback_query.data));
+bot.on(['message:photo', 'message:video'], ctx => ctx.reply('Media diterima.'));
+```
+
+| Query | Cocok dengan |
+| --- | --- |
+| `'message'`, `'callback_query'`, ... | Semua update bertipe itu |
+| `'<update pesan>:<field>'` | Message, edited message, channel post, atau business message yang punya `<field>` |
+| `':<field>'` | Semua update berbentuk pesan yang punya `<field>` |
+| `'callback_query:data'`, `'callback_query:game_short_name'` | Callback query dengan field tersebut |
+
+Query yang salah format seperti `'message:'` atau `'poll:question'` melempar
+`TypeError` saat handler didaftarkan. Nama lama seperti `'photo'` tetap
+berfungsi tetapi tidak mempersempit tipe; gunakan `':photo'`.
+
 ## Inline Queries
 
 ```ts

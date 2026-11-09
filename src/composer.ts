@@ -1,4 +1,5 @@
 import { Context } from './context';
+import { Filter, FilterQuery, isFilterQuery, matchFilterQuery } from './filter-query';
 
 export type NextFunction = () => Promise<void>;
 export type Middleware<C extends Context = Context> = (
@@ -127,13 +128,28 @@ export class Composer<C extends Context> {
 
     /**
      * Register a middleware that triggers only on specific Update types or Message sub-properties.
-     * Examples: 'message', 'callback_query', 'photo', 'audio', 'document'.
+     *
+     * Filter queries narrow `ctx` types:
+     * `bot.on('message:photo', ctx => ctx.message.photo)` or `bot.on(':text', ...)`
+     * (any message-like update). Legacy names such as `'photo'` still match
+     * `ctx.message.photo` but do not narrow types.
      */
-    on(updateType: string | string[], ...fns: Middleware<C>[]): this {
-        const types = Array.isArray(updateType) ? updateType : [updateType];
+    on<Q extends FilterQuery>(query: Q | readonly Q[], ...fns: Middleware<Filter<C, Q>>[]): this;
+    on(updateType: string | readonly string[], ...fns: Middleware<C>[]): this;
+    on(updateType: string | readonly string[], ...handlers: Middleware<never>[]): this {
+        const types: readonly string[] = typeof updateType === 'string' ? [updateType] : updateType;
+        // Safe: a handler only runs after its filter query matched, so ctx has the narrowed shape.
+        const fns = handlers as unknown as Middleware<C>[];
+        // Filter queries are validated (and compiled) once, at registration time.
+        const matchers = new Map(
+            types.filter(isFilterQuery).map(type => [type, matchFilterQuery(type)] as const)
+        );
 
         return this.use((ctx, next) => {
             const hasMatch = types.some(type => {
+                const matcher = matchers.get(type);
+                if (matcher) return matcher(ctx.update);
+
                 // 1. Check for the property at the Update root level (e.g. 'message', 'callback_query').
                 if ((ctx.update as any)[type] !== undefined) return true;
 

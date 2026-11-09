@@ -81,6 +81,34 @@ bot.on(['photo', 'video', 'document'], ctx => ctx.reply('Media received.'));
 
 `bot.on()` accepts root update types and common message properties.
 
+## Filter Queries {#filter-queries}
+
+Use a filter query to match an update **and** narrow `ctx` types, so there is
+no need for `?.` or `!` inside the handler:
+
+```ts
+bot.on('message:photo', ctx => {
+    const largest = ctx.message.photo.at(-1); // PhotoSize[] — guaranteed
+    return ctx.reply(`Got a ${largest?.width}px photo in chat ${ctx.chat.id}`);
+});
+
+bot.on(':text', ctx => ctx.reply(ctx.message.text.toUpperCase())); // any message-like update
+bot.on('edited_message:text', ctx => console.log('Edited:', ctx.message.text));
+bot.on('callback_query:data', ctx => console.log(ctx.update.callback_query.data));
+bot.on(['message:photo', 'message:video'], ctx => ctx.reply('Media received.'));
+```
+
+| Query | Matches |
+| --- | --- |
+| `'message'`, `'callback_query'`, ... | Any update of that type |
+| `'<message update>:<field>'` | A message, edited message, channel post, or business message that has `<field>` |
+| `':<field>'` | Any message-like update that has `<field>` |
+| `'callback_query:data'`, `'callback_query:game_short_name'` | Callback queries with that field |
+
+Malformed queries such as `'message:'` or `'poll:question'` throw a
+`TypeError` when the handler is registered. Legacy names such as `'photo'`
+keep working but do not narrow types; prefer `':photo'`.
+
 ## Inline Queries
 
 ```ts

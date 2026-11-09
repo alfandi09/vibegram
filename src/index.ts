@@ -1,6 +1,7 @@
 export * from './client';
 export * from './context';
 export * from './composer';
+export * from './filter-query';
 export * from './bot';
 export * from './markup';
 export * from './types';
