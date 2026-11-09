@@ -7,6 +7,10 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ## [Unreleased]
 
+---
+
+## [2.6.0] - 2026-11-09
+
 ### Added
 
 - Bot API 10.2 / 10.3 Ephemeral Messages: `EphemeralMessageParameters` on send methods, `ctx.replyEphemeral()` (auto-links the triggering callback query or incoming ephemeral command), `editEphemeralMessageText/Media/Caption/ReplyMarkup()` and `deleteEphemeralMessage()` on both `Bot` and `Context`, plus `Message.receiver_user`, `Message.ephemeral_message_id`, `ReplyParameters.ephemeral_message_id`, and `BotCommand.is_ephemeral`.

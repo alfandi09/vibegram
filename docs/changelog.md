@@ -4,6 +4,28 @@ Release notes for VibeGram. This page highlights the changes most useful for dev
 
 For the complete release log, see the repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.6.0
+
+Released on 2026-11-09.
+
+### Added
+
+- Bot API 10.2 / 10.3 Ephemeral Messages: `ctx.replyEphemeral()`, `ephemeral_message_parameters`, and `editEphemeralMessage*()` / `deleteEphemeralMessage()` on `Bot` and `Context`.
+- Block-based rich messages via `InputRichMessage.blocks` and the `InputRichBlock*` types, rich message media, rich buttons, and new rich blocks.
+- Communities, `subscription` and `stopped_message_generation` updates, draft `can_stop` / `keep_on_stop`, `Markup.button.disabled()`, and keyboard `force_reply`.
+- `apiRoot` and `timeoutMs` client options (also via `new Bot(token, { client })`), `InputFileUpload` for upload file names and MIME types, `polling.maxUpdateAttempts`, and `launch({ handleSignals: false })`.
+
+### Fixed
+
+- `ctx.replyWithDraft()` now sends the required `draft_id`.
+- `offsetCommit: 'processed'` skips an update that keeps failing instead of blocking polling forever.
+- Retries no longer re-send consumed stream uploads, and long `getUpdates` polls no longer hit the HTTP timeout.
+- `launch()` reports network errors as-is instead of `InvalidTokenError`, and signal listeners no longer leak across launch/stop cycles.
+
+### Security
+
+- Launching a webhook without `secretToken` logs a warning, and upload metadata is sanitized against header injection.
+
 ## 2.5.0
 
 Released on 2026-07-07.

@@ -4,6 +4,28 @@ Catatan rilis VibeGram. Halaman ini menyorot perubahan yang paling berguna untuk
 
 Untuk log rilis lengkap, lihat repository [CHANGELOG.md](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).
 
+## 2.6.0
+
+Dirilis pada 2026-11-09.
+
+### Added
+
+- Ephemeral Messages Bot API 10.2 / 10.3: `ctx.replyEphemeral()`, `ephemeral_message_parameters`, serta `editEphemeralMessage*()` / `deleteEphemeralMessage()` di `Bot` dan `Context`.
+- Rich message berbasis block lewat `InputRichMessage.blocks` dan tipe `InputRichBlock*`, media rich message, tombol rich, dan block rich baru.
+- Communities, update `subscription` dan `stopped_message_generation`, `can_stop` / `keep_on_stop` untuk draft, `Markup.button.disabled()`, dan `force_reply` pada keyboard.
+- Opsi client `apiRoot` dan `timeoutMs` (juga lewat `new Bot(token, { client })`), `InputFileUpload` untuk nama file dan MIME type upload, `polling.maxUpdateAttempts`, dan `launch({ handleSignals: false })`.
+
+### Fixed
+
+- `ctx.replyWithDraft()` kini mengirim `draft_id` yang wajib.
+- `offsetCommit: 'processed'` melewati update yang terus gagal, bukan memblokir polling selamanya.
+- Retry tidak lagi mengirim ulang upload stream yang sudah terbaca, dan long poll `getUpdates` tidak lagi terkena timeout HTTP.
+- `launch()` meneruskan error jaringan apa adanya, bukan `InvalidTokenError`, dan listener signal tidak lagi bocor saat launch/stop berulang.
+
+### Security
+
+- Webhook tanpa `secretToken` kini memunculkan peringatan, dan metadata upload disanitasi dari header injection.
+
 ## 2.5.0
 
 Dirilis pada 2026-07-07.
