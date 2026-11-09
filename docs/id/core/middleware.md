@@ -136,3 +136,34 @@ admin.command('kick', ctx => ctx.banChatMember(targetId, { revoke_messages: true
 // Pasang hanya untuk admin
 bot.use(Composer.guard(ctx => ctx.from?.id === ADMIN_ID, admin));
 ```
+
+## Kombinator Composer {#kombinator}
+
+Setiap `Bot`, `Composer`, dan `Scene` punya helper routing berikut:
+
+| Metode | Menjalankan middleware ketika / bagaimana |
+| --- | --- |
+| `filter(predicate, ...fns)` | Predicate (sync atau async) bernilai `true`. Predicate type-guard mempersempit `ctx`. |
+| `drop(predicate, ...fns)` | Predicate bernilai `false`. |
+| `branch(predicate, onTrue, onFalse)` | Selalu: tepat satu sisi yang dijalankan. |
+| `fork(...fns)` | Bersamaan dengan sisa rantai; kedua sisi di-await. |
+| `lazy(ctx => middleware)` | Dibangun per update dari state runtime. |
+| `route(ctx => key, routes, fallback?)` | Route yang cocok dengan key (atau fallback). |
+| `errorBoundary(onError, ...fns)` | Dibungkus; error dari `fns` masuk ke `onError`, sedangkan error setelah `next()` tetap sampai ke `bot.catch()`. |
+| `chatType(type \| types, ...fns)` | Tipe chat cocok. Mempersempit `ctx.chat.type`. |
+| `reaction(emoji \| ReactionType, ...fns)` | User baru saja menambahkan reaksi itu (update `message_reaction`). |
+| `entity(type \| types, ...fns)` | Teks atau caption berisi entity seperti `'url'` atau `'hashtag'`. |
+
+```ts
+const isAdmin = (ctx: Context) => ADMIN_IDS.includes(ctx.from?.id ?? 0);
+
+bot.chatType('private', ctx => ctx.reply('Halo di DM'));
+bot.filter(isAdmin, adminRouter.middleware());
+bot.errorBoundary(err => console.error('Pembayaran gagal', err), paymentsRouter.middleware());
+bot.route(ctx => ctx.session?.step, {
+    nama: ctx => ctx.reply('Siapa namamu?'),
+    umur: ctx => ctx.reply('Berapa umurmu?'),
+});
+bot.reaction('👍', ctx => ctx.reply('Terima kasih!'));
+bot.entity('url', ctx => ctx.reply('Link akan dicek moderator.'));
+```

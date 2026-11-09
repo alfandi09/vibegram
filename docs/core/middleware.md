@@ -177,3 +177,34 @@ See [Filter Combinators](/core/filters) for the full list of composable predicat
 ::: warning
 Always `await next()` or `return next()` — not just `next()`. Forgetting `await` is a common source of race conditions in async middleware.
 :::
+
+## Composer Combinators {#combinators}
+
+Every `Bot`, `Composer`, and `Scene` provides these routing helpers:
+
+| Method | Runs the middleware when / how |
+| --- | --- |
+| `filter(predicate, ...fns)` | The (sync or async) predicate returns `true`. A type-guard predicate narrows `ctx`. |
+| `drop(predicate, ...fns)` | The predicate returns `false`. |
+| `branch(predicate, onTrue, onFalse)` | Always: exactly one side runs. |
+| `fork(...fns)` | Concurrently with the rest of the chain; both sides are awaited. |
+| `lazy(ctx => middleware)` | Built per update from runtime state. |
+| `route(ctx => key, routes, fallback?)` | The route matching the key (or the fallback). |
+| `errorBoundary(onError, ...fns)` | Wrapped; errors from `fns` go to `onError`, while errors after `next()` still reach `bot.catch()`. |
+| `chatType(type \| types, ...fns)` | The chat type matches. Narrows `ctx.chat.type`. |
+| `reaction(emoji \| ReactionType, ...fns)` | A user newly adds that reaction (`message_reaction` updates). |
+| `entity(type \| types, ...fns)` | Text or caption contains an entity such as `'url'` or `'hashtag'`. |
+
+```ts
+const isAdmin = (ctx: Context) => ADMIN_IDS.includes(ctx.from?.id ?? 0);
+
+bot.chatType('private', ctx => ctx.reply('Hi in DM'));
+bot.filter(isAdmin, adminRouter.middleware());
+bot.errorBoundary(err => console.error('Payments failed', err), paymentsRouter.middleware());
+bot.route(ctx => ctx.session?.step, {
+    name: ctx => ctx.reply('Your name?'),
+    age: ctx => ctx.reply('Your age?'),
+});
+bot.reaction('👍', ctx => ctx.reply('Thanks!'));
+bot.entity('url', ctx => ctx.reply('Links are checked by a moderator.'));
+```

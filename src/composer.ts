@@ -1,11 +1,41 @@
 import { Context } from './context';
 import { Filter, FilterQuery, isFilterQuery, matchFilterQuery } from './filter-query';
+import type { Chat, MessageEntity, ReactionType } from './types';
 
 export type NextFunction = () => Promise<void>;
 export type Middleware<C extends Context = Context> = (
     ctx: C,
     next: NextFunction
 ) => Promise<void> | void;
+
+/** Predicate used by filter(), drop(), and branch(). May be async. */
+export type Predicate<C> = (ctx: C) => boolean | Promise<boolean>;
+
+/** Middleware or array of middleware, as accepted by lazy() and route(). */
+export type MaybeArray<T> = T | readonly T[];
+
+/** Context narrowed to a chat type by chatType(). */
+export type ChatTypeContext<C, T extends Chat['type']> = C & {
+    readonly chat: Chat & { type: T };
+};
+
+/** A reaction trigger: an emoji string, or a full ReactionType object. */
+export type ReactionTrigger = string | ReactionType;
+
+function toArray<T>(value: MaybeArray<T>): T[] {
+    return Array.isArray(value) ? [...(value as readonly T[])] : [value as T];
+}
+
+function reactionKey(reaction: ReactionType): string {
+    switch (reaction.type) {
+        case 'emoji':
+            return `emoji:${reaction.emoji}`;
+        case 'custom_emoji':
+            return `custom_emoji:${reaction.custom_emoji_id}`;
+        default:
+            return reaction.type;
+    }
+}
 
 export interface ComposerOptions {
     /**
@@ -226,6 +256,194 @@ export class Composer<C extends Context> {
             }
             return next();
         });
+    }
+
+    /**
+     * Run the middleware only when the predicate returns true; otherwise continue.
+     * A type-guard predicate narrows `ctx` for the handlers.
+     *
+     * @example
+     * ```typescript
+     * bot.filter(ctx => ctx.from?.id === ADMIN_ID, adminRouter.middleware());
+     * ```
+     */
+    filter<D extends C>(predicate: (ctx: C) => ctx is D, ...fns: Middleware<D>[]): this;
+    filter(predicate: Predicate<C>, ...fns: Middleware<C>[]): this;
+    filter(predicate: Predicate<C>, ...fns: Middleware<never>[]): this {
+        const handlers = Composer.compose(fns as unknown as Middleware<C>[]);
+        return this.use(async (ctx, next) => {
+            if (await predicate(ctx)) return handlers(ctx, next);
+            return next();
+        });
+    }
+
+    /**
+     * Inverse of filter(): run the middleware only when the predicate returns false.
+     */
+    drop(predicate: Predicate<C>, ...fns: Middleware<C>[]): this {
+        return this.filter(async ctx => !(await predicate(ctx)), ...fns);
+    }
+
+    /**
+     * Route every update to exactly one of two middleware.
+     */
+    branch(
+        predicate: Predicate<C>,
+        trueMiddleware: Middleware<C>,
+        falseMiddleware: Middleware<C>
+    ): this {
+        return this.use(async (ctx, next) =>
+            (await predicate(ctx)) ? trueMiddleware(ctx, next) : falseMiddleware(ctx, next)
+        );
+    }
+
+    /**
+     * Run the middleware concurrently with the rest of the chain instead of
+     * before it. Both sides are awaited, and an error from either side rejects.
+     * Calling next() inside forked middleware does nothing.
+     */
+    fork(...fns: Middleware<C>[]): this {
+        const handlers = Composer.compose(fns);
+        return this.use((ctx, next) =>
+            Promise.all([handlers(ctx, async () => {}), next()]).then(() => undefined)
+        );
+    }
+
+    /**
+     * Build the middleware per update, e.g. to pick handlers from runtime state.
+     */
+    lazy(
+        factory: (ctx: C) => MaybeArray<Middleware<C>> | Promise<MaybeArray<Middleware<C>>>
+    ): this {
+        return this.use(async (ctx, next) =>
+            Composer.compose(toArray(await factory(ctx)))(ctx, next)
+        );
+    }
+
+    /**
+     * Pick one middleware by key. Updates whose key has no route go to the
+     * fallback, or continue down the chain when no fallback is given.
+     *
+     * @example
+     * ```typescript
+     * bot.route(ctx => ctx.session?.step, {
+     *     name: ctx => ctx.reply('Your name?'),
+     *     age: ctx => ctx.reply('Your age?'),
+     * });
+     * ```
+     */
+    route<K extends string>(
+        router: (ctx: C) => K | undefined | Promise<K | undefined>,
+        routes: Partial<Record<K, MaybeArray<Middleware<C>>>>,
+        fallback?: MaybeArray<Middleware<C>>
+    ): this {
+        return this.use(async (ctx, next) => {
+            const key = await router(ctx);
+            const target =
+                key !== undefined && Object.prototype.hasOwnProperty.call(routes, key)
+                    ? routes[key]
+                    : fallback;
+            if (!target) return next();
+            return Composer.compose(toArray(target))(ctx, next);
+        });
+    }
+
+    /**
+     * Catch errors thrown by the wrapped middleware only. Errors from handlers
+     * further down the chain (reached via next()) still propagate to bot.catch().
+     */
+    errorBoundary(
+        handler: (error: unknown, ctx: C) => void | Promise<void>,
+        ...fns: Middleware<C>[]
+    ): this {
+        const handlers = Composer.compose(fns);
+        return this.use(async (ctx, next) => {
+            let downstreamError: { error: unknown } | undefined;
+            try {
+                await handlers(ctx, async () => {
+                    try {
+                        await next();
+                    } catch (error) {
+                        downstreamError = { error };
+                        throw error;
+                    }
+                });
+            } catch (error) {
+                if (downstreamError && downstreamError.error === error) throw error;
+                await handler(error, ctx);
+            }
+        });
+    }
+
+    /**
+     * Run the middleware only in chats of the given type(s). Narrows `ctx.chat`.
+     *
+     * @example
+     * ```typescript
+     * bot.chatType('private', ctx => ctx.reply('DM only'));
+     * bot.chatType(['group', 'supergroup'], groupRouter.middleware());
+     * ```
+     */
+    chatType<T extends Chat['type']>(
+        type: MaybeArray<T>,
+        ...fns: Middleware<ChatTypeContext<C, T>>[]
+    ): this {
+        const types = new Set<string>(toArray(type));
+        return this.filter(
+            (ctx): ctx is ChatTypeContext<C, T> =>
+                ctx.chat !== undefined && types.has(ctx.chat.type),
+            ...fns
+        );
+    }
+
+    /**
+     * Run the middleware when a user adds one of the given reactions to a message
+     * (`message_reaction` updates). Requires "message_reaction" in allowed_updates.
+     *
+     * @example
+     * ```typescript
+     * bot.reaction('👍', ctx => ctx.reply('Thanks!'));
+     * ```
+     */
+    reaction(reaction: MaybeArray<ReactionTrigger>, ...fns: Middleware<C>[]): this {
+        const wanted = new Set(
+            toArray(reaction).map(item =>
+                typeof item === 'string'
+                    ? reactionKey({ type: 'emoji', emoji: item })
+                    : reactionKey(item)
+            )
+        );
+        return this.filter(
+            ctx => {
+                const update = ctx.update.message_reaction;
+                if (!update) return false;
+                const previous = new Set(update.old_reaction.map(reactionKey));
+                return update.new_reaction.some(item => {
+                    const key = reactionKey(item);
+                    return wanted.has(key) && !previous.has(key);
+                });
+            },
+            ...fns
+        );
+    }
+
+    /**
+     * Run the middleware when the message text or caption contains an entity of
+     * the given type(s), e.g. 'url', 'hashtag', 'mention', or 'bot_command'.
+     */
+    entity(type: MaybeArray<MessageEntity['type']>, ...fns: Middleware<C>[]): this {
+        const types = new Set<string>(toArray(type));
+        return this.filter(
+            ctx => {
+                const message = ctx.message;
+                const entities = [
+                    ...(message?.entities ?? []),
+                    ...(message?.caption_entities ?? []),
+                ];
+                return entities.some(item => types.has(item.type));
+            },
+            ...fns
+        );
     }
 
     /**

@@ -9,6 +9,7 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Added
 
+- Composer combinators on `Bot`, `Composer`, and `Scene`: `filter()` (with type-guard narrowing), `drop()`, `branch()`, `fork()`, `lazy()`, `route()`, `errorBoundary()` (catches only wrapped middleware errors), `chatType()` (narrows `ctx.chat.type`), `reaction()` (newly added reactions), and `entity()`.
 - Type-narrowing filter queries for `bot.on()` / `Composer.on()`: `'message:photo'`, `':text'` (any message-like update), `'edited_message:text'`, `'callback_query:data'`, and plain update types narrow `ctx.message`, `ctx.chat`, and `ctx.update` so handlers no longer need `?.` or `!`. Malformed queries throw at registration. Exported `FilterQuery`, `Filter`, and `matchFilterQuery`.
 
 ### Fixed
