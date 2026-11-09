@@ -2,8 +2,12 @@ import * as fs from 'fs';
 import type { Readable } from 'stream';
 import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 import { createHttpTransport, HttpRequestError, type HttpTransport } from './http';
-import { prepareRequestPayload, validateRequestPayload } from './multipart';
+import { hasStreamUpload, prepareRequestPayload, validateRequestPayload } from './multipart';
 
+const DEFAULT_API_ROOT = 'https://api.telegram.org';
+const DEFAULT_REQUEST_TIMEOUT_MS = 50000;
+/** Extra headroom on top of the getUpdates long-poll timeout before aborting the request. */
+const LONG_POLL_TIMEOUT_MARGIN_MS = 10000;
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 const DEFAULT_MAX_JSON_PAYLOAD_BYTES = 50 * 1024 * 1024;
@@ -130,6 +134,34 @@ function validatePositiveIntegerOption(name: string, value: number): void {
     }
 }
 
+function normalizeApiRoot(apiRoot: string): string {
+    let parsed: URL;
+    try {
+        parsed = new URL(apiRoot);
+    } catch {
+        throw new TypeError('apiRoot must be a valid http(s) URL.');
+    }
+
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        throw new TypeError('apiRoot must use http or https.');
+    }
+
+    return parsed.toString().replace(/\/+$/, '');
+}
+
+function getRequestTimeoutMs(method: string, data: unknown, baseTimeoutMs: number): number {
+    if (method !== 'getUpdates' || typeof data !== 'object' || data === null) {
+        return baseTimeoutMs;
+    }
+
+    const longPollSeconds = (data as { timeout?: unknown }).timeout;
+    if (typeof longPollSeconds !== 'number' || !Number.isFinite(longPollSeconds)) {
+        return baseTimeoutMs;
+    }
+
+    return Math.max(baseTimeoutMs, longPollSeconds * 1000 + LONG_POLL_TIMEOUT_MARGIN_MS);
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -181,6 +213,17 @@ export type TelegramClientTransformer = (next: TelegramClientNext) => TelegramCl
 export interface TelegramClientOptions {
     hooks?: TelegramClientHooks;
     /**
+     * Base URL of the Bot API server. Override it to use a self-hosted
+     * Local Bot API Server, e.g. `http://localhost:8081`. Defaults to
+     * `https://api.telegram.org`.
+     */
+    apiRoot?: string;
+    /**
+     * Timeout in milliseconds for one Bot API request. getUpdates automatically
+     * extends it to cover its long-poll `timeout`. Defaults to 50000ms.
+     */
+    timeoutMs?: number;
+    /**
      * Maximum JSON payload size in bytes for non-multipart requests.
      * Multipart uploads are streamed/form-encoded and are not measured with this limit.
      * Defaults to 50MB.
@@ -219,6 +262,8 @@ interface TelegramApiResponse {
 export class TelegramClient {
     private http: HttpTransport;
     private readonly apiBaseUrl: string;
+    private readonly fileBaseUrl: string;
+    private readonly timeoutMs: number;
     private readonly _token: string;
     private readonly hooks?: TelegramClientHooks;
     private readonly maxJsonPayloadBytes: number;
@@ -247,7 +292,12 @@ export class TelegramClient {
         validateNonNegativeNumberOption('networkRetryBaseDelayMs', this.networkRetryBaseDelayMs);
         validateNonNegativeNumberOption('networkRetryMaxDelayMs', this.networkRetryMaxDelayMs);
 
-        this.apiBaseUrl = `https://api.telegram.org/bot${this._token}/`;
+        this.timeoutMs = options?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+        validatePositiveIntegerOption('timeoutMs', this.timeoutMs);
+
+        const apiRoot = normalizeApiRoot(options?.apiRoot ?? DEFAULT_API_ROOT);
+        this.apiBaseUrl = `${apiRoot}/bot${this._token}/`;
+        this.fileBaseUrl = `${apiRoot}/file/bot${this._token}/`;
         this.http = createHttpTransport();
     }
 
@@ -314,6 +364,8 @@ export class TelegramClient {
         const start = Date.now();
         validateRequestPayload(data, this.maxJsonPayloadBytes);
         const { body: reqData, headers, isMultipart } = prepareRequestPayload(data);
+        // A consumed stream cannot be re-sent; retrying would upload an empty file.
+        const canReplay = !isMultipart || !hasStreamUpload(data);
 
         try {
             await this.invokeHook('onRequestStart', () =>
@@ -327,7 +379,7 @@ export class TelegramClient {
                 body: isMultipart
                     ? (reqData as AsyncIterable<Uint8Array>)
                     : JSON.stringify(reqData ?? {}),
-                timeoutMs: 50000,
+                timeoutMs: getRequestTimeoutMs(method, data, this.timeoutMs),
                 responseType: 'json',
                 maxResponseBytes: this.maxResponseBytes,
             });
@@ -377,7 +429,7 @@ export class TelegramClient {
             const telegramErrorPayload = getTelegramErrorPayload(error);
 
             // Handle Rate Limiting (429 Too Many Requests) with auto-retry.
-            if (statusCode === 429 && rateLimitRetries > 0) {
+            if (statusCode === 429 && rateLimitRetries > 0 && canReplay) {
                 const retryAfter = getRetryAfterSeconds(telegramErrorPayload);
                 await this.invokeHook('onRateLimitRetry', () =>
                     this.hooks?.onRateLimitRetry?.({
@@ -402,7 +454,7 @@ export class TelegramClient {
                 );
             }
 
-            if (networkRetries > 0 && isRetryableNetworkError(error)) {
+            if (networkRetries > 0 && canReplay && isRetryableNetworkError(error)) {
                 const retryAfterMs = this.getNetworkRetryDelayMs(networkRetries);
                 await this.invokeHook('onNetworkRetry', () =>
                     this.hooks?.onNetworkRetry?.({
@@ -520,7 +572,7 @@ export class TelegramClient {
      */
     async getFileLink(fileId: string): Promise<string> {
         const file = await this.callApi('getFile', { file_id: fileId });
-        return `https://api.telegram.org/file/bot${this.token}/${file.file_path}`;
+        return `${this.fileBaseUrl}${file.file_path}`;
     }
 
     /**

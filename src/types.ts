@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * VIBEGRAM: COMPREHENSIVE TELEGRAM BOT API TYPE DEFINITIONS (v10.1)
+ * VIBEGRAM: COMPREHENSIVE TELEGRAM BOT API TYPE DEFINITIONS (v10.3)
  * =========================================================================
  * All definitions here are "Zero-Bloat" — TypeScript interfaces are erased
  * entirely at `tsc` compile time, adding zero runtime overhead.
@@ -87,6 +87,7 @@ export interface ChatFullInfo extends Chat {
     max_reaction_count?: number;
     photo?: ChatPhoto;
     guard_bot?: User; // API 10.1
+    community?: Community; // API 10.2
     active_usernames?: string[];
     birthdate?: Birthdate;
     business_intro?: BusinessIntro;
@@ -740,6 +741,9 @@ export interface UniqueGiftInfo {
     is_saved?: boolean;
     can_be_transferred?: boolean;
     origin?: 'upgrade' | 'transfer' | 'gifted_upgrade' | 'offer' | string;
+    text?: string; // API 10.3
+    entities?: MessageEntity[]; // API 10.3
+    is_private?: true; // API 10.3
 }
 
 export interface OwnedGiftRegular extends GiftInfo {
@@ -977,7 +981,12 @@ export interface InlineKeyboardButton {
     copy_text?: CopyTextButton;
     icon_custom_emoji_id?: string;
     style?: string;
+    /** If set, the button is disabled and does nothing (API 10.3). */
+    disabled?: DisabledButton;
 }
+
+/** A disabled button which does nothing. Currently holds no information (API 10.3). */
+export type DisabledButton = Record<string, never>;
 
 export interface CopyTextButton {
     text: string;
@@ -1002,6 +1011,8 @@ export type CallbackGame = Record<string, never>;
 
 export interface InlineKeyboardMarkup {
     inline_keyboard: InlineKeyboardButton[][];
+    /** Show the reply interface as if the user tapped 'Reply' (API 10.3). Can't be changed on edit. */
+    force_reply?: boolean;
 }
 
 export interface ChatPermissions {
@@ -1052,6 +1063,8 @@ export interface WebhookInfo {
 export interface BotCommand {
     command: string;
     description: string;
+    /** True, if the command sends an ephemeral message visible only to the sender and the bot (API 10.2). */
+    is_ephemeral?: boolean;
 }
 
 export interface BotCommandScope {
@@ -1121,6 +1134,7 @@ export interface ChatMember {
     can_delete_stories?: boolean;
     can_manage_direct_messages?: boolean;
     can_manage_tags?: boolean;
+    can_send_welcome_messages?: boolean; // API 10.3
     until_date?: number;
     is_member?: boolean;
     can_send_messages?: boolean;
@@ -1155,6 +1169,8 @@ export interface ChatAdministratorRights {
     can_manage_topics?: boolean;
     can_manage_direct_messages?: boolean;
     can_manage_tags?: boolean;
+    /** True, if the administrator can manage or send chat welcome messages (API 10.3). */
+    can_send_welcome_messages?: boolean;
 }
 
 export interface ChatMemberUpdated {
@@ -1408,7 +1424,12 @@ export interface InaccessibleMessage extends MaybeInaccessibleMessage {
 }
 
 export interface Message {
+    /** Unique message identifier inside this chat; 0 for ephemeral messages. */
     message_id: number;
+    /** For ephemeral messages, the user who received the message (API 10.2). */
+    receiver_user?: User;
+    /** For ephemeral messages, identifier of the ephemeral message inside this chat (API 10.2). */
+    ephemeral_message_id?: number;
     message_thread_id?: number;
     direct_messages_topic?: DirectMessagesTopic;
     from?: User;
@@ -1514,6 +1535,9 @@ export interface Message {
     poll_option_deleted?: PollOptionDeleted;
     chat_owner_left?: ChatOwnerLeft;
     chat_owner_changed?: ChatOwnerChanged;
+    community_chat_added?: CommunityChatAdded; // API 10.2
+    community_chat_joined?: CommunityChatJoined; // API 10.3
+    community_chat_removed?: CommunityChatRemoved; // API 10.2
     gift?: GiftInfo;
     unique_gift?: UniqueGiftInfo;
     gift_upgrade_sent?: GiftInfo;
@@ -1582,15 +1606,18 @@ export interface Update {
 
     // API 9.6 Managed Bots Notifications (2026)
     managed_bot?: ManagedBotUpdated;
+
+    // API 10.2 / 10.3
+    subscription?: BotSubscriptionUpdated;
+    stopped_message_generation?: MessageGenerationStopped;
 }
 
 // ------------------------------------------------------------------------
 // VIBEGRAM EXTRA OPTIONS (Typed extra parameters for outgoing API methods)
 // ------------------------------------------------------------------------
 
-/** Typed reply_parameters for threading a reply to a specific message. */
-export interface ReplyParameters {
-    message_id: number;
+/** Fields shared by every ReplyParameters variant. */
+export interface ReplyParametersBase {
     chat_id?: number | string;
     allow_sending_without_reply?: boolean;
     quote?: string;
@@ -1601,6 +1628,16 @@ export interface ReplyParameters {
     poll_option_id?: string;
 }
 
+/**
+ * Typed reply_parameters for threading a reply to a specific message.
+ * Either `message_id` or `ephemeral_message_id` (API 10.2) must be specified.
+ */
+export type ReplyParameters = ReplyParametersBase &
+    (
+        | { message_id: number; ephemeral_message_id?: number }
+        | { message_id?: number; ephemeral_message_id: number }
+    );
+
 /** Union of all valid reply_markup types. */
 export type ReplyMarkup =
     | InlineKeyboardMarkup
@@ -1608,7 +1645,24 @@ export type ReplyMarkup =
     | ReplyKeyboardRemove
     | ForceReply;
 
-export type InputFile = string | Buffer | NodeJS.ReadableStream;
+/**
+ * An upload with explicit file metadata. Use it to control the file name and
+ * MIME type Telegram shows to users, e.g.
+ * `ctx.replyWithDocument({ source: buffer, filename: 'report.pdf' })`.
+ */
+export interface InputFileUpload {
+    source: Buffer | NodeJS.ReadableStream;
+    /** File name shown in Telegram. Defaults to the fs.ReadStream basename or the field name. */
+    filename?: string;
+    /** MIME type sent in the multipart part. Defaults to application/octet-stream. */
+    contentType?: string;
+}
+
+/**
+ * A file to send: a file_id or HTTP URL string, a Buffer, a readable stream,
+ * or an InputFileUpload with explicit metadata.
+ */
+export type InputFile = string | Buffer | NodeJS.ReadableStream | InputFileUpload;
 
 export interface InputProfilePhotoStatic {
     type: 'static';
@@ -1833,6 +1887,16 @@ export interface InputMediaLivePhoto extends InputMediaBase {
     photo: InputFile;
 }
 
+/** Represents a voice message file to be sent (API 10.2). */
+export interface InputMediaVoiceNote {
+    type: 'voice_note';
+    media: InputFile;
+    caption?: string;
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    duration?: number;
+}
+
 export interface InputMediaSticker {
     type: 'sticker';
     media: InputFile;
@@ -1908,6 +1972,8 @@ export interface ExtraVideoNote {
     business_connection_id?: string;
     message_thread_id?: number;
     direct_messages_topic_id?: number;
+    /** Parameters of the ephemeral message to send (API 10.3). */
+    ephemeral_message_parameters?: EphemeralMessageParameters;
     duration?: number;
     length?: number;
     thumbnail?: InputFile;
@@ -1927,6 +1993,8 @@ export interface ReplyKeyboardMarkup {
     input_field_placeholder?: string;
     selective?: boolean;
     is_persistent?: boolean;
+    /** Show the reply interface as if the user tapped 'Reply' (API 10.3). */
+    force_reply?: boolean;
 }
 
 export interface KeyboardButton {
@@ -1986,6 +2054,8 @@ export interface ExtraReplyMessage {
     business_connection_id?: string;
     message_thread_id?: number;
     direct_messages_topic_id?: number;
+    /** Parameters of the ephemeral message to send (API 10.3). */
+    ephemeral_message_parameters?: EphemeralMessageParameters;
     parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
     entities?: MessageEntity[];
     link_preview_options?: LinkPreviewOptions;
@@ -2002,6 +2072,8 @@ export interface ExtraMedia {
     business_connection_id?: string;
     message_thread_id?: number;
     direct_messages_topic_id?: number;
+    /** Parameters of the ephemeral message to send (API 10.3). */
+    ephemeral_message_parameters?: EphemeralMessageParameters;
     caption?: string;
     parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
     caption_entities?: MessageEntity[];
@@ -2117,6 +2189,7 @@ export interface ExtraPromoteMember {
     can_post_stories?: boolean;
     can_edit_stories?: boolean;
     can_delete_stories?: boolean;
+    can_send_welcome_messages?: boolean; // API 10.3
 }
 
 /** Extra parameters for createChatInviteLink / editChatInviteLink */
@@ -2260,6 +2333,7 @@ export type RichTextElement =
     | RichTextHashtag
     | RichTextCashtag
     | RichTextBotCommand
+    | RichTextButton
     | RichTextAnchor
     | RichTextAnchorLink
     | RichTextReference
@@ -2382,6 +2456,12 @@ export interface RichTextBotCommand {
     bot_command: string;
 }
 
+/** A button inside rich text (API 10.3). */
+export interface RichTextButton {
+    type: 'button';
+    button: RichMessageButton;
+}
+
 export interface RichTextAnchor {
     type: 'anchor';
     name: string;
@@ -2442,14 +2522,17 @@ export type RichBlock =
     | RichBlockAnchor
     | RichBlockList
     | RichBlockBlockQuotation
+    | RichBlockExpandableBlockQuotation
     | RichBlockPullQuotation
     | RichBlockCollage
     | RichBlockSlideshow
     | RichBlockTable
     | RichBlockDetails
     | RichBlockMap
+    | RichBlockButtons
     | RichBlockAnimation
     | RichBlockAudio
+    | RichBlockDocument
     | RichBlockPhoto
     | RichBlockVideo
     | RichBlockVoiceNote
@@ -2502,6 +2585,13 @@ export interface RichBlockBlockQuotation {
     credit?: RichText;
 }
 
+/** A block quotation that can be expanded or collapsed (API 10.3). */
+export interface RichBlockExpandableBlockQuotation {
+    type: 'expandable_blockquote';
+    text: RichText;
+    credit?: RichText;
+}
+
 export interface RichBlockPullQuotation {
     type: 'pullquote';
     text: RichText;
@@ -2525,6 +2615,7 @@ export interface RichBlockTable {
     cells: RichBlockTableCell[][];
     is_bordered?: true;
     is_striped?: true;
+    is_compact?: true; // API 10.3
     caption?: RichText;
 }
 
@@ -2551,9 +2642,23 @@ export interface RichBlockAnimation {
     caption?: RichBlockCaption;
 }
 
+/** A row of buttons, corresponding to <tg-button-row> (API 10.3). */
+export interface RichBlockButtons {
+    type: 'buttons';
+    buttons: RichMessageButton[];
+    align?: 'left' | 'center' | 'right';
+}
+
 export interface RichBlockAudio {
     type: 'audio';
     audio: Audio;
+    caption?: RichBlockCaption;
+}
+
+/** A block with a general file, corresponding to <tg-document> (API 10.3). */
+export interface RichBlockDocument {
+    type: 'document';
+    document: Document;
     caption?: RichBlockCaption;
 }
 
@@ -2590,12 +2695,237 @@ export interface RichMessage {
 }
 
 /**
- * Describes a rich message to be sent. Exactly one of `html` or `markdown`
- * must be used.
+ * A button in a RichMessage (API 10.3). Exactly one of the fields other than
+ * `text` and `style` must be used to specify the type of the button.
+ */
+export interface RichMessageButton {
+    /** May contain only plain text, RichTextCustomEmoji and RichTextDateTime entities. */
+    text: RichText;
+    /** "link" is allowed only for callback buttons. */
+    style?: 'danger' | 'success' | 'primary' | 'link';
+    url?: string;
+    callback_data?: string;
+    web_app?: { url: string };
+    login_url?: LoginUrl;
+    switch_inline_query?: string;
+    switch_inline_query_current_chat?: string;
+    switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat;
+    copy_text?: CopyTextButton;
+    disabled?: DisabledButton;
+}
+
+/* -------------------------------------------------------------------------
+ * Outgoing rich blocks (Bot API 10.2 / 10.3)
+ * -----------------------------------------------------------------------*/
+
+/** An item of a list to be sent. */
+export interface InputRichBlockListItem {
+    blocks: InputRichBlock[];
+    has_checkbox?: true;
+    is_checked?: true;
+    value?: number;
+    type?: 'a' | 'A' | 'i' | 'I' | '1';
+}
+
+/** A block in a rich formatted message to be sent. */
+export type InputRichBlock =
+    | InputRichBlockParagraph
+    | InputRichBlockSectionHeading
+    | InputRichBlockPreformatted
+    | InputRichBlockFooter
+    | InputRichBlockDivider
+    | InputRichBlockMathematicalExpression
+    | InputRichBlockAnchor
+    | InputRichBlockList
+    | InputRichBlockBlockQuotation
+    | InputRichBlockExpandableBlockQuotation
+    | InputRichBlockPullQuotation
+    | InputRichBlockCollage
+    | InputRichBlockSlideshow
+    | InputRichBlockTable
+    | InputRichBlockDetails
+    | InputRichBlockMap
+    | InputRichBlockButtons
+    | InputRichBlockAnimation
+    | InputRichBlockAudio
+    | InputRichBlockDocument
+    | InputRichBlockPhoto
+    | InputRichBlockVideo
+    | InputRichBlockVoiceNote
+    | InputRichBlockThinking;
+
+export interface InputRichBlockParagraph {
+    type: 'paragraph';
+    text: RichText;
+}
+
+export interface InputRichBlockSectionHeading {
+    type: 'heading';
+    text: RichText;
+    /** 1-6, 1 is the largest. */
+    size: number;
+}
+
+export interface InputRichBlockPreformatted {
+    type: 'pre';
+    text: RichText;
+    language?: string;
+}
+
+export interface InputRichBlockFooter {
+    type: 'footer';
+    text: RichText;
+}
+
+export interface InputRichBlockDivider {
+    type: 'divider';
+}
+
+export interface InputRichBlockMathematicalExpression {
+    type: 'mathematical_expression';
+    expression: string;
+}
+
+export interface InputRichBlockAnchor {
+    type: 'anchor';
+    name: string;
+}
+
+export interface InputRichBlockList {
+    type: 'list';
+    items: InputRichBlockListItem[];
+}
+
+export interface InputRichBlockBlockQuotation {
+    type: 'blockquote';
+    blocks: InputRichBlock[];
+    credit?: RichText;
+}
+
+export interface InputRichBlockExpandableBlockQuotation {
+    type: 'expandable_blockquote';
+    text: RichText;
+    credit?: RichText;
+}
+
+export interface InputRichBlockPullQuotation {
+    type: 'pullquote';
+    text: RichText;
+    credit?: RichText;
+}
+
+export interface InputRichBlockCollage {
+    type: 'collage';
+    blocks: InputRichBlock[];
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockSlideshow {
+    type: 'slideshow';
+    blocks: InputRichBlock[];
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockTable {
+    type: 'table';
+    cells: RichBlockTableCell[][];
+    is_bordered?: true;
+    is_striped?: true;
+    is_compact?: true;
+    caption?: RichText;
+}
+
+export interface InputRichBlockDetails {
+    type: 'details';
+    summary: RichText;
+    blocks: InputRichBlock[];
+    is_open?: true;
+}
+
+/** Width + height must not exceed 10000 in total; the ratio must be at most 20. */
+export interface InputRichBlockMap {
+    type: 'map';
+    location: Location;
+    /** 0-24 */
+    zoom?: number;
+    width?: number;
+    height?: number;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockButtons {
+    type: 'buttons';
+    /** 1-8 buttons. */
+    buttons: RichMessageButton[];
+    align?: 'left' | 'center' | 'right';
+}
+
+export interface InputRichBlockAnimation {
+    type: 'animation';
+    animation: InputMediaAnimation;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockAudio {
+    type: 'audio';
+    audio: InputMediaAudio;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockDocument {
+    type: 'document';
+    document: InputMediaDocument;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockPhoto {
+    type: 'photo';
+    photo: InputMediaPhoto;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockVideo {
+    type: 'video';
+    video: InputMediaVideo;
+    caption?: RichBlockCaption;
+}
+
+export interface InputRichBlockVoiceNote {
+    type: 'voice_note';
+    voice_note: InputMediaVoiceNote;
+    caption?: RichBlockCaption;
+}
+
+/** A "Thinking..." placeholder; usable only in sendRichMessageDraft. */
+export interface InputRichBlockThinking {
+    type: 'thinking';
+    text: RichText;
+}
+
+/** A media element embedded in an outgoing rich message (API 10.2). */
+export interface InputRichMessageMedia {
+    /** Identifier used in tg://photo?id=, tg://video?id=, tg://document?id= or tg://audio?id= links. 1-64 chars of A-Z, a-z, 0-9, _ and -. */
+    id: string;
+    media:
+        | InputMediaAnimation
+        | InputMediaAudio
+        | InputMediaDocument
+        | InputMediaPhoto
+        | InputMediaVideo
+        | InputMediaVoiceNote;
+}
+
+/**
+ * Describes a rich message to be sent. Exactly one of `blocks`, `html`, or
+ * `markdown` must be used.
  */
 export interface InputRichMessage {
+    /** Content described as a list of blocks (API 10.2). */
+    blocks?: InputRichBlock[];
     html?: string;
     markdown?: string;
+    /** Media referenced from `html` / `markdown` via tg://...?id= links (API 10.2). */
+    media?: InputRichMessageMedia[];
     is_rtl?: boolean;
     skip_entity_detection?: boolean;
 }
@@ -2610,6 +2940,8 @@ export interface ExtraRichMessage {
     business_connection_id?: string;
     message_thread_id?: number;
     direct_messages_topic_id?: number;
+    /** Parameters of the ephemeral message to send (API 10.3). */
+    ephemeral_message_parameters?: EphemeralMessageParameters;
     disable_notification?: boolean;
     protect_content?: boolean;
     allow_paid_broadcast?: boolean;
@@ -2622,6 +2954,86 @@ export interface ExtraRichMessage {
 /** Extra parameters for sendRichMessageDraft. */
 export interface ExtraRichMessageDraft {
     message_thread_id?: number;
+    /** Show the user a button to stop further drafts (API 10.3). */
+    can_stop?: boolean;
+    /** Keep the draft in the chat when the stop button is pressed (API 10.3). */
+    keep_on_stop?: boolean;
+}
+
+/** Extra parameters for sendMessageDraft. */
+export interface ExtraMessageDraft extends ExtraRichMessageDraft {
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    entities?: MessageEntity[];
+}
+
+/* =========================================================================
+ * EPHEMERAL MESSAGES (Bot API 10.2 / 10.3)
+ * =======================================================================*/
+
+/** Parameters of an ephemeral message to send (API 10.3). */
+export interface EphemeralMessageParameters {
+    /** Identifier of the user who will receive the message. Delivery is not guaranteed. */
+    receiver_user_id: number;
+    /** Identifier of the callback query which triggered the message, if any. */
+    callback_query_id?: string;
+    /** Show the ephemeral message in place of the original message. */
+    replace_callback_query_message?: boolean;
+}
+
+/** Extra parameters for editEphemeralMessageText. */
+export interface ExtraEditEphemeralMessageText {
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    entities?: MessageEntity[];
+    /** Required if text isn't specified (API 10.3). */
+    rich_message?: InputRichMessage;
+    link_preview_options?: LinkPreviewOptions;
+    reply_markup?: InlineKeyboardMarkup;
+}
+
+/** Extra parameters for editEphemeralMessageCaption. */
+export interface ExtraEditEphemeralMessageCaption {
+    parse_mode?: 'Markdown' | 'MarkdownV2' | 'HTML' | string;
+    caption_entities?: MessageEntity[];
+    show_caption_above_media?: boolean;
+    reply_markup?: InlineKeyboardMarkup;
+}
+
+/* =========================================================================
+ * COMMUNITIES, SUBSCRIPTIONS & GENERATION UPDATES (Bot API 10.2 / 10.3)
+ * =======================================================================*/
+
+/** A community: several supergroups, channels, and bots linked around a shared topic. */
+export interface Community {
+    /** May have more than 32 significant bits, but at most 52. */
+    id: number;
+    name: string;
+}
+
+/** Service message: a chat or bot was added to a community. */
+export interface CommunityChatAdded {
+    community: Community;
+}
+
+/** Service message: a chat was joined by a user from a community (API 10.3). */
+export interface CommunityChatJoined {
+    community: Community;
+}
+
+/** Service message: a chat or bot was removed from a community. Currently holds no information. */
+export type CommunityChatRemoved = Record<string, never>;
+
+/** Changes to a user payment subscription toward the current bot (API 10.2). */
+export interface BotSubscriptionUpdated {
+    user: User;
+    invoice_payload: string;
+    state: 'canceled' | 'active' | 'failed' | string;
+}
+
+/** A user stopped message generation (API 10.3). */
+export interface MessageGenerationStopped {
+    chat: Chat;
+    message_thread_id?: number;
+    draft_id: number;
 }
 
 /** Result value for answerChatJoinRequestQuery. */

@@ -119,6 +119,8 @@ export class Markup {
         ) => ({ text, login_url: loginUrl }),
         /** Copy-to-clipboard button (Bot API 9.6). */
         copy: (text: string, textToCopy: string) => ({ text, copy_text: { text: textToCopy } }),
+        /** Disabled button that does nothing when pressed (Bot API 10.3). */
+        disabled: (text: string) => ({ text, disabled: {} as Record<string, never> }),
     };
 
     /**

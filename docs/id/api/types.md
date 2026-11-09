@@ -1,7 +1,7 @@
 # Tipe TypeScript
 
 VibeGram mengekspor deklarasi TypeScript untuk objek utama Telegram Bot API
-10.1, helper framework, opsi middleware, dan class error.
+10.3, helper framework, opsi middleware, dan class error.
 
 ```ts
 import type { Update, Message, User, Chat, Context } from 'vibegram';
@@ -129,6 +129,29 @@ strongly typed.
 | `DeleteMessageReactionOptions` | Opsi menghapus satu reaction message. |
 | `DeleteAllMessageReactionsOptions` | Opsi menghapus reaction terbaru. |
 | `SendLivePhotoOptions` | Opsi tambahan untuk `sendLivePhoto`. |
+
+## Tipe Bot API 10.2 / 10.3
+
+| Tipe | Deskripsi |
+| --- | --- |
+| `InputRichBlock` | Union block rich keluar (`InputRichBlockParagraph`, `InputRichBlockTable`, `InputRichBlockButtons`, ...). Dipakai di `InputRichMessage.blocks`. |
+| `InputRichMessageMedia` | Media yang dirujuk dari `html`/`markdown` rich lewat link seperti `tg://photo?id=`. |
+| `RichMessageButton` / `RichTextButton` | Tombol di dalam block rich dan rich text. |
+| `RichBlockButtons`, `RichBlockDocument`, `RichBlockExpandableBlockQuotation` | Block rich masuk yang baru. |
+| `InputMediaVoiceNote` | Media voice note untuk block rich. |
+| `EphemeralMessageParameters` | `ephemeral_message_parameters` untuk metode kirim. |
+| `Community`, `CommunityChatAdded`, `CommunityChatJoined`, `CommunityChatRemoved` | Community dan pesan servisnya. |
+| `BotSubscriptionUpdated` | Update `subscription` tentang langganan pembayaran user. |
+| `MessageGenerationStopped` | Update `stopped_message_generation` dari tombol stop draft. |
+| `DisabledButton` | Tombol inline nonaktif (`Markup.button.disabled(text)`). |
+| `InputFileUpload` | Upload `{ source, filename?, contentType? }` dengan metadata file eksplisit. |
+
+Field baru mencakup `Message.receiver_user`, `Message.ephemeral_message_id`,
+`ReplyParameters.ephemeral_message_id`, `BotCommand.is_ephemeral`,
+`ChatFullInfo.community`, `InlineKeyboardMarkup.force_reply`,
+`ReplyKeyboardMarkup.force_reply`, `InlineKeyboardButton.disabled`,
+`ChatAdministratorRights.can_send_welcome_messages`, `RichBlockTable.is_compact`,
+serta `UniqueGiftInfo.text` / `entities` / `is_private`.
 
 ## Tipe Bot API 10.1
 

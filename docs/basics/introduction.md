@@ -84,14 +84,15 @@ Bot Instance
 
 ## Bot API Coverage
 
-VibeGram targets Telegram Bot API 10.1 with:
+VibeGram targets Telegram Bot API 10.3 with:
 
 - Context helpers for messages, media, admin, forums, business flows, checklists,
   stickers, gifts, and verification.
 - Strong TypeScript coverage for major Telegram objects.
 - Webhook adapters with secret-token validation and body limits.
 - Support for Telegram Stars, Draft Messages, Managed Bots, Rich Messages,
-  Join Request Queries, and poll link media.
+  Join Request Queries, poll link media, Ephemeral Messages, Communities,
+  and block-based rich messages.
 
 ## What's New in 2.5.0
 

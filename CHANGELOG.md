@@ -7,6 +7,32 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ## [Unreleased]
 
+### Added
+
+- Bot API 10.2 / 10.3 Ephemeral Messages: `EphemeralMessageParameters` on send methods, `ctx.replyEphemeral()` (auto-links the triggering callback query or incoming ephemeral command), `editEphemeralMessageText/Media/Caption/ReplyMarkup()` and `deleteEphemeralMessage()` on both `Bot` and `Context`, plus `Message.receiver_user`, `Message.ephemeral_message_id`, `ReplyParameters.ephemeral_message_id`, and `BotCommand.is_ephemeral`.
+- Bot API 10.2 / 10.3 Rich Messages: block-based `InputRichMessage.blocks` with the full `InputRichBlock*` family, `InputRichMessage.media` / `InputRichMessageMedia`, `InputMediaVoiceNote`, `RichMessageButton`, `RichTextButton`, `RichBlockButtons`, `RichBlockDocument`, `RichBlockExpandableBlockQuotation`, and `RichBlockTable.is_compact`.
+- Bot API 10.2 / 10.3 Communities (`Community`, `CommunityChatAdded`, `CommunityChatJoined`, `CommunityChatRemoved`, `ChatFullInfo.community`), `subscription` (`BotSubscriptionUpdated`) and `stopped_message_generation` (`MessageGenerationStopped`) updates, `can_stop` / `keep_on_stop` for drafts, `DisabledButton` with `Markup.button.disabled()`, `force_reply` on inline and reply keyboards, `can_send_welcome_messages`, and `UniqueGiftInfo.text` / `entities` / `is_private`.
+- `bot.sendMessageDraft()` wrapper.
+- `TelegramClientOptions.apiRoot` for Local Bot API Servers and `TelegramClientOptions.timeoutMs`; `BotOptions.client` forwards client options from `new Bot()`.
+- `InputFileUpload` (`{ source, filename?, contentType? }`) so uploads keep their file name and MIME type; `fs.createReadStream()` uploads now use the file's basename.
+- `polling.maxUpdateAttempts` (default 3) for `offsetCommit: 'processed'`.
+- `BotLaunchOptions.handleSignals` to opt out of the built-in SIGINT/SIGTERM handlers.
+
+### Fixed
+
+- `ctx.replyWithDraft()` now sends the required `draft_id` (previously sent an unsupported `random_id`, so Telegram rejected the call). `random_id` is still accepted as a deprecated alias when numeric.
+- Polling with `offsetCommit: 'processed'` no longer retries a permanently failing update forever; it is skipped after `maxUpdateAttempts` and reported via `onPollingError`.
+- Rate-limit and network retries no longer re-send consumed stream uploads (which produced empty files).
+- `getUpdates` requests no longer abort when `polling.timeout` approaches the 50s HTTP timeout.
+- `launch()` only throws `InvalidTokenError` for 401/404 responses; network and server errors now surface unchanged.
+- Repeated `launch()` / `stop()` cycles no longer leak SIGINT/SIGTERM listeners.
+- `ctx.chat` / `ctx.from` resolve for `stopped_message_generation` and `subscription` updates, and `UpdateType` includes `guest_message`, `subscription`, and `stopped_message_generation`.
+
+### Security
+
+- Webhook launch without `secretToken` now logs a warning.
+- Upload file names and content types are stripped of control characters to prevent multipart header injection.
+
 ---
 
 ## [2.5.0] - 2026-07-07

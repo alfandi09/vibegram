@@ -29,6 +29,9 @@ import {
     InputPaidMedia,
     InputRichMessage,
     ExtraRichMessage,
+    ExtraMessageDraft,
+    ExtraEditEphemeralMessageText,
+    ExtraEditEphemeralMessageCaption,
     InlineKeyboardMarkup,
     InlineQueryResult,
     LabeledPrice,
@@ -156,6 +159,7 @@ export class Context<S = any> {
                 this.update.deleted_business_messages?.chat ||
                 this.update.message_reaction?.chat ||
                 this.update.message_reaction_count?.chat ||
+                this.update.stopped_message_generation?.chat ||
                 Context.NO_VALUE;
         }
 
@@ -180,6 +184,7 @@ export class Context<S = any> {
                 this.update.business_connection?.user ||
                 this.update.message_reaction?.user ||
                 this.update.purchased_paid_media?.from ||
+                this.update.subscription?.user ||
                 Context.NO_VALUE;
         }
 
@@ -240,6 +245,34 @@ export class Context<S = any> {
     }
 
     /**
+     * Resolves the ephemeral message targeted by edit/delete shortcuts: the
+     * current ephemeral message, or the ephemeral message whose button was pressed.
+     */
+    private getEphemeralTarget() {
+        const callbackMessage = this.update.callback_query?.message;
+        const source =
+            this.message?.ephemeral_message_id !== undefined
+                ? this.message
+                : callbackMessage && 'ephemeral_message_id' in callbackMessage
+                  ? (callbackMessage as Message)
+                  : undefined;
+
+        const ephemeralMessageId = source?.ephemeral_message_id;
+        const receiverUserId = source?.receiver_user?.id ?? this.from?.id;
+        if (!this.chat || ephemeralMessageId === undefined || receiverUserId === undefined) {
+            throw new Error(
+                'Cannot edit ephemeral message: Chat ID, receiver user ID, or ephemeral message ID is not available'
+            );
+        }
+
+        return {
+            chat_id: this.chat.id,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
+        };
+    }
+
+    /**
      * Shortcut to reply to the current chat.
      *
      * @example
@@ -297,23 +330,130 @@ export class Context<S = any> {
     }
 
     /**
-     * Shortcut: Draft Message API 9.5 (Pre-fills text input on client side)
+     * Stream a partial message to the current private chat via sendMessageDraft.
+     * Pass the same `draft_id` on every call to animate updates of one draft;
+     * a random non-zero id is generated when omitted.
+     *
+     * @example
+     * ```typescript
+     * const draft_id = 42;
+     * await ctx.replyWithDraft('Thinking', { draft_id, can_stop: true });
+     * await ctx.replyWithDraft('Thinking about it...', { draft_id });
+     * ```
      */
     async replyWithDraft(
         text: string,
-        extra?: ExtraReplyMessage & { random_id?: number | string }
-    ) {
+        extra?: ExtraMessageDraft & {
+            draft_id?: number;
+            /** @deprecated Use `draft_id`. Accepted only when it is a non-zero safe integer. */
+            random_id?: number | string;
+        }
+    ): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot send draft: Chat ID is not available');
-        // Generate cryptographically safe 64-bit random ID for MTProto validation
-        const randomId = extra?.random_id || crypto.randomBytes(8).readBigUInt64BE().toString();
+        const { random_id: legacyId, draft_id: explicitId, ...rest } = extra ?? {};
+        const legacyNumericId = legacyId === undefined ? undefined : Number(legacyId);
+        const draftId =
+            explicitId ??
+            (legacyNumericId !== undefined &&
+            Number.isSafeInteger(legacyNumericId) &&
+            legacyNumericId !== 0
+                ? legacyNumericId
+                : crypto.randomInt(1, 2 ** 31 - 1));
+
         return this.client.callApi('sendMessageDraft', {
             chat_id: this.chat.id,
-            business_connection_id: this.businessConnectionId,
             message_thread_id: this.getThreadId(),
+            draft_id: draftId,
             text,
-            random_id: randomId,
+            ...rest,
+        });
+    }
+
+    /**
+     * Reply with an ephemeral message visible only to the current user (Bot API 10.2 / 10.3).
+     * Automatically links the triggering callback query or incoming ephemeral message,
+     * which Telegram requires for non-admin bots within 15 seconds of the action.
+     */
+    async replyEphemeral(text: string, extra?: ExtraReplyMessage): Promise<Message> {
+        const receiverUserId = this.from?.id;
+        if (receiverUserId === undefined) {
+            throw new Error(
+                'Cannot reply ephemerally: User ID is not available in the current context'
+            );
+        }
+
+        const callbackQueryId = this.update.callback_query?.id;
+        const incomingEphemeralId = this.message?.ephemeral_message_id;
+
+        return this.reply(text, {
+            ephemeral_message_parameters: {
+                receiver_user_id: receiverUserId,
+                ...(callbackQueryId ? { callback_query_id: callbackQueryId } : {}),
+            },
+            ...(incomingEphemeralId !== undefined
+                ? { reply_parameters: { ephemeral_message_id: incomingEphemeralId } }
+                : {}),
             ...extra,
         });
+    }
+
+    /**
+     * Edit the text (or rich content) of the current ephemeral message (Bot API 10.2 / 10.3).
+     */
+    async editEphemeralMessageText(
+        content: string | InputRichMessage,
+        extra?: ExtraEditEphemeralMessageText
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageText', {
+            ...this.getEphemeralTarget(),
+            ...(typeof content === 'string' ? { text: content } : { rich_message: content }),
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit the caption of the current ephemeral message (Bot API 10.2 / 10.3).
+     */
+    async editEphemeralMessageCaption(
+        caption?: string,
+        extra?: ExtraEditEphemeralMessageCaption
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageCaption', {
+            ...this.getEphemeralTarget(),
+            caption,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit the media of the current ephemeral message (Bot API 10.2 / 10.3).
+     */
+    async editEphemeralMessageMedia(
+        media: InputMedia,
+        extra?: { reply_markup?: InlineKeyboardMarkup }
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageMedia', {
+            ...this.getEphemeralTarget(),
+            media,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit only the inline keyboard of the current ephemeral message (Bot API 10.2).
+     */
+    async editEphemeralMessageReplyMarkup(replyMarkup?: InlineKeyboardMarkup): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageReplyMarkup', {
+            ...this.getEphemeralTarget(),
+            reply_markup: replyMarkup,
+        });
+    }
+
+    /**
+     * Delete the current ephemeral message (Bot API 10.2).
+     */
+    async deleteEphemeralMessage(): Promise<boolean> {
+        return this.client.callApi('deleteEphemeralMessage', this.getEphemeralTarget());
     }
 
     /**

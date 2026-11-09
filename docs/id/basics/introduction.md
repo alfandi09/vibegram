@@ -85,14 +85,15 @@ Instansi Bot
 
 ## Cakupan Bot API
 
-VibeGram menargetkan Telegram Bot API 10.1 dengan:
+VibeGram menargetkan Telegram Bot API 10.3 dengan:
 
 - Helper Context untuk pesan, media, admin, forum, business flow, checklist,
   sticker, hadiah, dan verifikasi.
 - Cakupan TypeScript kuat untuk object utama Telegram.
 - Adapter webhook dengan validasi secret token dan body limit.
 - Dukungan Telegram Stars, Draft Messages, Managed Bots, Rich Messages,
-  Join Request Queries, dan media link pada poll.
+  Join Request Queries, media link pada poll, Ephemeral Messages, Communities,
+  dan rich message berbasis block.
 
 ## Yang Baru di 2.5.0
 

@@ -10,7 +10,7 @@
   <FeatureCard title="Routing" description="Register middleware, commands, listeners, actions, and global error handlers." href="#routing-methods" />
   <FeatureCard title="Business APIs" description="Call business account, gifts, stories, and direct API wrappers." href="#business-account-methods" />
   <FeatureCard title="Bot API 10.0" description="Use guest replies, live photos, reaction cleanup, and managed bot access settings." href="#bot-api-100-methods" />
-  <FeatureCard title="Bot API 10.1" description="Send rich messages and process chat join request queries." href="#bot-api-101-methods" />
+  <FeatureCard title="Bot API 10.3" description="Ephemeral messages, block-based rich messages, and draft stop buttons." href="#bot-api-103-methods" />
 </FeatureGrid>
 
 Methods available directly on the `Bot` instance (no Context required).
@@ -80,6 +80,57 @@ These wrappers expose the Bot API 10.0 additions while keeping Telegram's offici
 | `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
 | `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
 | `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
+
+## Bot API 10.2 / 10.3 Methods {#bot-api-103-methods}
+
+Ephemeral messages are visible only to one member of a group and the bot.
+Non-admin bots must answer within 15 seconds of a callback query or an incoming
+ephemeral command; `ctx.replyEphemeral()` links both automatically.
+
+| Method                                                                  | API                               |
+| ----------------------------------------------------------------------- | --------------------------------- |
+| `ctx.replyEphemeral(text, extra?)`                                      | `sendMessage` + ephemeral params  |
+| `bot.editEphemeralMessageText(chatId, userId, id, textOrRich, extra?)`  | `editEphemeralMessageText`        |
+| `bot.editEphemeralMessageMedia(chatId, userId, id, media, extra?)`      | `editEphemeralMessageMedia`       |
+| `bot.editEphemeralMessageCaption(chatId, userId, id, caption?, extra?)` | `editEphemeralMessageCaption`     |
+| `bot.editEphemeralMessageReplyMarkup(chatId, userId, id, markup?)`      | `editEphemeralMessageReplyMarkup` |
+| `bot.deleteEphemeralMessage(chatId, userId, id)`                        | `deleteEphemeralMessage`          |
+| `bot.sendMessageDraft(chatId, draftId, text, extra?)`                   | `sendMessageDraft`                |
+
+The `ctx.editEphemeralMessage*()` and `ctx.deleteEphemeralMessage()` shortcuts
+target the current ephemeral message, or the one whose button was pressed.
+
+```typescript
+bot.setMyCommands([{ command: 'secret', description: 'Private answer', is_ephemeral: true }]);
+
+bot.command('secret', ctx => ctx.replyEphemeral('Only you can see this.'));
+
+bot.action('peek', ctx =>
+    ctx.replyEphemeral('Your balance is 42 Stars', {
+        ephemeral_message_parameters: {
+            receiver_user_id: ctx.from!.id,
+            callback_query_id: ctx.update.callback_query!.id,
+            replace_callback_query_message: true,
+        },
+    })
+);
+
+// Stream a draft with a stop button (Bot API 10.3)
+await ctx.replyWithDraft('Thinking...', { draft_id: 1, can_stop: true });
+bot.on('stopped_message_generation', ctx => abortGeneration(ctx.update.stopped_message_generation!.draft_id));
+```
+
+Rich messages can now be built from typed blocks instead of HTML or Markdown:
+
+```typescript
+await bot.sendRichMessage(chatId, {
+    blocks: [
+        { type: 'heading', text: 'Release notes', size: 1 },
+        { type: 'expandable_blockquote', text: 'Long changelog...' },
+        { type: 'buttons', buttons: [{ text: 'Open', url: 'https://example.com' }] },
+    ],
+});
+```
 
 ## Bot API 10.1 Methods {#bot-api-101-methods}
 

@@ -1,11 +1,23 @@
 import { randomBytes } from 'crypto';
+import { basename } from 'path';
 
-export type UploadValue = Buffer | NodeJS.ReadableStream;
+export type UploadSource = Buffer | NodeJS.ReadableStream;
+
+/** An upload with explicit file metadata, e.g. `{ source: buffer, filename: 'report.pdf' }`. */
+export interface UploadDescriptor {
+    source: UploadSource;
+    filename?: string;
+    contentType?: string;
+}
+
+export type UploadValue = UploadSource | UploadDescriptor;
 
 interface MultipartAttachment {
     name: string;
     value: UploadValue;
 }
+
+const DEFAULT_UPLOAD_CONTENT_TYPE = 'application/octet-stream';
 
 interface MultipartField {
     name: string;
@@ -18,12 +30,69 @@ export interface PreparedRequestPayload {
     isMultipart: boolean;
 }
 
-export function isUploadValue(value: unknown): value is UploadValue {
+function isUploadSource(value: unknown): value is UploadSource {
     return (
         Buffer.isBuffer(value) ||
         (typeof value === 'object' &&
             value !== null &&
             typeof (value as NodeJS.ReadableStream).pipe === 'function')
+    );
+}
+
+function isUploadDescriptor(value: unknown): value is UploadDescriptor {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+
+    const descriptor = value as Partial<UploadDescriptor>;
+    return (
+        isUploadSource(descriptor.source) &&
+        (descriptor.filename === undefined || typeof descriptor.filename === 'string') &&
+        (descriptor.contentType === undefined || typeof descriptor.contentType === 'string')
+    );
+}
+
+export function isUploadValue(value: unknown): value is UploadValue {
+    return isUploadSource(value) || isUploadDescriptor(value);
+}
+
+/**
+ * True when the payload contains a stream upload. Streams can only be read
+ * once, so such requests must not be replayed by retry logic.
+ */
+export function hasStreamUpload(value: unknown, visited: WeakSet<object> = new WeakSet()): boolean {
+    if (isUploadValue(value)) {
+        const source = isUploadDescriptor(value) ? value.source : value;
+        return !Buffer.isBuffer(source);
+    }
+    if (typeof value !== 'object' || value === null) return false;
+    if (visited.has(value)) return false;
+
+    visited.add(value);
+    const items = Array.isArray(value) ? value : Object.values(value);
+    return items.some(item => hasStreamUpload(item, visited));
+}
+
+function getUploadSource(value: UploadValue): UploadSource {
+    return isUploadDescriptor(value) ? value.source : value;
+}
+
+function getUploadFilename(value: UploadValue, fallback: string): string {
+    if (isUploadDescriptor(value) && value.filename) {
+        return value.filename;
+    }
+
+    // fs.createReadStream() exposes the source path; reuse its basename.
+    const streamPath = (getUploadSource(value) as { path?: unknown }).path;
+    if (typeof streamPath === 'string' && streamPath !== '') {
+        return basename(streamPath);
+    }
+
+    return fallback;
+}
+
+function getUploadContentType(value: UploadValue): string {
+    return (
+        (isUploadDescriptor(value) && value.contentType?.replace(/[\x00-\x1f\x7f]/g, '')) ||
+        DEFAULT_UPLOAD_CONTENT_TYPE
     );
 }
 
@@ -190,12 +259,13 @@ function escapeMultipartName(value: string): string {
 }
 
 async function* readUploadValue(value: UploadValue): AsyncIterable<Uint8Array> {
-    if (Buffer.isBuffer(value)) {
-        yield value;
+    const source = getUploadSource(value);
+    if (Buffer.isBuffer(source)) {
+        yield source;
         return;
     }
 
-    for await (const chunk of value as AsyncIterable<Buffer | Uint8Array | string>) {
+    for await (const chunk of source as AsyncIterable<Buffer | Uint8Array | string>) {
         if (Buffer.isBuffer(chunk)) {
             yield chunk;
         } else if (typeof chunk === 'string') {
@@ -220,10 +290,11 @@ async function* createMultipartBody(
     }
 
     for (const attachment of attachments) {
+        const filename = getUploadFilename(attachment.value, attachment.name);
         yield Buffer.from(
             `--${boundary}\r\n` +
-                `Content-Disposition: form-data; name="${escapeMultipartName(attachment.name)}"; filename="${escapeMultipartName(attachment.name)}"\r\n` +
-                'Content-Type: application/octet-stream\r\n\r\n'
+                `Content-Disposition: form-data; name="${escapeMultipartName(attachment.name)}"; filename="${escapeMultipartName(filename)}"\r\n` +
+                `Content-Type: ${getUploadContentType(attachment.value)}\r\n\r\n`
         );
         yield* readUploadValue(attachment.value);
         yield Buffer.from('\r\n');

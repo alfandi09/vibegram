@@ -1,6 +1,6 @@
 # TypeScript Types
 
-VibeGram exports TypeScript declarations for the main Telegram Bot API 10.1
+VibeGram exports TypeScript declarations for the main Telegram Bot API 10.3
 objects, framework helpers, middleware options, and error classes.
 
 ```ts
@@ -129,6 +129,29 @@ instances.
 | `DeleteMessageReactionOptions` | Options for removing one message reaction. |
 | `DeleteAllMessageReactionsOptions` | Options for removing recent reactions. |
 | `SendLivePhotoOptions` | Extra options for `sendLivePhoto`. |
+
+## Bot API 10.2 / 10.3 Types
+
+| Type | Description |
+| --- | --- |
+| `InputRichBlock` | Union of outgoing rich blocks (`InputRichBlockParagraph`, `InputRichBlockTable`, `InputRichBlockButtons`, ...). Use with `InputRichMessage.blocks`. |
+| `InputRichMessageMedia` | Media referenced from rich `html`/`markdown` via `tg://photo?id=` style links. |
+| `RichMessageButton` / `RichTextButton` | Buttons inside rich blocks and rich text. |
+| `RichBlockButtons`, `RichBlockDocument`, `RichBlockExpandableBlockQuotation` | New incoming rich blocks. |
+| `InputMediaVoiceNote` | Voice note media for rich blocks. |
+| `EphemeralMessageParameters` | `ephemeral_message_parameters` for send methods. |
+| `Community`, `CommunityChatAdded`, `CommunityChatJoined`, `CommunityChatRemoved` | Communities and their service messages. |
+| `BotSubscriptionUpdated` | `subscription` update about a user payment subscription. |
+| `MessageGenerationStopped` | `stopped_message_generation` update from a draft stop button. |
+| `DisabledButton` | Disabled inline button (`Markup.button.disabled(text)`). |
+| `InputFileUpload` | `{ source, filename?, contentType? }` upload with explicit file metadata. |
+
+New fields include `Message.receiver_user`, `Message.ephemeral_message_id`,
+`ReplyParameters.ephemeral_message_id`, `BotCommand.is_ephemeral`,
+`ChatFullInfo.community`, `InlineKeyboardMarkup.force_reply`,
+`ReplyKeyboardMarkup.force_reply`, `InlineKeyboardButton.disabled`,
+`ChatAdministratorRights.can_send_welcome_messages`, `RichBlockTable.is_compact`,
+and `UniqueGiftInfo.text` / `entities` / `is_private`.
 
 ## Bot API 10.1 Types
 

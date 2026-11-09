@@ -1,4 +1,4 @@
-import { TelegramClient, TelegramClientHooks } from './client';
+import { TelegramClient, TelegramClientHooks, TelegramClientOptions } from './client';
 import { Composer, Middleware } from './composer';
 import { Context } from './context';
 import * as http from 'http';
@@ -26,6 +26,11 @@ import {
     InputRichMessage,
     ExtraRichMessage,
     ExtraRichMessageDraft,
+    ExtraMessageDraft,
+    ExtraEditEphemeralMessageText,
+    ExtraEditEphemeralMessageCaption,
+    InlineKeyboardMarkup,
+    InputMedia,
     ChatJoinRequestQueryResult,
     InputProfilePhoto,
     InputStoryContent,
@@ -56,7 +61,7 @@ import {
 } from './types';
 import { WebAppUtils } from './webapp';
 import { BotPlugin } from './plugin';
-import { InvalidTokenError, UpdateTimeoutError } from './errors';
+import { InvalidTokenError, TelegramApiError, UpdateTimeoutError } from './errors';
 import { createNativeHandler, matchesSecretToken } from './adapters';
 
 export type UpdateType =
@@ -83,7 +88,10 @@ export type UpdateType =
     | 'edited_business_message'
     | 'deleted_business_messages'
     | 'purchased_paid_media'
-    | 'managed_bot';
+    | 'guest_message'
+    | 'managed_bot'
+    | 'subscription'
+    | 'stopped_message_generation';
 
 export interface BotOptions<C extends Context = Context> {
     /**
@@ -101,6 +109,12 @@ export interface BotOptions<C extends Context = Context> {
          * only after an update handler succeeds.
          */
         offsetCommit?: 'received' | 'processed';
+        /**
+         * With `offsetCommit: 'processed'`, how many times one update may fail
+         * before it is skipped so a permanently failing update cannot block
+         * polling forever. Defaults to 3. Use `Infinity` to retry indefinitely.
+         */
+        maxUpdateAttempts?: number;
         /** Specify the types of updates you want to receive. If not set, all types are received. */
         allowed_updates?: UpdateType[];
     };
@@ -108,6 +122,12 @@ export interface BotOptions<C extends Context = Context> {
         client?: TelegramClientHooks;
         hooks?: BotHooks<C>;
     };
+    /**
+     * Options forwarded to the underlying TelegramClient, such as `apiRoot` for a
+     * local Bot API server, `timeoutMs`, `networkRetries`, or size limits.
+     * Client hooks are configured through `observability.client`.
+     */
+    client?: Omit<TelegramClientOptions, 'hooks'>;
 }
 
 export interface BotWebhookLaunchOptions {
@@ -136,6 +156,11 @@ export interface BotWebhookLaunchOptions {
 export interface BotLaunchOptions {
     onStart?: (botInfo: User) => void;
     webhook?: BotWebhookLaunchOptions;
+    /**
+     * Register SIGINT/SIGTERM handlers that call stop() and then exit the process.
+     * Defaults to true. Disable it when the host application manages shutdown.
+     */
+    handleSignals?: boolean;
 }
 
 export interface BotLaunchEvent {
@@ -278,6 +303,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     private _deleteWebhookOnStop: boolean = false;
     private _dropPendingUpdatesOnStop: boolean = false;
     private _updatesDrainedResolve?: () => void;
+    private _signalHandlers: { onSigint: () => void; onSigterm: () => void } | null = null;
 
     constructor(
         token: string,
@@ -299,7 +325,20 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         ) {
             throw new TypeError('polling.offsetCommit must be either "received" or "processed".');
         }
-        this.client = new TelegramClient(token, { hooks: this.options?.observability?.client });
+        const maxUpdateAttempts = this.options?.polling?.maxUpdateAttempts;
+        if (
+            maxUpdateAttempts !== undefined &&
+            maxUpdateAttempts !== Infinity &&
+            (!Number.isInteger(maxUpdateAttempts) || maxUpdateAttempts < 1)
+        ) {
+            throw new TypeError(
+                'polling.maxUpdateAttempts must be a positive integer or Infinity.'
+            );
+        }
+        this.client = new TelegramClient(token, {
+            ...this.options?.client,
+            hooks: this.options?.observability?.client,
+        });
     }
 
     private async invokeHook(name: string, hook?: () => void | Promise<void>): Promise<void> {
@@ -350,8 +389,16 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         let me: User;
         try {
             me = (await this.client.callApi('getMe')) as User;
-        } catch {
-            throw new InvalidTokenError();
+        } catch (error) {
+            // Only authentication failures mean the token is invalid. Network
+            // outages and 5xx responses must surface as-is for accurate diagnosis.
+            if (
+                error instanceof TelegramApiError &&
+                (error.errorCode === 401 || error.errorCode === 404)
+            ) {
+                throw new InvalidTokenError();
+            }
+            throw error;
         }
 
         this.setBotUsername(me.username);
@@ -371,8 +418,10 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * before starting and registers SIGINT/SIGTERM handlers for graceful shutdown.
      */
     async launch(options?: BotLaunchOptions): Promise<void> {
+        const handleSignals = options?.handleSignals !== false;
+
         if (options?.webhook) {
-            await this.launchWebhook(options.webhook, options.onStart);
+            await this.launchWebhook(options.webhook, options.onStart, handleSignals);
             return;
         }
 
@@ -385,7 +434,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
         console.log(`[VibeGram] @${me.username} (${me.id}) started. Polling for updates...`);
         await this.emitLaunch(me, options?.onStart);
-        this._registerSignals();
+        if (handleSignals) this._registerSignals();
 
         this.isPolling = true;
         this._pollingTask = this.pollingLoop().finally(() => {
@@ -395,7 +444,8 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
     private async launchWebhook(
         options: BotWebhookLaunchOptions,
-        onStart?: (botInfo: User) => void
+        onStart?: (botInfo: User) => void,
+        handleSignals: boolean = true
     ): Promise<void> {
         if (this.isRunning) {
             console.warn('[VibeGram] Bot is already running.');
@@ -403,6 +453,12 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         }
 
         assertWebhookLaunchOptions(options);
+
+        if (!options.secretToken) {
+            console.warn(
+                '[VibeGram] Webhook launched without secretToken. Anyone who discovers the URL can post forged updates; set webhook.secretToken in production.'
+            );
+        }
 
         const me = await this.getBotInfoOrThrow();
         const path = options.path ?? '/webhook';
@@ -446,7 +502,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
         console.log(`[VibeGram] @${me.username} (${me.id}) started. Webhook listening on ${path}.`);
         await this.emitLaunch(me, onStart);
-        this._registerSignals();
+        if (handleSignals) this._registerSignals();
     }
 
     private async listenWebhookServer(
@@ -498,6 +554,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         if (!this.isRunning) return;
 
         if (reason) console.log(`[VibeGram] Shutdown initiated: ${reason}`);
+        this._unregisterSignals();
         const webhookServer = this._webhookServer;
         const shouldDeleteWebhook = this._deleteWebhookOnStop;
         const shouldDropPendingUpdates = this._dropPendingUpdatesOnStop;
@@ -549,6 +606,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         const timeout = this.options?.polling?.timeout ?? 30;
         const offsetCommit = this.options?.polling?.offsetCommit ?? 'received';
         const allowedUpdates = this.options?.polling?.allowed_updates;
+        const maxUpdateAttempts = this.options?.polling?.maxUpdateAttempts ?? 3;
+        let failedUpdateId: number | undefined;
+        let failedAttempts = 0;
 
         while (this.isPolling) {
             try {
@@ -567,17 +627,35 @@ export class Bot<C extends Context = Context> extends Composer<C> {
                             break;
                         }
                         if (offsetCommit === 'received') {
-                            this.pollingOffset = Math.max(
-                                this.pollingOffset,
-                                update.update_id + 1
-                            );
+                            this.pollingOffset = Math.max(this.pollingOffset, update.update_id + 1);
                         }
-                        await this.handleUpdate(update);
                         if (offsetCommit === 'processed') {
-                            this.pollingOffset = Math.max(
-                                this.pollingOffset,
-                                update.update_id + 1
-                            );
+                            try {
+                                await this.handleUpdate(update);
+                                failedUpdateId = undefined;
+                                failedAttempts = 0;
+                            } catch (error) {
+                                failedAttempts =
+                                    failedUpdateId === update.update_id ? failedAttempts + 1 : 1;
+                                failedUpdateId = update.update_id;
+                                if (failedAttempts < maxUpdateAttempts) {
+                                    throw error;
+                                }
+
+                                // Poison update: skip it so the rest of the queue keeps flowing.
+                                console.error(
+                                    `[VibeGram] Skipping update ${update.update_id} after ${failedAttempts} failed attempts:`,
+                                    error
+                                );
+                                await this.invokeHook('onPollingError', () =>
+                                    this.options?.observability?.hooks?.onPollingError?.({ error })
+                                );
+                                failedUpdateId = undefined;
+                                failedAttempts = 0;
+                            }
+                            this.pollingOffset = Math.max(this.pollingOffset, update.update_id + 1);
+                        } else {
+                            await this.handleUpdate(update);
                         }
                     }
                 }
@@ -908,6 +986,25 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     }
 
     /**
+     * Stream a partial text message to a private chat as an ephemeral draft.
+     * Reuse the same `draftId` to animate updates. Pass `can_stop` (Bot API 10.3)
+     * to show a stop button; presses arrive as `stopped_message_generation` updates.
+     */
+    async sendMessageDraft(
+        chatId: number,
+        draftId: number,
+        text: string,
+        extra?: ExtraMessageDraft
+    ): Promise<boolean> {
+        return this.client.callApi('sendMessageDraft', {
+            chat_id: chatId,
+            draft_id: draftId,
+            text,
+            ...extra,
+        });
+    }
+
+    /**
      * Stream a partial rich message to a private chat as an ephemeral draft (Bot API 10.1).
      */
     async sendRichMessageDraft(
@@ -921,6 +1018,96 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             draft_id: draftId,
             rich_message: richMessage,
             ...extra,
+        });
+    }
+
+    /**
+     * Edit the text or rich content of an ephemeral message (Bot API 10.2 / 10.3).
+     * Pass a string for plain text or an InputRichMessage for rich content.
+     */
+    async editEphemeralMessageText(
+        chatId: number | string,
+        receiverUserId: number,
+        ephemeralMessageId: number,
+        content: string | InputRichMessage,
+        extra?: ExtraEditEphemeralMessageText
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageText', {
+            chat_id: chatId,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
+            ...(typeof content === 'string' ? { text: content } : { rich_message: content }),
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit the media of an ephemeral message (Bot API 10.2). New file uploads are supported (10.3).
+     */
+    async editEphemeralMessageMedia(
+        chatId: number | string,
+        receiverUserId: number,
+        ephemeralMessageId: number,
+        media: InputMedia,
+        extra?: { reply_markup?: InlineKeyboardMarkup }
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageMedia', {
+            chat_id: chatId,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
+            media,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit the caption of an ephemeral message (Bot API 10.2).
+     */
+    async editEphemeralMessageCaption(
+        chatId: number | string,
+        receiverUserId: number,
+        ephemeralMessageId: number,
+        caption?: string,
+        extra?: ExtraEditEphemeralMessageCaption
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageCaption', {
+            chat_id: chatId,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
+            caption,
+            ...extra,
+        });
+    }
+
+    /**
+     * Edit only the inline keyboard of an ephemeral message (Bot API 10.2).
+     */
+    async editEphemeralMessageReplyMarkup(
+        chatId: number | string,
+        receiverUserId: number,
+        ephemeralMessageId: number,
+        replyMarkup?: InlineKeyboardMarkup
+    ): Promise<boolean> {
+        return this.client.callApi('editEphemeralMessageReplyMarkup', {
+            chat_id: chatId,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
+            reply_markup: replyMarkup,
+        });
+    }
+
+    /**
+     * Delete an ephemeral message (Bot API 10.2).
+     */
+    async deleteEphemeralMessage(
+        chatId: number | string,
+        receiverUserId: number,
+        ephemeralMessageId: number
+    ): Promise<boolean> {
+        return this.client.callApi('deleteEphemeralMessage', {
+            chat_id: chatId,
+            receiver_user_id: receiverUserId,
+            ephemeral_message_id: ephemeralMessageId,
         });
     }
 
@@ -1501,14 +1688,28 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         return this.client.callApi('deleteMyCommands', extra);
     }
 
-    /** @internal Register SIGINT/SIGTERM handlers for graceful shutdown. */
+    /** @internal Register SIGINT/SIGTERM handlers for graceful shutdown (once per run). */
     private _registerSignals(): void {
+        if (this._signalHandlers) return;
+
         const handler = (signal: string) => {
             this.stop(signal)
                 .then(() => process.exit(0))
                 .catch(() => process.exit(1));
         };
-        process.once('SIGINT', () => handler('SIGINT'));
-        process.once('SIGTERM', () => handler('SIGTERM'));
+        const onSigint = () => handler('SIGINT');
+        const onSigterm = () => handler('SIGTERM');
+        process.once('SIGINT', onSigint);
+        process.once('SIGTERM', onSigterm);
+        this._signalHandlers = { onSigint, onSigterm };
+    }
+
+    /** @internal Remove signal handlers so repeated launch/stop cycles do not leak listeners. */
+    private _unregisterSignals(): void {
+        if (!this._signalHandlers) return;
+
+        process.off('SIGINT', this._signalHandlers.onSigint);
+        process.off('SIGTERM', this._signalHandlers.onSigterm);
+        this._signalHandlers = null;
     }
 }

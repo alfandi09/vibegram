@@ -10,7 +10,7 @@
   <FeatureCard title="Routing" description="Daftarkan middleware, command, listener, action, dan error handler global." href="#metode-routing" cta="Buka routing" />
   <FeatureCard title="API bisnis" description="Panggil akun bisnis, hadiah, stories, dan wrapper API langsung." href="#metode-akun-bisnis" cta="Buka bisnis" />
   <FeatureCard title="Bot API 10.0" description="Gunakan guest reply, live photo, cleanup reaction, dan pengaturan akses managed bot." href="#metode-bot-api-100" cta="Buka Bot API 10.0" />
-  <FeatureCard title="Bot API 10.1" description="Kirim rich message dan proses chat join request query." href="#metode-bot-api-101" cta="Buka Bot API 10.1" />
+  <FeatureCard title="Bot API 10.3" description="Ephemeral message, rich message berbasis block, dan tombol stop draft." href="#metode-bot-api-103" cta="Buka Bot API 10.3" />
 </FeatureGrid>
 
 Metode yang tersedia langsung di instansi `Bot` (tidak memerlukan Context).
@@ -77,6 +77,47 @@ Wrapper ini mengekspos tambahan Bot API 10.0 dengan nama payload resmi Telegram.
 | `bot.getManagedBotAccessSettings(userId)`        | `getManagedBotAccessSettings` |
 | `bot.setManagedBotAccessSettings(userId, opts)`  | `setManagedBotAccessSettings` |
 | `bot.getUserPersonalChatMessages(userId, limit)` | `getUserPersonalChatMessages` |
+
+## Metode Bot API 10.2 / 10.3 {#metode-bot-api-103}
+
+Ephemeral message hanya terlihat oleh satu anggota grup dan bot. Bot non-admin
+harus menjawab dalam 15 detik setelah callback query atau command ephemeral
+masuk; `ctx.replyEphemeral()` menautkan keduanya secara otomatis.
+
+| Metode                                                                  | API                               |
+| ----------------------------------------------------------------------- | --------------------------------- |
+| `ctx.replyEphemeral(text, extra?)`                                      | `sendMessage` + parameter ephemeral |
+| `bot.editEphemeralMessageText(chatId, userId, id, textOrRich, extra?)`  | `editEphemeralMessageText`        |
+| `bot.editEphemeralMessageMedia(chatId, userId, id, media, extra?)`      | `editEphemeralMessageMedia`       |
+| `bot.editEphemeralMessageCaption(chatId, userId, id, caption?, extra?)` | `editEphemeralMessageCaption`     |
+| `bot.editEphemeralMessageReplyMarkup(chatId, userId, id, markup?)`      | `editEphemeralMessageReplyMarkup` |
+| `bot.deleteEphemeralMessage(chatId, userId, id)`                        | `deleteEphemeralMessage`          |
+| `bot.sendMessageDraft(chatId, draftId, text, extra?)`                   | `sendMessageDraft`                |
+
+Shortcut `ctx.editEphemeralMessage*()` dan `ctx.deleteEphemeralMessage()`
+menargetkan ephemeral message saat ini, atau yang tombolnya ditekan.
+
+```typescript
+bot.setMyCommands([{ command: 'rahasia', description: 'Jawaban privat', is_ephemeral: true }]);
+
+bot.command('rahasia', ctx => ctx.replyEphemeral('Hanya kamu yang bisa melihat ini.'));
+
+// Stream draft dengan tombol stop (Bot API 10.3)
+await ctx.replyWithDraft('Sedang berpikir...', { draft_id: 1, can_stop: true });
+bot.on('stopped_message_generation', ctx => hentikanGenerasi(ctx.update.stopped_message_generation!.draft_id));
+```
+
+Rich message kini bisa disusun dari block bertipe, bukan hanya HTML atau Markdown:
+
+```typescript
+await bot.sendRichMessage(chatId, {
+    blocks: [
+        { type: 'heading', text: 'Catatan rilis', size: 1 },
+        { type: 'expandable_blockquote', text: 'Changelog panjang...' },
+        { type: 'buttons', buttons: [{ text: 'Buka', url: 'https://example.com' }] },
+    ],
+});
+```
 
 ## Metode Bot API 10.1 {#metode-bot-api-101}
 
