@@ -21,3 +21,4 @@ export * from './menu';
 export * from './queue';
 export * from './conversation';
 export * from './dedupe';
+export * from './api-methods';

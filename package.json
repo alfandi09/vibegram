@@ -249,7 +249,8 @@
         "plugins:typecheck": "node scripts/validate-plugins.js typecheck",
         "plugins:test": "node scripts/validate-plugins.js test",
         "plugins:build": "node scripts/validate-plugins.js build",
-        "plugins:validate": "node scripts/validate-plugins.js validate"
+        "plugins:validate": "node scripts/validate-plugins.js validate",
+        "bot-api:sync": "node scripts/generate-bot-api.js"
     },
     "keywords": [
         "telegram",

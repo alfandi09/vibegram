@@ -170,7 +170,7 @@ export class BotQueue {
         extra?: Record<string, unknown>
     ): Promise<BroadcastResult> {
         return this.broadcast(chatIds, async chatId => {
-            await this.client.callApi('sendMessage', {
+            await this.client.callApi<any>('sendMessage', {
                 chat_id: chatId,
                 text,
                 ...extra,

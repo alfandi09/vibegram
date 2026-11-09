@@ -1,3 +1,4 @@
+import type { ApiMethodName, ApiParams, ApiResult } from './api-methods';
 import { TelegramClient, TelegramClientHooks, TelegramClientOptions } from './client';
 import { Composer, Middleware } from './composer';
 import { Context } from './context';
@@ -388,7 +389,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     private async getBotInfoOrThrow(): Promise<User> {
         let me: User;
         try {
-            me = (await this.client.callApi('getMe')) as User;
+            me = (await this.client.callApi<User>('getMe')) as User;
         } catch (error) {
             // Only authentication failures mean the token is invalid. Network
             // outages and 5xx responses must surface as-is for accurate diagnosis.
@@ -814,49 +815,49 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Delete the current webhook. Optionally drops all pending updates.
      */
     async deleteWebhook(dropPendingUpdates = false): Promise<boolean> {
-        return this.client.callApi('deleteWebhook', { drop_pending_updates: dropPendingUpdates });
+        return this.client.callApi<boolean>('deleteWebhook', { drop_pending_updates: dropPendingUpdates });
     }
 
     /**
      * Get the current webhook configuration.
      */
     async getWebhookInfo(): Promise<WebhookInfo> {
-        return this.client.callApi('getWebhookInfo');
+        return this.client.callApi<WebhookInfo>('getWebhookInfo');
     }
 
     /**
      * Register a Webhook URL with Telegram.
      */
     async setWebhook(url: string, extra?: SetWebhookOptions): Promise<boolean> {
-        return this.client.callApi('setWebhook', { url, ...extra });
+        return this.client.callApi<boolean>('setWebhook', { url, ...extra });
     }
 
     /**
      * Log the bot out from the cloud Bot API server before switching to a local server.
      */
     async logOut(): Promise<boolean> {
-        return this.client.callApi('logOut');
+        return this.client.callApi<boolean>('logOut');
     }
 
     /**
      * Close the bot instance before moving it between local Bot API servers.
      */
     async close(): Promise<boolean> {
-        return this.client.callApi('close');
+        return this.client.callApi<boolean>('close');
     }
 
     /**
      * Get managed bot token (Bot API 9.6).
      */
     async getManagedBotToken(userId: number): Promise<string> {
-        return this.client.callApi('getManagedBotToken', { user_id: userId });
+        return this.client.callApi<string>('getManagedBotToken', { user_id: userId });
     }
 
     /**
      * Replace managed bot token (Bot API 9.6).
      */
     async replaceManagedBotToken(userId: number): Promise<string> {
-        return this.client.callApi('replaceManagedBotToken', { user_id: userId });
+        return this.client.callApi<string>('replaceManagedBotToken', { user_id: userId });
     }
 
     /**
@@ -886,7 +887,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get managed bot access settings (Bot API 10.0).
      */
     async getManagedBotAccessSettings(userId: number): Promise<BotAccessSettings> {
-        return this.client.callApi('getManagedBotAccessSettings', { user_id: userId });
+        return this.client.callApi<BotAccessSettings>('getManagedBotAccessSettings', { user_id: userId });
     }
 
     /**
@@ -896,7 +897,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number,
         settings: SetManagedBotAccessSettingsOptions
     ): Promise<boolean> {
-        return this.client.callApi('setManagedBotAccessSettings', {
+        return this.client.callApi<boolean>('setManagedBotAccessSettings', {
             user_id: userId,
             ...settings,
         });
@@ -906,7 +907,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get recent personal chat messages from a user's profile chat (Bot API 10.0).
      */
     async getUserPersonalChatMessages(userId: number, limit: number): Promise<Message[]> {
-        return this.client.callApi('getUserPersonalChatMessages', {
+        return this.client.callApi<Message[]>('getUserPersonalChatMessages', {
             user_id: userId,
             limit,
         });
@@ -919,7 +920,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         chatId: number | string,
         extra?: GetChatAdministratorsOptions
     ): Promise<ChatMember[]> {
-        return this.client.callApi('getChatAdministrators', {
+        return this.client.callApi<ChatMember[]>('getChatAdministrators', {
             chat_id: chatId,
             ...extra,
         });
@@ -933,7 +934,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         messageId: number,
         extra?: DeleteMessageReactionOptions
     ): Promise<boolean> {
-        return this.client.callApi('deleteMessageReaction', {
+        return this.client.callApi<boolean>('deleteMessageReaction', {
             chat_id: chatId,
             message_id: messageId,
             ...extra,
@@ -947,7 +948,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         chatId: number | string,
         extra?: DeleteAllMessageReactionsOptions
     ): Promise<boolean> {
-        return this.client.callApi('deleteAllMessageReactions', {
+        return this.client.callApi<boolean>('deleteAllMessageReactions', {
             chat_id: chatId,
             ...extra,
         });
@@ -1088,7 +1089,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         ephemeralMessageId: number,
         replyMarkup?: InlineKeyboardMarkup
     ): Promise<boolean> {
-        return this.client.callApi('editEphemeralMessageReplyMarkup', {
+        return this.client.callApi<boolean>('editEphemeralMessageReplyMarkup', {
             chat_id: chatId,
             receiver_user_id: receiverUserId,
             ephemeral_message_id: ephemeralMessageId,
@@ -1104,7 +1105,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         receiverUserId: number,
         ephemeralMessageId: number
     ): Promise<boolean> {
-        return this.client.callApi('deleteEphemeralMessage', {
+        return this.client.callApi<boolean>('deleteEphemeralMessage', {
             chat_id: chatId,
             receiver_user_id: receiverUserId,
             ephemeral_message_id: ephemeralMessageId,
@@ -1118,7 +1119,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         chatJoinRequestQueryId: string,
         result: ChatJoinRequestQueryResult
     ): Promise<boolean> {
-        return this.client.callApi('answerChatJoinRequestQuery', {
+        return this.client.callApi<boolean>('answerChatJoinRequestQuery', {
             chat_join_request_query_id: chatJoinRequestQueryId,
             result,
         });
@@ -1131,7 +1132,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         chatJoinRequestQueryId: string,
         webAppUrl: string
     ): Promise<boolean> {
-        return this.client.callApi('sendChatJoinRequestWebApp', {
+        return this.client.callApi<boolean>('sendChatJoinRequestWebApp', {
             chat_join_request_query_id: chatJoinRequestQueryId,
             web_app_url: webAppUrl,
         });
@@ -1141,7 +1142,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get information about a business connection.
      */
     async getBusinessConnection(businessConnectionId: string): Promise<BusinessConnection> {
-        return this.client.callApi('getBusinessConnection', {
+        return this.client.callApi<BusinessConnection>('getBusinessConnection', {
             business_connection_id: businessConnectionId,
         });
     }
@@ -1154,7 +1155,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         chatId: number,
         messageId: number
     ): Promise<boolean> {
-        return this.client.callApi('readBusinessMessage', {
+        return this.client.callApi<boolean>('readBusinessMessage', {
             business_connection_id: businessConnectionId,
             chat_id: chatId,
             message_id: messageId,
@@ -1168,7 +1169,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         businessConnectionId: string,
         messageIds: number[]
     ): Promise<boolean> {
-        return this.client.callApi('deleteBusinessMessages', {
+        return this.client.callApi<boolean>('deleteBusinessMessages', {
             business_connection_id: businessConnectionId,
             message_ids: messageIds,
         });
@@ -1182,7 +1183,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         firstName: string,
         extra?: { last_name?: string }
     ): Promise<boolean> {
-        return this.client.callApi('setBusinessAccountName', {
+        return this.client.callApi<boolean>('setBusinessAccountName', {
             business_connection_id: businessConnectionId,
             first_name: firstName,
             ...extra,
@@ -1196,7 +1197,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         businessConnectionId: string,
         username?: string
     ): Promise<boolean> {
-        return this.client.callApi('setBusinessAccountUsername', {
+        return this.client.callApi<boolean>('setBusinessAccountUsername', {
             business_connection_id: businessConnectionId,
             username,
         });
@@ -1206,7 +1207,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Change the bio of a managed business account.
      */
     async setBusinessAccountBio(businessConnectionId: string, bio?: string): Promise<boolean> {
-        return this.client.callApi('setBusinessAccountBio', {
+        return this.client.callApi<boolean>('setBusinessAccountBio', {
             business_connection_id: businessConnectionId,
             bio,
         });
@@ -1234,7 +1235,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         businessConnectionId: string,
         extra?: { is_public?: boolean }
     ): Promise<boolean> {
-        return this.client.callApi('removeBusinessAccountProfilePhoto', {
+        return this.client.callApi<boolean>('removeBusinessAccountProfilePhoto', {
             business_connection_id: businessConnectionId,
             ...extra,
         });
@@ -1259,7 +1260,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get gifts that can be sent by the bot.
      */
     async getAvailableGifts(): Promise<Gifts> {
-        return this.client.callApi('getAvailableGifts');
+        return this.client.callApi<Gifts>('getAvailableGifts');
     }
 
     /**
@@ -1309,7 +1310,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get gifts owned and hosted by a user.
      */
     async getUserGifts(userId: number, extra?: GetUserGiftsOptions): Promise<OwnedGifts> {
-        return this.client.callApi('getUserGifts', {
+        return this.client.callApi<OwnedGifts>('getUserGifts', {
             user_id: userId,
             ...extra,
         });
@@ -1319,7 +1320,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get gifts owned by a chat.
      */
     async getChatGifts(chatId: number | string, extra?: GetChatGiftsOptions): Promise<OwnedGifts> {
-        return this.client.callApi('getChatGifts', {
+        return this.client.callApi<OwnedGifts>('getChatGifts', {
             chat_id: chatId,
             ...extra,
         });
@@ -1332,7 +1333,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         businessConnectionId: string,
         extra?: GetBusinessAccountGiftsOptions
     ): Promise<OwnedGifts> {
-        return this.client.callApi('getBusinessAccountGifts', {
+        return this.client.callApi<OwnedGifts>('getBusinessAccountGifts', {
             business_connection_id: businessConnectionId,
             ...extra,
         });
@@ -1346,7 +1347,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         ownedGiftId: string,
         extra?: UpgradeGiftOptions
     ): Promise<boolean> {
-        return this.client.callApi('upgradeGift', {
+        return this.client.callApi<boolean>('upgradeGift', {
             business_connection_id: businessConnectionId,
             owned_gift_id: ownedGiftId,
             ...extra,
@@ -1362,7 +1363,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         newOwnerChatId: number,
         extra?: TransferGiftOptions
     ): Promise<boolean> {
-        return this.client.callApi('transferGift', {
+        return this.client.callApi<boolean>('transferGift', {
             business_connection_id: businessConnectionId,
             owned_gift_id: ownedGiftId,
             new_owner_chat_id: newOwnerChatId,
@@ -1397,7 +1398,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         activePeriod: number,
         extra?: RepostStoryOptions
     ): Promise<Story> {
-        return this.client.callApi('repostStory', {
+        return this.client.callApi<Story>('repostStory', {
             business_connection_id: businessConnectionId,
             from_chat_id: fromChatId,
             from_story_id: fromStoryId,
@@ -1427,7 +1428,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Delete a story posted by the bot on behalf of a managed business account.
      */
     async deleteStory(businessConnectionId: string, storyId: number): Promise<boolean> {
-        return this.client.callApi('deleteStory', {
+        return this.client.callApi<boolean>('deleteStory', {
             business_connection_id: businessConnectionId,
             story_id: storyId,
         });
@@ -1435,9 +1436,13 @@ export class Bot<C extends Context = Context> extends Composer<C> {
 
     /**
      * Direct access to any Telegram Bot API method via the underlying client.
+     * Known methods are typed from {@link ApiMethods}; other names return `unknown`
+     * unless a type argument is given.
      */
-    async callApi<T = unknown>(method: string, data?: unknown): Promise<T> {
-        return this.client.callApi(method, data);
+    async callApi<M extends ApiMethodName>(method: M, data?: ApiParams<M>): Promise<ApiResult<M>>;
+    async callApi<T = unknown>(method: string, data?: unknown): Promise<T>;
+    async callApi(method: string, data?: unknown): Promise<unknown> {
+        return this.client.callApi<unknown>(method, data);
     }
 
     /**
@@ -1451,21 +1456,21 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get basic information about the bot (id, name, username, etc.)
      */
     async getMe(): Promise<User> {
-        return this.client.callApi('getMe');
+        return this.client.callApi<User>('getMe');
     }
 
     /**
      * Set the bot display name.
      */
     async setMyName(name?: string, extra?: { language_code?: string }): Promise<boolean> {
-        return this.client.callApi('setMyName', { name, ...extra });
+        return this.client.callApi<boolean>('setMyName', { name, ...extra });
     }
 
     /**
      * Get the bot display name.
      */
     async getMyName(extra?: { language_code?: string }): Promise<BotName> {
-        return this.client.callApi('getMyName', extra);
+        return this.client.callApi<BotName>('getMyName', extra);
     }
 
     /**
@@ -1475,14 +1480,14 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         description?: string,
         extra?: { language_code?: string }
     ): Promise<boolean> {
-        return this.client.callApi('setMyDescription', { description, ...extra });
+        return this.client.callApi<boolean>('setMyDescription', { description, ...extra });
     }
 
     /**
      * Get the bot description shown in an empty chat.
      */
     async getMyDescription(extra?: { language_code?: string }): Promise<BotDescription> {
-        return this.client.callApi('getMyDescription', extra);
+        return this.client.callApi<BotDescription>('getMyDescription', extra);
     }
 
     /**
@@ -1492,7 +1497,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         shortDescription?: string,
         extra?: { language_code?: string }
     ): Promise<boolean> {
-        return this.client.callApi('setMyShortDescription', {
+        return this.client.callApi<boolean>('setMyShortDescription', {
             short_description: shortDescription,
             ...extra,
         });
@@ -1502,7 +1507,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Get the bot short description shown on the profile page.
      */
     async getMyShortDescription(extra?: { language_code?: string }): Promise<BotShortDescription> {
-        return this.client.callApi('getMyShortDescription', extra);
+        return this.client.callApi<BotShortDescription>('getMyShortDescription', extra);
     }
 
     /**
@@ -1538,7 +1543,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
     async getMyDefaultAdministratorRights(extra?: {
         for_channels?: boolean;
     }): Promise<ChatAdministratorRights> {
-        return this.client.callApi('getMyDefaultAdministratorRights', extra);
+        return this.client.callApi<ChatAdministratorRights>('getMyDefaultAdministratorRights', extra);
     }
 
     /**
@@ -1548,7 +1553,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number,
         extra?: { offset?: number; limit?: number }
     ): Promise<UserProfilePhotos> {
-        return this.client.callApi('getUserProfilePhotos', { user_id: userId, ...extra });
+        return this.client.callApi<UserProfilePhotos>('getUserProfilePhotos', { user_id: userId, ...extra });
     }
 
     /**
@@ -1562,7 +1567,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
      * Remove the bot profile photo.
      */
     async removeMyProfilePhoto(): Promise<boolean> {
-        return this.client.callApi('removeMyProfilePhoto');
+        return this.client.callApi<boolean>('removeMyProfilePhoto');
     }
 
     /**
@@ -1572,7 +1577,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number,
         extra?: { offset?: number; limit?: number }
     ): Promise<UserProfileAudios> {
-        return this.client.callApi('getUserProfileAudios', { user_id: userId, ...extra });
+        return this.client.callApi<UserProfileAudios>('getUserProfileAudios', { user_id: userId, ...extra });
     }
 
     /**
@@ -1586,7 +1591,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         prices: LabeledPrice[],
         extra?: Record<string, unknown>
     ): Promise<string> {
-        return this.client.callApi('createInvoiceLink', {
+        return this.client.callApi<string>('createInvoiceLink', {
             title,
             description,
             payload,
@@ -1604,7 +1609,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         telegramPaymentChargeId: string,
         isCanceled: boolean
     ): Promise<boolean> {
-        return this.client.callApi('editUserStarSubscription', {
+        return this.client.callApi<boolean>('editUserStarSubscription', {
             user_id: userId,
             telegram_payment_charge_id: telegramPaymentChargeId,
             is_canceled: isCanceled,
@@ -1654,7 +1659,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         score: number,
         extra?: Record<string, unknown>
     ): Promise<boolean> {
-        return this.client.callApi('setGameScore', { user_id: userId, score, ...extra });
+        return this.client.callApi<boolean>('setGameScore', { user_id: userId, score, ...extra });
     }
 
     /**
@@ -1664,28 +1669,28 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         userId: number,
         extra?: Record<string, unknown>
     ): Promise<GameHighScore[]> {
-        return this.client.callApi('getGameHighScores', { user_id: userId, ...extra });
+        return this.client.callApi<GameHighScore[]>('getGameHighScores', { user_id: userId, ...extra });
     }
 
     /**
      * Set the list of bot commands shown in the Telegram menu.
      */
     async setMyCommands(commands: BotCommand[], extra?: BotCommandOptions): Promise<boolean> {
-        return this.client.callApi('setMyCommands', { commands, ...extra });
+        return this.client.callApi<boolean>('setMyCommands', { commands, ...extra });
     }
 
     /**
      * Get the current list of bot commands.
      */
     async getMyCommands(extra?: BotCommandOptions): Promise<BotCommand[]> {
-        return this.client.callApi('getMyCommands', extra);
+        return this.client.callApi<BotCommand[]>('getMyCommands', extra);
     }
 
     /**
      * Delete the list of bot commands for a given scope/language.
      */
     async deleteMyCommands(extra?: BotCommandOptions): Promise<boolean> {
-        return this.client.callApi('deleteMyCommands', extra);
+        return this.client.callApi<boolean>('deleteMyCommands', extra);
     }
 
     /** @internal Register SIGINT/SIGTERM handlers for graceful shutdown (once per run). */

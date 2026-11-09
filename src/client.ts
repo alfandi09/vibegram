@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import type { Readable } from 'stream';
+import type { ApiMethodName, ApiParams, ApiResult } from './api-methods';
 import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 import { createHttpTransport, HttpRequestError, type HttpTransport } from './http';
 import { hasStreamUpload, prepareRequestPayload, validateRequestPayload } from './multipart';
@@ -555,7 +556,22 @@ export class TelegramClient {
     /**
      * Calls a Telegram Bot API method with automatic multipart/form-data delegation
      * plus rate-limit and optional network retry handling.
+     *
+     * Known methods (see {@link ApiMethods}) get typed parameters and a typed result.
+     * Any other method name, or an explicit type argument, falls back to an untyped call.
+     *
+     * @example
+     * ```ts
+     * const me = await client.callApi('getMe'); // BotApi.User
+     * const raw = await client.callApi<MyType>('futureMethod', { foo: 1 });
+     * ```
      */
+    async callApi<M extends ApiMethodName>(
+        method: M,
+        data?: ApiParams<M>,
+        retries?: number
+    ): Promise<ApiResult<M>>;
+    async callApi<T = any>(method: string, data?: any, retries?: number): Promise<T>;
     async callApi(method: string, data?: any, retries: number = 3): Promise<any> {
         validateNonNegativeIntegerOption('retries', retries);
 
