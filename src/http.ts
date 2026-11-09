@@ -1,4 +1,5 @@
-import { Readable } from 'stream';
+import type { Readable } from 'stream';
+import { concatBytes, decodeUtf8, loadNodeModule, toBufferIfAvailable } from './runtime';
 
 export type HttpResponseType = 'json' | 'text' | 'buffer' | 'stream';
 
@@ -141,15 +142,15 @@ function assertContentLengthWithinLimit(response: Response, maxResponseBytes?: n
 async function readResponseBuffer(
     response: Response,
     maxResponseBytes?: number
-): Promise<Buffer> {
+): Promise<Uint8Array> {
     assertContentLengthWithinLimit(response, maxResponseBytes);
 
     if (!response.body) {
-        return Buffer.alloc(0);
+        return new Uint8Array(0);
     }
 
     const reader = response.body.getReader();
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
     let totalBytes = 0;
 
     try {
@@ -158,7 +159,7 @@ async function readResponseBuffer(
             if (done) break;
             if (!value) continue;
 
-            const chunk = Buffer.from(value);
+            const chunk = value;
             totalBytes += chunk.byteLength;
             if (maxResponseBytes !== undefined && totalBytes > maxResponseBytes) {
                 await reader.cancel().catch(() => undefined);
@@ -171,11 +172,11 @@ async function readResponseBuffer(
         reader.releaseLock();
     }
 
-    return Buffer.concat(chunks, totalBytes);
+    return concatBytes(chunks, totalBytes);
 }
 
 async function parseJsonBody(response: Response, maxResponseBytes?: number): Promise<unknown> {
-    const text = (await readResponseBuffer(response, maxResponseBytes)).toString('utf8');
+    const text = decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
     if (text.length === 0) return undefined;
     return JSON.parse(text);
 }
@@ -186,11 +187,12 @@ async function parseResponseBody(
     maxResponseBytes?: number
 ): Promise<unknown> {
     if (responseType === 'text') {
-        return (await readResponseBuffer(response, maxResponseBytes)).toString('utf8');
+        return decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
     }
 
     if (responseType === 'buffer') {
-        return readResponseBuffer(response, maxResponseBytes);
+        // Node.js callers get a Buffer; other runtimes get a plain Uint8Array.
+        return toBufferIfAvailable(await readResponseBuffer(response, maxResponseBytes));
     }
 
     if (responseType === 'stream') {
@@ -198,6 +200,8 @@ async function parseResponseBody(
             throw new Error('HTTP response does not contain a readable body.');
         }
 
+        // Node.js streams are only needed for streaming downloads to disk.
+        const { Readable } = await loadNodeModule<typeof import('stream')>('stream');
         return Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]);
     }
 
@@ -208,7 +212,7 @@ async function parseErrorResponseBody(
     response: Response,
     maxResponseBytes?: number
 ): Promise<unknown> {
-    const text = (await readResponseBuffer(response, maxResponseBytes)).toString('utf8');
+    const text = decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
     if (text.length === 0) return undefined;
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -221,6 +225,15 @@ async function parseErrorResponseBody(
     }
 
     return text;
+}
+
+function isNodeReadable(value: unknown): value is Readable {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Readable).pipe === 'function' &&
+        typeof (value as Readable).once === 'function'
+    );
 }
 
 function attachStreamCleanup(stream: Readable, cleanup: () => void): void {
@@ -289,12 +302,8 @@ export function createHttpTransport(): HttpTransport {
                 );
             }
 
-            const data = await parseResponseBody(
-                response,
-                responseType,
-                options.maxResponseBytes
-            );
-            if (responseType === 'stream' && data instanceof Readable) {
+            const data = await parseResponseBody(response, responseType, options.maxResponseBytes);
+            if (responseType === 'stream' && isNodeReadable(data)) {
                 attachStreamCleanup(data, cleanupOnce);
             } else {
                 cleanupOnce();

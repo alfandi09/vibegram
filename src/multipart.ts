@@ -1,7 +1,9 @@
-import { randomBytes } from 'crypto';
-import { basename } from 'path';
+import { pathBasename, randomHex, utf8ByteLength } from './runtime';
 
-export type UploadSource = Buffer | NodeJS.ReadableStream;
+const textEncoder = new TextEncoder();
+
+/** Binary upload data: a Node.js Buffer, any Uint8Array, or a readable stream. */
+export type UploadSource = Buffer | Uint8Array | NodeJS.ReadableStream;
 
 /** An upload with explicit file metadata, e.g. `{ source: buffer, filename: 'report.pdf' }`. */
 export interface UploadDescriptor {
@@ -32,7 +34,7 @@ export interface PreparedRequestPayload {
 
 function isUploadSource(value: unknown): value is UploadSource {
     return (
-        Buffer.isBuffer(value) ||
+        value instanceof Uint8Array ||
         (typeof value === 'object' &&
             value !== null &&
             typeof (value as NodeJS.ReadableStream).pipe === 'function')
@@ -61,7 +63,7 @@ export function isUploadValue(value: unknown): value is UploadValue {
 export function hasStreamUpload(value: unknown, visited: WeakSet<object> = new WeakSet()): boolean {
     if (isUploadValue(value)) {
         const source = isUploadDescriptor(value) ? value.source : value;
-        return !Buffer.isBuffer(source);
+        return !(source instanceof Uint8Array);
     }
     if (typeof value !== 'object' || value === null) return false;
     if (visited.has(value)) return false;
@@ -83,7 +85,7 @@ function getUploadFilename(value: UploadValue, fallback: string): string {
     // fs.createReadStream() exposes the source path; reuse its basename.
     const streamPath = (getUploadSource(value) as { path?: unknown }).path;
     if (typeof streamPath === 'string' && streamPath !== '') {
-        return basename(streamPath);
+        return pathBasename(streamPath);
     }
 
     return fallback;
@@ -177,7 +179,7 @@ export function validateRequestPayload(data: unknown, maxJsonPayloadBytes: numbe
     if (hasUploadValue(data)) return;
 
     const json = JSON.stringify(data);
-    const byteLength = Buffer.byteLength(json, 'utf8');
+    const byteLength = utf8ByteLength(json);
     if (byteLength > maxJsonPayloadBytes) {
         throw new RangeError(
             `Telegram API JSON payload exceeds maximum size of ${maxJsonPayloadBytes} bytes.`
@@ -260,19 +262,13 @@ function escapeMultipartName(value: string): string {
 
 async function* readUploadValue(value: UploadValue): AsyncIterable<Uint8Array> {
     const source = getUploadSource(value);
-    if (Buffer.isBuffer(source)) {
+    if (source instanceof Uint8Array) {
         yield source;
         return;
     }
 
-    for await (const chunk of source as AsyncIterable<Buffer | Uint8Array | string>) {
-        if (Buffer.isBuffer(chunk)) {
-            yield chunk;
-        } else if (typeof chunk === 'string') {
-            yield Buffer.from(chunk);
-        } else {
-            yield Buffer.from(chunk);
-        }
+    for await (const chunk of source as AsyncIterable<Uint8Array | string>) {
+        yield typeof chunk === 'string' ? textEncoder.encode(chunk) : chunk;
     }
 }
 
@@ -282,7 +278,7 @@ async function* createMultipartBody(
     boundary: string
 ): AsyncIterable<Uint8Array> {
     for (const field of fields) {
-        yield Buffer.from(
+        yield textEncoder.encode(
             `--${boundary}\r\n` +
                 `Content-Disposition: form-data; name="${escapeMultipartName(field.name)}"\r\n\r\n` +
                 `${field.value}\r\n`
@@ -291,16 +287,16 @@ async function* createMultipartBody(
 
     for (const attachment of attachments) {
         const filename = getUploadFilename(attachment.value, attachment.name);
-        yield Buffer.from(
+        yield textEncoder.encode(
             `--${boundary}\r\n` +
                 `Content-Disposition: form-data; name="${escapeMultipartName(attachment.name)}"; filename="${escapeMultipartName(filename)}"\r\n` +
                 `Content-Type: ${getUploadContentType(attachment.value)}\r\n\r\n`
         );
         yield* readUploadValue(attachment.value);
-        yield Buffer.from('\r\n');
+        yield textEncoder.encode('\r\n');
     }
 
-    yield Buffer.from(`--${boundary}--\r\n`);
+    yield textEncoder.encode(`--${boundary}--\r\n`);
 }
 
 export function prepareRequestPayload(data: unknown): PreparedRequestPayload {
@@ -334,7 +330,7 @@ export function prepareRequestPayload(data: unknown): PreparedRequestPayload {
         fields.push({ name: key, value: String(value) });
     }
 
-    const boundary = `----vibegram-${randomBytes(16).toString('hex')}`;
+    const boundary = `----vibegram-${randomHex(16)}`;
 
     return {
         body: createMultipartBody(fields, [...attachments, ...nestedAttachments], boundary),

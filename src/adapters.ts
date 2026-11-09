@@ -25,7 +25,7 @@
 
 import type { WebhookRequest, WebhookResponse } from './bot';
 import type { Update } from './types';
-import * as crypto from 'crypto';
+import { concatBytes, constantTimeEqual, decodeUtf8 } from './runtime';
 
 const DEFAULT_MAX_BODY_SIZE_BYTES = 1_000_000;
 const HEALTH_CHECK_RESPONSE_BODY = 'OK';
@@ -159,14 +159,7 @@ export function matchesSecretToken(actual: unknown, expected?: string): boolean 
     if (!expected) return true;
     if (typeof actual !== 'string') return false;
 
-    const actualBuffer = Buffer.from(actual);
-    const expectedBuffer = Buffer.from(expected);
-
-    if (actualBuffer.length !== expectedBuffer.length) {
-        return false;
-    }
-
-    return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+    return constantTimeEqual(actual, expected);
 }
 
 function hasJsonContentType(contentType: unknown): boolean {
@@ -343,6 +336,124 @@ export function createHonoHandler(bot: WebhookAdapterBot, options?: AdapterOptio
             return c.text('OK', 200);
         } catch {
             return c.text('Internal Server Error', 500);
+        }
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch API adapter (Cloudflare Workers, Deno, Bun, Vercel Edge, Next.js, ...)
+// ---------------------------------------------------------------------------
+
+/**
+ * Optional hooks for runtimes that can keep work alive after responding.
+ */
+export interface FetchHandlerOptions extends AdapterOptions {
+    /**
+     * Acknowledge Telegram immediately and finish the update in the background.
+     * Pass the runtime's `waitUntil` (e.g. Cloudflare's `ctx.waitUntil`).
+     * Errors are then only reported through the bot's hooks and bot.catch().
+     */
+    waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+async function readLimitedText(request: Request, maxBytes: number): Promise<string | null> {
+    const declared = Number(request.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > maxBytes) return null;
+    if (!request.body) return '';
+
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            total += value.byteLength;
+            if (total > maxBytes) {
+                await reader.cancel().catch(() => undefined);
+                return null;
+            }
+            chunks.push(value);
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    return decodeUtf8(concatBytes(chunks, total));
+}
+
+/**
+ * Returns a Web-standard `(request: Request) => Promise<Response>` webhook handler.
+ * Uses only Fetch API primitives, so it runs on Cloudflare Workers, Deno,
+ * Bun, Vercel/Netlify Edge, Next.js route handlers, and Node.js 18+.
+ *
+ * @example
+ * ```typescript
+ * // Cloudflare Workers
+ * export default {
+ *     fetch(request: Request, env: Env, ctx: ExecutionContext) {
+ *         return createFetchHandler(bot, { secretToken: env.SECRET, waitUntil: p => ctx.waitUntil(p) })(request);
+ *     },
+ * };
+ *
+ * // Deno / Bun
+ * Deno.serve(createFetchHandler(bot, { secretToken }));
+ * Bun.serve({ fetch: createFetchHandler(bot, { secretToken }) });
+ * ```
+ */
+export function createFetchHandler(bot: WebhookAdapterBot, options?: FetchHandlerOptions) {
+    assertAdapterOptions(options);
+    const secretToken = options?.secretToken;
+    const maxBodySizeBytes = options?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
+    const text = (body: string, status: number) =>
+        new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+
+    return async (request: Request): Promise<Response> => {
+        if (isHealthCheckRequest(request.method, request.url, options?.healthPath)) {
+            return text(HEALTH_CHECK_RESPONSE_BODY, 200);
+        }
+
+        if (request.method !== 'POST') {
+            return text('Method Not Allowed', 405);
+        }
+
+        if (
+            !matchesSecretToken(request.headers.get('x-telegram-bot-api-secret-token'), secretToken)
+        ) {
+            return text('Forbidden', 403);
+        }
+
+        if (!hasJsonContentType(request.headers.get('content-type'))) {
+            return text('Unsupported Media Type', 415);
+        }
+
+        const raw = await readLimitedText(request, maxBodySizeBytes);
+        if (raw === null) {
+            return text('Payload Too Large', 413);
+        }
+
+        let update: unknown;
+        try {
+            update = JSON.parse(raw);
+        } catch {
+            return text('Bad Request: Cannot parse JSON body.', 400);
+        }
+
+        if (!isUpdateLike(update)) {
+            return text('Bad Request: Invalid update object.', 400);
+        }
+
+        const processing = bot.handleUpdate(update as Update);
+        if (options?.waitUntil) {
+            options.waitUntil(processing.catch(() => undefined));
+            return text('OK', 200);
+        }
+
+        try {
+            await processing;
+            return text('OK', 200);
+        } catch {
+            return text('Internal Server Error', 500);
         }
     };
 }

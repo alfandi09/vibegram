@@ -62,7 +62,7 @@ import {
     DeleteAllMessageReactionsOptions,
     DeleteMessageReactionOptions,
 } from './types';
-import * as crypto from 'crypto';
+import { randomInt } from './runtime';
 
 function createScopedClient(client: TelegramClient): TelegramClient {
     return Object.create(client) as TelegramClient;
@@ -359,7 +359,7 @@ export class Context<S = any> {
             Number.isSafeInteger(legacyNumericId) &&
             legacyNumericId !== 0
                 ? legacyNumericId
-                : crypto.randomInt(1, 2 ** 31 - 1));
+                : randomInt(1, 2 ** 31 - 1));
 
         return this.client.callApi('sendMessageDraft', {
             chat_id: this.chat.id,

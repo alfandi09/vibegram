@@ -1,5 +1,6 @@
-import * as crypto from 'crypto';
 import { WebAppValidationError } from './errors';
+import { constantTimeEqual } from './runtime';
+import { hmacSha256, toHex } from './sha256';
 
 const HASH_HEX_PATTERN = /^[0-9a-f]{64}$/i;
 
@@ -51,21 +52,16 @@ export class WebAppUtils {
         const dataCheckString = keys.map(key => `${key}=${urlParams.get(key)}`).join('\n');
 
         // 2. Derive the WebAppData secret key via HMAC-SHA256 of the bot token.
-        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
+        // Pure-JS HMAC keeps this API synchronous on every runtime, including
+        // edge runtimes that do not provide node:crypto.
+        const secretKey = hmacSha256('WebAppData', token);
 
         // 3. Compute and compare the hash signature.
-        const calculatedHash = crypto
-            .createHmac('sha256', secretKey)
-            .update(dataCheckString)
-            .digest('hex');
+        const calculatedHash = toHex(hmacSha256(secretKey, dataCheckString));
 
-        // Constant-time comparison to prevent timing attacks.
-        const hashBuffer = Buffer.from(hash, 'hex');
-        const calculatedBuffer = Buffer.from(calculatedHash, 'hex');
-        if (
-            hashBuffer.length !== calculatedBuffer.length ||
-            !crypto.timingSafeEqual(hashBuffer, calculatedBuffer)
-        ) {
+        // Constant-time comparison to prevent timing attacks. The hash was
+        // already validated as 64 hex characters, so compare normalized hex.
+        if (!constantTimeEqual(hash.toLowerCase(), calculatedHash)) {
             throw new WebAppValidationError(
                 'WebApp data validation failed: Hash mismatch. Data may have been tampered.'
             );

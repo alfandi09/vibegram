@@ -1,8 +1,9 @@
-import * as fs from 'fs';
+import type * as fsModule from 'fs';
 import type { Readable } from 'stream';
 import { NetworkError, RateLimitError, TelegramApiError } from './errors';
 import { createHttpTransport, HttpRequestError, type HttpTransport } from './http';
 import { hasStreamUpload, prepareRequestPayload, validateRequestPayload } from './multipart';
+import { loadNodeModule, utf8ByteLength } from './runtime';
 
 const DEFAULT_API_ROOT = 'https://api.telegram.org';
 const DEFAULT_REQUEST_TIMEOUT_MS = 50000;
@@ -21,10 +22,10 @@ function createDownloadLimitError(): NetworkError {
 }
 
 function getChunkByteLength(chunk: unknown): number {
-    if (typeof chunk === 'string') return Buffer.byteLength(chunk);
+    if (typeof chunk === 'string') return utf8ByteLength(chunk);
     if (chunk instanceof Uint8Array) return chunk.byteLength;
     if (chunk instanceof ArrayBuffer) return chunk.byteLength;
-    return Buffer.byteLength(String(chunk));
+    return utf8ByteLength(String(chunk));
 }
 
 interface HttpErrorLike {
@@ -528,7 +529,7 @@ export class TelegramClient {
     }
 
     private assertResponseWithinLimit(response: TelegramApiResponse): void {
-        const bytes = Buffer.byteLength(JSON.stringify(response) ?? '', 'utf8');
+        const bytes = utf8ByteLength(JSON.stringify(response) ?? '');
         if (bytes > this.maxResponseBytes) {
             throw new NetworkError(
                 `Telegram API response exceeds maximum size of ${this.maxResponseBytes} bytes.`
@@ -594,6 +595,7 @@ export class TelegramClient {
         }
 
         if (destPath) {
+            const fs = await loadNodeModule<typeof fsModule>('fs');
             return new Promise((resolve, reject) => {
                 const writer = fs.createWriteStream(destPath);
                 const stream = response.data as Readable;

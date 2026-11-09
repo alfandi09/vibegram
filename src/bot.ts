@@ -2,7 +2,8 @@ import { TelegramClient, TelegramClientHooks, TelegramClientOptions } from './cl
 import { Composer, Middleware } from './composer';
 import type { Filter, FilterQuery } from './filter-query';
 import { Context } from './context';
-import * as http from 'http';
+import type * as http from 'http';
+import { loadNodeModule } from './runtime';
 import {
     BotCommand,
     BotCommandOptions,
@@ -475,7 +476,9 @@ export class Bot<C extends Context = Context> extends Composer<C> {
             maxBodySizeBytes: options.maxBodySizeBytes,
         });
 
-        const server = http.createServer((req, res) => {
+        // Loaded on demand so edge runtimes never need node:http.
+        const { createServer } = await loadNodeModule<typeof http>('http');
+        const server = createServer((req, res) => {
             const requestPath = getRequestPath(req.url);
             const isWebhookPath = requestPath === path;
             const isHealthPath =

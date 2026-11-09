@@ -1659,7 +1659,7 @@ export type ReplyMarkup =
  * `ctx.replyWithDocument({ source: buffer, filename: 'report.pdf' })`.
  */
 export interface InputFileUpload {
-    source: Buffer | NodeJS.ReadableStream;
+    source: Buffer | Uint8Array | NodeJS.ReadableStream;
     /** File name shown in Telegram. Defaults to the fs.ReadStream basename or the field name. */
     filename?: string;
     /** MIME type sent in the multipart part. Defaults to application/octet-stream. */
@@ -1667,10 +1667,10 @@ export interface InputFileUpload {
 }
 
 /**
- * A file to send: a file_id or HTTP URL string, a Buffer, a readable stream,
- * or an InputFileUpload with explicit metadata.
+ * A file to send: a file_id or HTTP URL string, a Buffer or Uint8Array, a
+ * readable stream, or an InputFileUpload with explicit metadata.
  */
-export type InputFile = string | Buffer | NodeJS.ReadableStream | InputFileUpload;
+export type InputFile = string | Buffer | Uint8Array | NodeJS.ReadableStream | InputFileUpload;
 
 export interface InputProfilePhotoStatic {
     type: 'static';
