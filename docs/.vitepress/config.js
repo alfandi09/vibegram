@@ -132,6 +132,7 @@ export default async () => {
                                 { text: 'Scene', link: '/id/state/scenes' },
                                 { text: 'Wizard', link: '/id/state/wizards' },
                                 { text: 'Conversation', link: '/id/state/conversations' },
+                                { text: 'Durable Conversation', link: '/id/state/durable-conversations' },
                             ],
                         },
                         {
@@ -169,6 +170,7 @@ export default async () => {
                                 { text: 'Pesan Draft (API 9.5)', link: '/id/advanced/draft' },
                                 { text: 'Administrasi Grup', link: '/id/advanced/administration' },
                                 { text: 'Deployment', link: '/id/advanced/deployment' },
+                                { text: 'Testing', link: '/id/advanced/testing' },
                             ],
                         },
                         {
@@ -276,6 +278,7 @@ export default async () => {
                         { text: 'Scenes', link: '/state/scenes' },
                         { text: 'Wizards', link: '/state/wizards' },
                         { text: 'Conversations', link: '/state/conversations' },
+                        { text: 'Durable Conversations', link: '/state/durable-conversations' },
                     ],
                 },
                 {
@@ -310,6 +313,7 @@ export default async () => {
                         { text: 'Draft Messages (API 9.5)', link: '/advanced/draft' },
                         { text: 'Group Administration', link: '/advanced/administration' },
                         { text: 'Deployment', link: '/advanced/deployment' },
+                        { text: 'Testing', link: '/advanced/testing' },
                     ],
                 },
                 {

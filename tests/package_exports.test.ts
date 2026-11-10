@@ -33,6 +33,7 @@ const publicSubpaths = [
     ['ratelimit', 'ratelimit'],
     ['scene', 'scene'],
     ['session', 'session'],
+    ['testing', 'testing'],
     ['types', 'types'],
     ['webapp', 'webapp'],
     ['wizard', 'wizard'],

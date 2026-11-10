@@ -4,6 +4,12 @@ Conversations model free-form multi-step flows where users can answer with text,
 buttons, or media. Use them when the next step depends on runtime input and a
 linear wizard would be too rigid.
 
+::: tip Restarts and serverless
+`Conversation` keeps state in process memory. For flows that must survive restarts,
+run on several instances, or live on serverless/edge, use
+[Durable Conversations](/state/durable-conversations).
+:::
+
 ```ts
 import { Bot, Conversation } from 'vibegram';
 

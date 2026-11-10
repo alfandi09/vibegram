@@ -9,6 +9,9 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Added
 
+- `DurableConversation`: restart-safe conversations that persist to any `ConversationStore` (memory, Redis, KV, ...) and replay deterministically, so they survive deploys, scale across instances, and run on serverless/edge. Recorded Bot API results are never re-sent; `conv.external()` records non-deterministic work; divergent replays raise `ConversationReplayError`.
+- `vibegram/testing`: `createTestBot(bot)` runs bots offline, records outgoing calls (`calls`, `callsOf()`, `lastCall()`), stubs results or errors, and builds updates (`sendText()`, `sendCommand()`, `sendMessage()`, `pressButton()`, `sendUpdate()`).
+- `BotOptions.commandsOnEditedMessages` (default `true`): set `false` so editing an old command message does not re-run its handler.
 - Runtime-neutral core: the main `vibegram` entry no longer loads Node.js built-in modules or requires the `Buffer` global (enforced by a CI import-graph test). `fs`, `http`, and `stream` load lazily only for disk downloads, the built-in webhook server, and stream responses; secret comparison and `WebAppUtils.validate()` use pure JavaScript (HMAC-SHA256 cross-checked against `node:crypto`); streamed multipart bodies are sent to `fetch` as a standard `ReadableStream`.
 - `createFetchHandler(bot, options)`: a Web-standard `(Request) => Promise<Response>` webhook handler for Cloudflare Workers, Deno, Bun, Vercel/Netlify Edge, and Next.js route handlers, with secret-token checks, streaming body limits, a health path, and optional `waitUntil` for immediate acknowledgement.
 - Uploads accept plain `Uint8Array` data (`InputFile` and `InputFileUpload.source`); `downloadFile(id)` returns a `Uint8Array` on runtimes without `Buffer`.

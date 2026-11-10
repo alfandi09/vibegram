@@ -4,6 +4,12 @@ Conversation memodelkan flow multi-step bebas saat user bisa menjawab dengan
 teks, tombol, atau media. Gunakan saat langkah berikutnya bergantung pada input
 runtime dan wizard linear terasa terlalu kaku.
 
+::: tip Restart dan serverless
+`Conversation` menyimpan state di memory proses. Untuk flow yang harus tahan restart,
+berjalan di beberapa instance, atau di serverless/edge, pakai
+[Durable Conversation](/id/state/durable-conversations).
+:::
+
 ```ts
 import { Bot, Conversation } from 'vibegram';
 

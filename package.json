@@ -131,6 +131,11 @@
             "import": "./dist/esm/wizard.js",
             "require": "./dist/cjs/wizard.js"
         },
+        "./testing": {
+            "types": "./dist/types/testing.d.ts",
+            "import": "./dist/esm/testing.js",
+            "require": "./dist/cjs/testing.js"
+        },
         "./package.json": "./package.json"
     },
     "typesVersions": {
@@ -206,6 +211,9 @@
             ],
             "wizard": [
                 "dist/types/wizard.d.ts"
+            ],
+            "testing": [
+                "dist/types/testing.d.ts"
             ]
         }
     },

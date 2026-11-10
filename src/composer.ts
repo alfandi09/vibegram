@@ -43,7 +43,19 @@ export interface ComposerOptions {
      * Commands targeting a different bot are ignored.
      */
     botUsername?: string;
+    /**
+     * Whether command() also runs for edited messages and edited channel posts.
+     * Defaults to true for backward compatibility; set false so editing an old
+     * "/start" message does not re-run the command. Planned default for 3.0: false.
+     */
+    commandsOnEditedMessages?: boolean;
 }
+
+const EDITED_UPDATE_KEYS = [
+    'edited_message',
+    'edited_channel_post',
+    'edited_business_message',
+] as const;
 
 interface ParsedCommand {
     name: string;
@@ -82,9 +94,11 @@ function parseTelegramCommand(text: string): ParsedCommand | undefined {
 export class Composer<C extends Context> {
     private middlewares: Middleware<C>[] = [];
     private botUsername?: string;
+    protected commandsOnEditedMessages: boolean;
 
     constructor(options?: ComposerOptions) {
         this.setBotUsername(options?.botUsername);
+        this.commandsOnEditedMessages = options?.commandsOnEditedMessages ?? true;
     }
 
     private static cloneTriggerRegex(regex: RegExp): RegExp {
@@ -122,6 +136,12 @@ export class Composer<C extends Context> {
         return this.use((ctx, next) => {
             const msg = ctx.message;
             if (!msg || !msg.text) return next();
+            if (
+                !this.commandsOnEditedMessages &&
+                EDITED_UPDATE_KEYS.some(key => ctx.update[key] !== undefined)
+            ) {
+                return next();
+            }
 
             const parsed = parseTelegramCommand(msg.text);
             if (!parsed || !this.acceptsCommandTarget(parsed.target)) return next();

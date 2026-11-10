@@ -21,4 +21,5 @@ export * from './cache';
 export * from './menu';
 export * from './queue';
 export * from './conversation';
+export * from './durable-conversation';
 export * from './dedupe';

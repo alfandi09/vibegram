@@ -130,6 +130,11 @@ export interface BotOptions<C extends Context = Context> {
      * Client hooks are configured through `observability.client`.
      */
     client?: Omit<TelegramClientOptions, 'hooks'>;
+    /**
+     * Whether command() handlers also run for edited messages. Defaults to true
+     * (current behavior); set false to ignore edits of command messages.
+     */
+    commandsOnEditedMessages?: boolean;
 }
 
 export interface BotWebhookLaunchOptions {
@@ -311,7 +316,7 @@ export class Bot<C extends Context = Context> extends Composer<C> {
         token: string,
         public options?: BotOptions<C>
     ) {
-        super();
+        super({ commandsOnEditedMessages: options?.commandsOnEditedMessages });
         if (!token) throw new Error('Telegram Bot token is required.');
         if (
             this.options?.updateTimeout !== undefined &&
