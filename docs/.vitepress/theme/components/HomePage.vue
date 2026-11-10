@@ -138,13 +138,13 @@ const managerCommands = [
 const proofItems = computed(() =>
     isIndonesian.value
         ? [
-              { value: 'Node.js 18+', label: 'runtime modern' },
+              { value: 'Node.js 20+', label: 'runtime modern' },
               { value: 'CJS + ESM', label: 'dual output' },
               { value: 'Bot API 10.3', label: 'cakupan luas' },
               { value: 'Strict TS', label: 'DX bertipe' },
           ]
         : [
-              { value: 'Node.js 18+', label: 'modern runtime' },
+              { value: 'Node.js 20+', label: 'modern runtime' },
               { value: 'CJS + ESM', label: 'dual output' },
               { value: 'Bot API 10.3', label: 'broad coverage' },
               { value: 'Strict TS', label: 'typed DX' },

@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { codex } from '../src/codex/plugin';
-import { MemoryCodexStore } from '../src/codex/memory';
-import type { CodexAskResult, CodexProvider } from '../src/codex/types';
+import { codex } from '../src/plugin';
+import { MemoryCodexStore } from '../src/memory';
+import type { CodexAskResult, CodexProvider } from '../src/types';
 
 type FakeCtx = {
     chat?: { id: number; type?: string };

@@ -254,7 +254,7 @@ describe('Context: ephemeral shortcuts', () => {
         await expect(ctx.deleteEphemeralMessage()).rejects.toThrow(/ephemeral message/);
     });
 
-    it('replyWithDraft sends a non-zero draft_id instead of random_id', async () => {
+    it('replyWithDraft sends a non-zero draft_id', async () => {
         const client = createMockClient(true);
         const ctx = new Context(
             {
@@ -271,7 +271,6 @@ describe('Context: ephemeral shortcuts', () => {
 
         await ctx.replyWithDraft('Thinking', { can_stop: true, keep_on_stop: true });
         await ctx.replyWithDraft('Thinking more', { draft_id: 99 });
-        await ctx.replyWithDraft('Legacy', { random_id: '12' });
 
         const calls = (client.callApi as ReturnType<typeof vi.fn>).mock.calls;
         expect(calls[0][0]).toBe('sendMessageDraft');
@@ -280,7 +279,6 @@ describe('Context: ephemeral shortcuts', () => {
         expect(calls[0][1]).toMatchObject({ chat_id: 42, can_stop: true, keep_on_stop: true });
         expect(calls[0][1]).not.toHaveProperty('random_id');
         expect(calls[1][1].draft_id).toBe(99);
-        expect(calls[2][1].draft_id).toBe(12);
     });
 });
 

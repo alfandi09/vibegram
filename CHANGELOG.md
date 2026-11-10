@@ -7,6 +7,13 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Node.js 20 or newer is required (`engines.node >= 20`); Node.js 18 reached end of life.
+- The Codex plugin moved from the `vibegram/codex` subpath to the separate `@vibegram/codex` package (`plugins/codex`); the API is unchanged, only the import path.
+- Removed the deprecated `random_id` alias of `ctx.replyWithDraft()` (use `draft_id`) and the non-spec `Gift.gift_id` field (use `Gift.id`).
+- See the [Upgrading to 3.0](https://alfandi09.github.io/vibegram/basics/upgrading) guide.
+
 ### Added
 
 - `ReplyStreamer` for AI bots: streams any `AsyncIterable<string>` (e.g. LLM tokens) into live message drafts in private chats with the Bot API 10.3 stop button, then sends the final message (split past 4096 characters via the exported `splitMessageText()`). Stopping closes the source iterator; supports throttling, `AbortSignal`, and `onStop: 'send' | 'discard'`.
@@ -44,7 +51,7 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Fixed
 
-- `ctx.replyWithDraft()` now sends the required `draft_id` (previously sent an unsupported `random_id`, so Telegram rejected the call). `random_id` is still accepted as a deprecated alias when numeric.
+- `ctx.replyWithDraft()` now sends the required `draft_id` (previously sent an unsupported `random_id`, so Telegram rejected the call).
 - Polling with `offsetCommit: 'processed'` no longer retries a permanently failing update forever; it is skipped after `maxUpdateAttempts` and reported via `onPollingError`.
 - Rate-limit and network retries no longer re-send consumed stream uploads (which produced empty files).
 - `getUpdates` requests no longer abort when `polling.timeout` approaches the 50s HTTP timeout.

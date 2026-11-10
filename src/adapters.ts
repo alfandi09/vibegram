@@ -385,7 +385,7 @@ async function readLimitedText(request: Request, maxBytes: number): Promise<stri
 /**
  * Returns a Web-standard `(request: Request) => Promise<Response>` webhook handler.
  * Uses only Fetch API primitives, so it runs on Cloudflare Workers, Deno,
- * Bun, Vercel/Netlify Edge, Next.js route handlers, and Node.js 18+.
+ * Bun, Vercel/Netlify Edge, Next.js route handlers, and Node.js 20+.
  *
  * @example
  * ```typescript

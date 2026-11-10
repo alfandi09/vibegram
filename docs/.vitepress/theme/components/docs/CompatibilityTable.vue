@@ -14,7 +14,7 @@ interface CompatibilityRow {
 const DEFAULT_ROWS: CompatibilityRow[] = [
     {
         feature: 'Runtime',
-        support: 'Node.js 18+',
+        support: 'Node.js 20+',
         cjs: 'yes',
         esm: 'yes',
         node: '18, 20, 22',

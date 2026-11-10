@@ -1,0 +1,51 @@
+{
+    "name": "@vibegram/codex",
+    "version": "0.1.0",
+    "description": "Connect VibeGram Telegram bots to ChatGPT through a Codex session (moved out of the vibegram core in 3.0)",
+    "main": "./dist/cjs/index.js",
+    "module": "./dist/esm/index.js",
+    "types": "./dist/types/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/esm/index.js",
+            "require": "./dist/cjs/index.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "sideEffects": false,
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "scripts": {
+        "build:cjs": "tsc --project tsconfig.json",
+        "build:esm": "tsc --project tsconfig.esm.json",
+        "write:package-markers": "node scripts/postbuild.js",
+        "build": "npm run build:cjs && npm run build:esm && npm run write:package-markers",
+        "test": "npx --no-install vitest run tests",
+        "typecheck": "tsc --noEmit"
+    },
+    "keywords": [
+        "vibegram",
+        "telegram",
+        "bot",
+        "plugin",
+        "codex",
+        "chatgpt"
+    ],
+    "author": "Alfa",
+    "license": "ISC",
+    "peerDependencies": {
+        "vibegram": ">=2.6.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.5.2",
+        "typescript": "^6.0.2",
+        "vitest": "^3.2.4",
+        "vibegram": "file:../.."
+    }
+}

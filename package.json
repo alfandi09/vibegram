@@ -11,11 +11,6 @@
             "import": "./dist/esm/index.js",
             "require": "./dist/cjs/index.js"
         },
-        "./codex": {
-            "types": "./dist/types/codex/index.d.ts",
-            "import": "./dist/esm/codex/index.js",
-            "require": "./dist/cjs/codex/index.js"
-        },
         "./adapters": {
             "types": "./dist/types/adapters.d.ts",
             "import": "./dist/esm/adapters.js",
@@ -140,9 +135,6 @@
     },
     "typesVersions": {
         "*": {
-            "codex": [
-                "dist/types/codex/index.d.ts"
-            ],
             "adapters": [
                 "dist/types/adapters.d.ts"
             ],
@@ -232,7 +224,7 @@
     },
     "homepage": "https://alfandi09.github.io/vibegram/",
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=20.0.0"
     },
     "scripts": {
         "clean": "node scripts/clean-dist.js",

@@ -9,14 +9,13 @@
  *   /codex auth export — Download saved auth.json in a private admin chat
  */
 
-import { Middleware } from '../composer';
-import { Context } from '../context';
+import type { Context, Middleware } from 'vibegram';
 import {
     CodexPluginOptions,
     CodexContext,
     CodexMessage,
 } from './types';
-import { Markup } from '../markup';
+import { Markup } from 'vibegram';
 import { MemoryCodexStore } from './memory';
 import { saveCodexAuthJson } from './auth/manual';
 import * as fs from 'fs';
@@ -783,7 +782,7 @@ export function codex<C extends Context = Context>(
             const result = await ctx.codex!.ask(text);
             await ctx.reply(result.text);
         } catch (err) {
-            const msg = (err as Error).message.replace('[vibegram/codex] ', '');
+            const msg = (err as Error).message.replace('[@vibegram/codex] ', '');
             await ctx.reply(`⚠️ ${msg}`).catch(() => {});
         }
     }
@@ -793,7 +792,8 @@ export function codex<C extends Context = Context>(
 // TypeScript module augmentation — ctx.codex
 // ---------------------------------------------------------------------------
 
-declare module '../context' {
+// Augment the class where it is declared; vibegram re-exports it from the main entry.
+declare module 'vibegram/context' {
     interface Context {
         codex?: CodexContext;
     }

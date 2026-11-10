@@ -29,7 +29,11 @@ VibeGram is a lightweight Telegram Bot framework built entirely in TypeScript. I
 - **Keyboard Builder** - Declarative inline, reply, and force-reply keyboard construction
 - **Smart Command Parsing** - Parse `/command arg1 arg2` via `ctx.command.args`
 - **I18n Support** - Locale-aware middleware with auto-detection
-- **Codex Plugin Module** - Import `codex()` and ChatGPT session helpers from `vibegram/codex`
+- **Edge-Ready Core** - `createFetchHandler()` for Cloudflare Workers, Deno, Bun, and Next.js; no Node.js built-ins at import time
+- **Type-Narrowing Filters** - `bot.on('message:photo', ctx => ctx.message.photo)` with no `?.` or `!`
+- **Durable Conversations & Testing Kit** - Restart-safe conversations and offline tests via `vibegram/testing`
+- **AI Streaming** - `ReplyStreamer` streams model output into drafts with a stop button
+- **Codex Plugin** - ChatGPT session helpers in the separate `@vibegram/codex` package
 - **Observability Hooks** - Request logging, timing metrics, and lifecycle hooks for retries and failures
 - **Verified Release Pipeline** - Automated tests, typechecks, example validation, dual CJS/ESM build, and docs generation
 
@@ -51,13 +55,16 @@ This table highlights built-in VibeGram capabilities, not a ranking of other bot
 | Inline Result Builder |   Yes    |
 | TypeScript Types      |   Yes    |
 | Plugin System         |   Yes    |
-| Codex Plugin Subpath  |   Yes    |
+| Edge Fetch Handler    |   Yes    |
+| Durable Conversations |   Yes    |
+| Testing Kit           |   Yes    |
+| AI Reply Streaming    |   Yes    |
 
 ---
 
 ## Installation
 
-Requires [Node.js](https://nodejs.org/) v18.0 or later.
+Requires [Node.js](https://nodejs.org/) v20.0 or later (vibegram 2.x supports Node.js 18). Upgrading from 2.x? See [Upgrading to 3.0](https://alfandi09.github.io/vibegram/basics/upgrading).
 
 ```bash
 npm install vibegram

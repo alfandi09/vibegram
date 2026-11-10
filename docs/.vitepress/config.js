@@ -101,6 +101,7 @@ export default async () => {
                                 { text: 'Quickstart', link: '/id/basics/quickstart' },
                                 { text: 'Instansi Bot & Polling', link: '/id/basics/instance' },
                                 { text: 'Migrasi', link: '/id/basics/migration' },
+                                { text: 'Upgrade ke 3.0', link: '/id/basics/upgrading' },
                             ],
                         },
                         {
@@ -249,6 +250,7 @@ export default async () => {
                         { text: 'Quickstart', link: '/basics/quickstart' },
                         { text: 'Bot Instance & Polling', link: '/basics/instance' },
                         { text: 'Migration', link: '/basics/migration' },
+                        { text: 'Upgrading to 3.0', link: '/basics/upgrading' },
                     ],
                 },
                 {

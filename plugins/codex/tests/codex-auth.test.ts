@@ -6,7 +6,7 @@ import {
     readCodexAuthSummary,
     saveCodexAuthJson,
     validateCodexAuthJson,
-} from '../src/codex/auth/manual';
+} from '../src/auth/manual';
 
 const tmpDirs: string[] = [];
 

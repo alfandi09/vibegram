@@ -1,0 +1,382 @@
+// Copied from vibegram core src/http.ts (internal transport, not public API).
+import type { Readable } from 'stream';
+import { concatBytes, decodeUtf8, loadNodeModule, toBufferIfAvailable } from './runtime';
+
+export type HttpResponseType = 'json' | 'text' | 'buffer' | 'stream';
+
+export interface HttpRequestOptions {
+    method?: 'GET' | 'POST';
+    url: string;
+    headers?: Record<string, string>;
+    body?: BodyInit | AsyncIterable<Uint8Array>;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    responseType?: HttpResponseType;
+    maxResponseBytes?: number;
+}
+
+export interface HttpResponse<T = unknown> {
+    status: number;
+    headers: Record<string, string>;
+    data: T;
+}
+
+export class HttpRequestError extends Error {
+    constructor(
+        message: string,
+        public readonly requestUrl: string,
+        public readonly status?: number,
+        public readonly responseData?: unknown,
+        public readonly responseHeaders?: Record<string, string>,
+        public readonly cause?: unknown
+    ) {
+        super(message);
+        this.name = 'HttpRequestError';
+    }
+}
+
+export interface HttpTransport {
+    request<T = unknown>(options: HttpRequestOptions): Promise<HttpResponse<T>>;
+    postJson<T = unknown>(
+        url: string,
+        body: unknown,
+        options?: Omit<HttpRequestOptions, 'method' | 'url' | 'body' | 'responseType'>
+    ): Promise<HttpResponse<T>>;
+}
+
+interface CompositeSignal {
+    signal?: AbortSignal;
+    cleanup(): void;
+}
+
+interface NodeRequestInit {
+    method?: string;
+    headers?: HeadersInit;
+    signal?: AbortSignal;
+    duplex?: 'half';
+    body?: RequestInit['body'] | AsyncIterable<Uint8Array>;
+}
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown request failure';
+}
+
+function toReadableStream(iterable: AsyncIterable<Uint8Array>): ReadableStream<Uint8Array> {
+    if (typeof ReadableStream !== 'undefined' && iterable instanceof ReadableStream) {
+        return iterable as ReadableStream<Uint8Array>;
+    }
+
+    const iterator = iterable[Symbol.asyncIterator]();
+    return new ReadableStream<Uint8Array>({
+        async pull(controller) {
+            try {
+                const { value, done } = await iterator.next();
+                if (done) {
+                    controller.close();
+                } else {
+                    controller.enqueue(value);
+                }
+            } catch (error) {
+                controller.error(error);
+            }
+        },
+        async cancel(reason) {
+            await iterator.return?.(reason);
+        },
+    });
+}
+
+function isAsyncIterableBody(body: unknown): body is AsyncIterable<Uint8Array> {
+    return (
+        typeof body === 'object' &&
+        body !== null &&
+        Symbol.asyncIterator in body &&
+        typeof (body as AsyncIterable<Uint8Array>)[Symbol.asyncIterator] === 'function'
+    );
+}
+
+function normalizeHeaders(headers: Headers): Record<string, string> {
+    const normalized: Record<string, string> = {};
+    headers.forEach((value, key) => {
+        normalized[key.toLowerCase()] = value;
+    });
+    return normalized;
+}
+
+function composeAbortSignal(timeoutMs?: number, signal?: AbortSignal): CompositeSignal {
+    if (!timeoutMs && !signal) {
+        return { cleanup: () => undefined };
+    }
+
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let removeAbortListener: (() => void) | undefined;
+
+    const abort = (reason?: unknown) => {
+        if (!controller.signal.aborted) {
+            controller.abort(reason);
+        }
+    };
+
+    if (timeoutMs && timeoutMs > 0) {
+        timeout = setTimeout(
+            () => abort(new Error(`Request timed out after ${timeoutMs}ms.`)),
+            timeoutMs
+        );
+        timeout.unref?.();
+    }
+
+    if (signal) {
+        if (signal.aborted) {
+            abort(signal.reason);
+        } else {
+            const onAbort = () => abort(signal.reason);
+            signal.addEventListener('abort', onAbort, { once: true });
+            removeAbortListener = () => signal.removeEventListener('abort', onAbort);
+        }
+    }
+
+    return {
+        signal: controller.signal,
+        cleanup() {
+            if (timeout) clearTimeout(timeout);
+            removeAbortListener?.();
+        },
+    };
+}
+
+function validateMaxResponseBytes(maxResponseBytes: number | undefined): void {
+    if (maxResponseBytes === undefined) return;
+    if (!Number.isInteger(maxResponseBytes) || maxResponseBytes <= 0) {
+        throw new TypeError('maxResponseBytes must be a positive integer.');
+    }
+}
+
+function createResponseLimitError(maxResponseBytes: number): Error {
+    return new Error(`HTTP response exceeds maximum size of ${maxResponseBytes} bytes.`);
+}
+
+function assertContentLengthWithinLimit(response: Response, maxResponseBytes?: number): void {
+    if (maxResponseBytes === undefined) return;
+
+    const contentLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > maxResponseBytes) {
+        throw createResponseLimitError(maxResponseBytes);
+    }
+}
+
+async function readResponseBuffer(
+    response: Response,
+    maxResponseBytes?: number
+): Promise<Uint8Array> {
+    assertContentLengthWithinLimit(response, maxResponseBytes);
+
+    if (!response.body) {
+        return new Uint8Array(0);
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+
+            const chunk = value;
+            totalBytes += chunk.byteLength;
+            if (maxResponseBytes !== undefined && totalBytes > maxResponseBytes) {
+                await reader.cancel().catch(() => undefined);
+                throw createResponseLimitError(maxResponseBytes);
+            }
+
+            chunks.push(chunk);
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    return concatBytes(chunks, totalBytes);
+}
+
+async function parseJsonBody(response: Response, maxResponseBytes?: number): Promise<unknown> {
+    const text = decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
+    if (text.length === 0) return undefined;
+    return JSON.parse(text);
+}
+
+async function parseResponseBody(
+    response: Response,
+    responseType: HttpResponseType,
+    maxResponseBytes?: number
+): Promise<unknown> {
+    if (responseType === 'text') {
+        return decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
+    }
+
+    if (responseType === 'buffer') {
+        // Node.js callers get a Buffer; other runtimes get a plain Uint8Array.
+        return toBufferIfAvailable(await readResponseBuffer(response, maxResponseBytes));
+    }
+
+    if (responseType === 'stream') {
+        if (!response.body) {
+            throw new Error('HTTP response does not contain a readable body.');
+        }
+
+        // Node.js streams are only needed for streaming downloads to disk.
+        const { Readable } = await loadNodeModule<typeof import('stream')>('stream');
+        return Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]);
+    }
+
+    return parseJsonBody(response, maxResponseBytes);
+}
+
+async function parseErrorResponseBody(
+    response: Response,
+    maxResponseBytes?: number
+): Promise<unknown> {
+    const text = decodeUtf8(await readResponseBuffer(response, maxResponseBytes));
+    if (text.length === 0) return undefined;
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.parse(text);
+        } catch {
+            return text;
+        }
+    }
+
+    return text;
+}
+
+function isNodeReadable(value: unknown): value is Readable {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Readable).pipe === 'function' &&
+        typeof (value as Readable).once === 'function'
+    );
+}
+
+function attachStreamCleanup(stream: Readable, cleanup: () => void): void {
+    stream.once('close', cleanup);
+    stream.once('end', cleanup);
+    stream.once('error', cleanup);
+}
+
+export function createHttpTransport(): HttpTransport {
+    if (typeof globalThis.fetch !== 'function') {
+        throw new Error('global fetch is not available in this Node.js runtime.');
+    }
+
+    async function request<T = unknown>(options: HttpRequestOptions): Promise<HttpResponse<T>> {
+        validateMaxResponseBytes(options.maxResponseBytes);
+
+        const responseType = options.responseType ?? 'json';
+        const method = options.method ?? (options.body === undefined ? 'GET' : 'POST');
+        const compositeSignal = composeAbortSignal(options.timeoutMs, options.signal);
+        let cleanedUp = false;
+        const cleanupOnce = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            compositeSignal.cleanup();
+        };
+        const init: NodeRequestInit = {
+            method,
+            headers: options.headers,
+            // Fetch implementations outside Node.js only accept standard bodies,
+            // so streamed (multipart) bodies are passed as a ReadableStream.
+            body: isAsyncIterableBody(options.body) ? toReadableStream(options.body) : options.body,
+            signal: compositeSignal.signal,
+        };
+
+        if (isAsyncIterableBody(options.body)) {
+            init.duplex = 'half';
+        }
+
+        let response: Response;
+        try {
+            response = await globalThis.fetch(options.url, init as RequestInit);
+        } catch (error) {
+            cleanupOnce();
+            throw new HttpRequestError(
+                `Network Error: ${getErrorMessage(error)}`,
+                options.url,
+                undefined,
+                undefined,
+                undefined,
+                error
+            );
+        }
+
+        const headers = normalizeHeaders(response.headers);
+
+        try {
+            if (!response.ok) {
+                const responseData = await parseErrorResponseBody(
+                    response,
+                    options.maxResponseBytes
+                );
+                throw new HttpRequestError(
+                    `HTTP Error: ${response.status} ${response.statusText}`,
+                    options.url,
+                    response.status,
+                    responseData,
+                    headers
+                );
+            }
+
+            const data = await parseResponseBody(response, responseType, options.maxResponseBytes);
+            if (responseType === 'stream' && isNodeReadable(data)) {
+                attachStreamCleanup(data, cleanupOnce);
+            } else {
+                cleanupOnce();
+            }
+
+            return {
+                status: response.status,
+                headers,
+                data: data as T,
+            };
+        } catch (error) {
+            cleanupOnce();
+            if (error instanceof HttpRequestError) {
+                throw error;
+            }
+
+            throw new HttpRequestError(
+                `Failed to parse response body: ${getErrorMessage(error)}`,
+                options.url,
+                response.status,
+                undefined,
+                headers,
+                error
+            );
+        }
+    }
+
+    return {
+        request,
+        postJson<T = unknown>(
+            url: string,
+            body: unknown,
+            options?: Omit<HttpRequestOptions, 'method' | 'url' | 'body' | 'responseType'>
+        ): Promise<HttpResponse<T>> {
+            return request<T>({
+                ...options,
+                method: 'POST',
+                url,
+                headers: {
+                    'content-type': 'application/json',
+                    ...options?.headers,
+                },
+                body: JSON.stringify(body),
+                responseType: 'json',
+            });
+        },
+    };
+}

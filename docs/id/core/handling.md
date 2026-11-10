@@ -18,8 +18,7 @@ bot.command(['help', 'info'], async ctx => {
 Handler command menerima metadata terparse di `ctx.command`.
 
 Secara default command juga berjalan saat user **mengedit** pesan command lama. Pakai
-`new Bot(token, { commandsOnEditedMessages: false })` untuk mengabaikan edit (rencana
-default di 3.0).
+`new Bot(token, { commandsOnEditedMessages: false })` untuk mengabaikan edit.
 
 ## Argumen Command
 

@@ -9,9 +9,9 @@
         "index.js",
         "templates"
     ],
-    "vibegramVersion": "^2.7.0",
+    "vibegramVersion": "^3.0.0",
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=20.0.0"
     },
     "keywords": [
         "vibegram",

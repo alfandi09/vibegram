@@ -1,9 +1,9 @@
 # Codex for Telegram
 
-The `vibegram/codex` plugin module adds `ctx.codex` to VibeGram handlers so a Telegram bot can talk to ChatGPT through a Codex session token.
+The `@vibegram/codex` plugin adds `ctx.codex` to VibeGram handlers so a Telegram bot can talk to ChatGPT through a Codex session token.
 
 ::: warning Experimental
-This module is bundled with `vibegram` as the `vibegram/codex` subpath. Its API, environment variables, and internal ChatGPT endpoint can change before a stable release.
+Since vibegram 3.0 this plugin ships as its own package, `@vibegram/codex` (it was the `vibegram/codex` subpath in 2.x). Its API, environment variables, and internal ChatGPT endpoint can change before a stable release.
 :::
 
 ## Recommended Use
@@ -26,14 +26,16 @@ Usage counts against the Codex quota available to the signed-in ChatGPT account.
 
 ## Install
 
-Install the latest VibeGram release. Codex is included in the main `vibegram` package and is imported from the `vibegram/codex` subpath:
+Install VibeGram together with the Codex plugin package:
 
 ```bash
-npm install vibegram@^2.5.0
+npm install vibegram @vibegram/codex
 ```
 
+Upgrading from 2.x? Replace `vibegram/codex` imports with `@vibegram/codex`; the API is unchanged.
+
 ```typescript
-import { codex, codexProvider } from 'vibegram/codex';
+import { codex, codexProvider } from '@vibegram/codex';
 ```
 
 ## Server Setup
@@ -199,7 +201,7 @@ Make the mounted file writable if you want token auto-refresh to persist refresh
 
 ```typescript
 import { Bot } from 'vibegram';
-import { codex, codexProvider } from 'vibegram/codex';
+import { codex, codexProvider } from '@vibegram/codex';
 
 function parseNumberList(value: string | undefined): number[] {
     if (!value) return [];
@@ -384,7 +386,7 @@ By default, the plugin uses an in-memory store. That is fine for local testing a
 For long-running server bots, pass a custom `memoryStore` backed by your own database or cache.
 
 ```typescript
-import type { CodexMemoryStore, CodexMessage } from 'vibegram/codex';
+import type { CodexMemoryStore, CodexMessage } from '@vibegram/codex';
 
 class DatabaseCodexStore implements CodexMemoryStore {
     async append(key: string, message: CodexMessage): Promise<void> {
@@ -418,7 +420,7 @@ Use `authJsonPath` for most server deployments because it gives the provider acc
 If your platform stores secrets as JSON objects rather than files, you can build the provider with `codexProviderFromJson()`:
 
 ```typescript
-import { codexProviderFromJson } from 'vibegram/codex';
+import { codexProviderFromJson } from '@vibegram/codex';
 
 const authJson = JSON.parse(process.env.CODEX_AUTH_JSON_JSON ?? '{}');
 

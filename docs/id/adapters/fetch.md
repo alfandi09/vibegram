@@ -3,7 +3,7 @@
 `createFetchHandler()` mengembalikan webhook handler standar Web
 `(request: Request) => Promise<Response>`. Handler ini hanya memakai primitif Fetch
 API, sehingga kode bot yang sama berjalan di Cloudflare Workers, Deno, Bun,
-Vercel / Netlify Edge, route handler Next.js, dan Node.js 18+.
+Vercel / Netlify Edge, route handler Next.js, dan Node.js 20+.
 
 ```typescript
 import { Bot, createFetchHandler } from 'vibegram';
@@ -112,7 +112,7 @@ Entry point utama `vibegram` **tidak memuat modul bawaan Node.js** dan tidak
 membutuhkan global `Buffer`; sebuah test CI memastikan hal ini untuk setiap import
 yang terjangkau dari `src/index.ts`.
 
-| Fitur | Node.js 18+ | Bun / Deno | Edge (Workers, Vercel Edge) |
+| Fitur | Node.js 20+ | Bun / Deno | Edge (Workers, Vercel Edge) |
 | --- | --- | --- | --- |
 | Panggilan Bot API, middleware, session, `createFetchHandler` | ✅ | ✅ | ✅ |
 | Upload dari `Buffer` / `Uint8Array` / `{ source, filename }` | ✅ | ✅ | ✅ (`Uint8Array`) |
@@ -120,7 +120,7 @@ yang terjangkau dari `src/index.ts`.
 | Long polling (`bot.launch()`) | ✅ | ✅ | ❌ tidak ada proses yang berjalan lama |
 | Server webhook bawaan (`launch({ webhook })`), `createNativeHandler` | ✅ | ✅ lewat Node compat | ❌ pakai `createFetchHandler` |
 | `downloadFile(id, destPath)` ke disk | ✅ | ✅ lewat Node compat | ❌ pakai `downloadFile(id)` atau `getFileLink()` |
-| `vibegram/codex` | ✅ | ⚠️ butuh API Node | ❌ |
+| `@vibegram/codex` | ✅ | ⚠️ butuh API Node | ❌ |
 
 ::: info Status verifikasi
 Node.js dicakup oleh seluruh test suite. Bun, Deno, dan edge runtime ditargetkan

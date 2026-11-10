@@ -18,8 +18,7 @@ bot.command(['help', 'info'], async ctx => {
 Command handlers receive parsed metadata in `ctx.command`.
 
 By default commands also run when a user **edits** an old command message. Set
-`new Bot(token, { commandsOnEditedMessages: false })` to ignore edits (planned default
-for 3.0).
+`new Bot(token, { commandsOnEditedMessages: false })` to ignore edits.
 
 ## Command Arguments
 

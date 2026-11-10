@@ -344,22 +344,11 @@ export class Context<S = any> {
      */
     async replyWithDraft(
         text: string,
-        extra?: ExtraMessageDraft & {
-            draft_id?: number;
-            /** @deprecated Use `draft_id`. Accepted only when it is a non-zero safe integer. */
-            random_id?: number | string;
-        }
+        extra?: ExtraMessageDraft & { draft_id?: number }
     ): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot send draft: Chat ID is not available');
-        const { random_id: legacyId, draft_id: explicitId, ...rest } = extra ?? {};
-        const legacyNumericId = legacyId === undefined ? undefined : Number(legacyId);
-        const draftId =
-            explicitId ??
-            (legacyNumericId !== undefined &&
-            Number.isSafeInteger(legacyNumericId) &&
-            legacyNumericId !== 0
-                ? legacyNumericId
-                : randomInt(1, 2 ** 31 - 1));
+        const { draft_id: explicitId, ...rest } = extra ?? {};
+        const draftId = explicitId ?? randomInt(1, 2 ** 31 - 1);
 
         return this.client.callApi('sendMessageDraft', {
             chat_id: this.chat.id,

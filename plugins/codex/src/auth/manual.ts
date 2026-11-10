@@ -63,25 +63,25 @@ function chmodPrivate(filePath: string): void {
 
 export function validateCodexAuthJson(value: unknown): CodexAuthJson {
     if (!isJsonObject(value)) {
-        throw new Error('[vibegram/codex] auth.json must be a JSON object.');
+        throw new Error('[@vibegram/codex] auth.json must be a JSON object.');
     }
 
     if (value.auth_mode !== 'chatgpt') {
-        throw new Error('[vibegram/codex] auth.json auth_mode must be "chatgpt".');
+        throw new Error('[@vibegram/codex] auth.json auth_mode must be "chatgpt".');
     }
 
     if (!isJsonObject(value.tokens)) {
-        throw new Error('[vibegram/codex] auth.json must include a tokens object.');
+        throw new Error('[@vibegram/codex] auth.json must include a tokens object.');
     }
 
     const accessToken = value.tokens.access_token;
     if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
-        throw new Error('[vibegram/codex] auth.json must include tokens.access_token.');
+        throw new Error('[@vibegram/codex] auth.json must include tokens.access_token.');
     }
 
     const expiryMs = getTokenExpiryMs(accessToken);
     if (expiryMs !== undefined && expiryMs <= Date.now()) {
-        throw new Error('[vibegram/codex] auth.json access_token is expired.');
+        throw new Error('[@vibegram/codex] auth.json access_token is expired.');
     }
 
     const tokens: NonNullable<CodexAuthJson['tokens']> = {

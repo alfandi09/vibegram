@@ -2,7 +2,7 @@
 
 <PackageStats
   :stats="[
-    { label: 'Runtime', value: 'Node.js 18+', description: 'Sesuai engines package' },
+    { label: 'Runtime', value: 'Node.js 20+', description: 'Sesuai engines package' },
     { label: 'Output', value: 'CJS + ESM', description: 'Aman untuk setup Node modern' },
     { label: 'Types', value: 'Strict TS', description: 'Deklarasi tipe tersedia' }
   ]"

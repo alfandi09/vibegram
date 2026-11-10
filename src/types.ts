@@ -683,8 +683,6 @@ export interface MessageId {
 export interface Gift {
     /** Unique identifier of the gift. */
     id: string;
-    /** @deprecated Not part of the Bot API (always undefined at runtime). Use `id`. */
-    gift_id?: string;
     name?: string;
     sticker?: Sticker;
     star_count?: number;

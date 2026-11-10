@@ -18,6 +18,7 @@ Use `plugins/_template` when creating a new plugin package. Experimental or unst
 | `commands/` | `@vibegram/commands` | Command registry, Telegram command menu sync, scoped/localized command sets, and generated help output |
 | `router/` | `@vibegram/router` | Declarative route-key middleware for session flows, chat types, update types, and custom resolvers |
 | `chat-members/` | `@vibegram/chat-members` | Cached `getChatMember` lookups, member-update invalidation, and admin/owner/membership guards |
+| `codex/` | `@vibegram/codex` | ChatGPT/Codex session plugin that adds `ctx.codex` (moved out of the core in 3.0) |
 | `devtools/` | `@vibegram/devtools` | Sanitized update capture, middleware timing, API logs, JSONL debugging, and replay fixtures |
 
 ## Package Rules

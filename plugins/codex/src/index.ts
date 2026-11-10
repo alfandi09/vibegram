@@ -1,5 +1,5 @@
 /**
- * vibegram/codex - Public API barrel export
+ * @vibegram/codex - Public API barrel export
  */
 
 // Core plugin

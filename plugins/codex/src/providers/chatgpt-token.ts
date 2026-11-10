@@ -26,7 +26,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { createHttpTransport, HttpRequestError, type HttpTransport } from '../../http';
+import { createHttpTransport, HttpRequestError, type HttpTransport } from '../internal/http';
 import {
     CodexProvider,
     CodexAskInput,
@@ -180,7 +180,7 @@ function defaultAuthJsonPath(): string {
 function loadAuthJson(filePath: string): CodexAuthJson {
     if (!fs.existsSync(filePath)) {
         throw new Error(
-            `[vibegram/codex] codexProvider: auth JSON not found at "${filePath}". ` +
+            `[@vibegram/codex] codexProvider: auth JSON not found at "${filePath}". ` +
             'Please provide accessToken directly or run `codex` to authenticate.'
         );
     }
@@ -189,7 +189,7 @@ function loadAuthJson(filePath: string): CodexAuthJson {
         return JSON.parse(raw) as CodexAuthJson;
     } catch {
         throw new Error(
-            `[vibegram/codex] codexProvider: Failed to parse auth JSON at "${filePath}".`
+            `[@vibegram/codex] codexProvider: Failed to parse auth JSON at "${filePath}".`
         );
     }
 }
@@ -309,7 +309,7 @@ async function refreshAccessToken(
         const status = getHttpStatus(err);
         const detail = readErrorDetail(getHttpResponseData(err), getErrorMessage(err));
         throw new Error(
-            `[vibegram/codex] Token refresh failed (${status ?? 'network'}): ${detail}. ` +
+            `[@vibegram/codex] Token refresh failed (${status ?? 'network'}): ${detail}. ` +
             'Try running `codex login` to re-authenticate.'
         );
     }
@@ -320,7 +320,7 @@ function saveAuthJson(filePath: string, authJson: CodexAuthJson): void {
         fs.writeFileSync(filePath, JSON.stringify(authJson, null, 2), 'utf-8');
     } catch {
         // Non-fatal — token refresh still works, just won't persist
-        console.warn('[vibegram/codex] Warning: Could not update auth.json on disk after token refresh.');
+        console.warn('[@vibegram/codex] Warning: Could not update auth.json on disk after token refresh.');
     }
 }
 
@@ -357,7 +357,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         if (!authJson.tokens?.access_token) {
             throw new Error(
-                `[vibegram/codex] codexProvider: No access_token found in "${authJsonPath}". ` +
+                `[@vibegram/codex] codexProvider: No access_token found in "${authJsonPath}". ` +
                 'Make sure auth_mode is "chatgpt" and tokens.access_token is present.'
             );
         }
@@ -406,7 +406,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         isRefreshing = true;
         try {
-            console.log('[vibegram/codex] Access token expired, attempting auto-refresh...');
+            console.log('[@vibegram/codex] Access token expired, attempting auto-refresh...');
             const result = await refreshAccessToken(resolvedRefreshToken, transport);
 
             // Update in-memory token
@@ -438,10 +438,10 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
             }
 
             const newExpiry = getTokenExpiresAt(resolvedToken);
-            console.log(`[vibegram/codex] Token refreshed successfully. New expiry: ${newExpiry ?? 'unknown'}`);
+            console.log(`[@vibegram/codex] Token refreshed successfully. New expiry: ${newExpiry ?? 'unknown'}`);
             return true;
         } catch (err) {
-            console.error(`[vibegram/codex] Auto-refresh failed: ${(err as Error).message}`);
+            console.error(`[@vibegram/codex] Auto-refresh failed: ${(err as Error).message}`);
             return false;
         } finally {
             isRefreshing = false;
@@ -459,7 +459,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
             if (!isTokenExpired(resolvedToken)) {
                 const expiresAt = getTokenExpiresAt(resolvedToken);
                 return new Error(
-                    '[vibegram/codex] ChatGPT backend returned 401. Token expires ' +
+                    '[@vibegram/codex] ChatGPT backend returned 401. Token expires ' +
                     (expiresAt ?? 'unknown') + '. ' +
                     'The backend may require additional security tokens (sentinel/proof-of-work) ' +
                     'that this experimental provider cannot reproduce. ' +
@@ -467,14 +467,14 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
                 );
             }
             return new Error(
-                '[vibegram/codex] ChatGPT access_token has expired. ' +
+                '[@vibegram/codex] ChatGPT access_token has expired. ' +
                 'Please re-authenticate: run `codex login` or update your auth.json.'
             );
         }
 
         if (status === 403) {
             return new Error(
-                `[vibegram/codex] ChatGPT: Access denied (403). ` +
+                `[@vibegram/codex] ChatGPT: Access denied (403). ` +
                 `Your subscription may not have access to model "${input.model ?? model}". ` +
                 'Or the backend detected non-standard client behavior.'
             );
@@ -482,7 +482,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         if (status === 429) {
             return new Error(
-                '[vibegram/codex] ChatGPT: Rate limited (429). ' +
+                '[@vibegram/codex] ChatGPT: Rate limited (429). ' +
                 'You may have exceeded your subscription usage limits. Please wait and try again.'
             );
         }
@@ -492,7 +492,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
             const body = String(getHttpResponseData(err) ?? '').toLowerCase();
             if (body.includes('cloudflare') || body.includes('challenge')) {
                 return new Error(
-                    '[vibegram/codex] ChatGPT backend is behind Cloudflare protection. ' +
+                    '[@vibegram/codex] ChatGPT backend is behind Cloudflare protection. ' +
                     'Automated access was blocked. This is a known limitation of the experimental provider.'
                 );
             }
@@ -502,7 +502,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
         const requestId = getHttpResponseHeaders(err)?.['x-request-id'];
         const suffix = requestId ? ` request=${requestId}` : '';
         return new Error(
-            `[vibegram/codex] ChatGPT backend error (${status ?? 'network'}): ${message}${suffix}`
+            `[@vibegram/codex] ChatGPT backend error (${status ?? 'network'}): ${message}${suffix}`
         );
     }
 
@@ -676,7 +676,7 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
 
         if (!resultText) {
             throw new Error(
-                '[vibegram/codex] ChatGPT backend returned empty response. ' +
+                '[@vibegram/codex] ChatGPT backend returned empty response. ' +
                 `Received ${events.length} SSE events but no text output.`
             );
         }
@@ -709,13 +709,13 @@ export function codexProvider(opts: CodexProviderOptions = {}): CodexProvider {
                     const refreshed = await tryRefreshToken();
                     if (!refreshed) {
                         throw new Error(
-                            '[vibegram/codex] Access token has expired and auto-refresh failed. ' +
+                            '[@vibegram/codex] Access token has expired and auto-refresh failed. ' +
                             'Please re-authenticate (run `codex login` or update your auth JSON).'
                         );
                     }
                 } else {
                     throw new Error(
-                        '[vibegram/codex] Access token has expired. ' +
+                        '[@vibegram/codex] Access token has expired. ' +
                         (resolvedRefreshToken
                             ? 'Auto-refresh is disabled. Enable it or '
                             : 'No refresh_token available. ') +
@@ -778,7 +778,7 @@ export function codexProviderFromJson(
 ): CodexProvider {
     const accessToken = authJson.tokens?.access_token;
     if (!accessToken) {
-        throw new Error('[vibegram/codex] codexProviderFromJson: No access_token in provided JSON.');
+        throw new Error('[@vibegram/codex] codexProviderFromJson: No access_token in provided JSON.');
     }
     return codexProvider({ ...opts, accessToken });
 }

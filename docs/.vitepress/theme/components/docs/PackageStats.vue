@@ -8,7 +8,7 @@ interface PackageStat {
 }
 
 const DEFAULT_STATS: PackageStat[] = [
-    { label: 'Runtime', value: 'Node.js 18+', description: 'Modern baseline' },
+    { label: 'Runtime', value: 'Node.js 20+', description: 'Modern baseline' },
     { label: 'Output', value: 'CJS + ESM', description: 'Dual package' },
     { label: 'Types', value: 'Strict TS', description: 'Declarations included' },
 ];

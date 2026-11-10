@@ -46,7 +46,7 @@ export interface ComposerOptions {
     /**
      * Whether command() also runs for edited messages and edited channel posts.
      * Defaults to true for backward compatibility; set false so editing an old
-     * "/start" message does not re-run the command. Planned default for 3.0: false.
+     * "/start" message does not re-run the command.
      */
     commandsOnEditedMessages?: boolean;
 }

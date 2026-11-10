@@ -16,7 +16,6 @@ const publicSubpaths = [
     ['bot', 'bot'],
     ['cache', 'cache'],
     ['client', 'client'],
-    ['codex', 'codex/index'],
     ['composer', 'composer'],
     ['context', 'context'],
     ['conversation', 'conversation'],
@@ -66,6 +65,11 @@ describe('package exports', () => {
         for (const [subpath, distPath] of publicSubpaths) {
             expect(typesVersions[subpath]).toEqual([`dist/types/${distPath}.d.ts`]);
         }
+    });
+
+    it('no longer exposes the codex subpath (moved to @vibegram/codex in 3.0)', () => {
+        expect(packageJson.exports['./codex']).toBeUndefined();
+        expect(packageJson.typesVersions?.['*']?.codex).toBeUndefined();
     });
 
     it('does not publish retired HTTP client packages as runtime dependencies', () => {

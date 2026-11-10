@@ -11,8 +11,8 @@
  * api.openai.com. Session tokens are valid only for the ChatGPT/Codex backend.
  */
 
-import { Bot } from '../src/index';
-import { codex, codexProvider } from '../src/codex';
+import { Bot } from 'vibegram';
+import { codex, codexProvider } from '../src';
 
 function parseNumberList(value: string | undefined): number[] {
     if (!value) return [];

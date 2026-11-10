@@ -10,7 +10,7 @@
 - **Nama**: vibegram
 - **Tipe**: npm library (Telegram Bot Framework)
 - **Bahasa**: TypeScript (strict mode, target ES2022)
-- **Runtime**: Node.js >= 18
+- **Runtime**: Node.js >= 20 (sejak 3.0; 2.x mendukung Node.js >= 18)
 - **Output**: Dual — CJS (`dist/cjs/`) + ESM (`dist/esm/`) + Type declarations (`dist/types/`)
 - **Registry**: npmjs.com/package/vibegram
 - **Docs**: VitePress (EN + ID) di `docs/`
@@ -184,9 +184,9 @@ src/ratelimit.ts  → Rate limiting middleware
 src/i18n.ts       → Internationalization
 src/logger.ts     → Logging + sanitization
 src/webapp.ts     → Telegram Web App HMAC validation
-src/http.ts         → Internal HTTP transport (fetch-based, Node >=18). Tidak di barrel export.
+src/http.ts         → Internal HTTP transport (fetch-based, Node >=20). Tidak di barrel export.
 src/multipart.ts    → Internal multipart/form-data builder untuk file upload. Tidak di barrel export.
-src/codex/          → Submodule AI (ChatGPT/Codex plugin). Export terpisah via "vibegram/codex".
+plugins/codex/      → Plugin AI ChatGPT/Codex, package terpisah "@vibegram/codex" (dipindah dari src/codex di 3.0).
 ```
 
 ### 3.2 Aturan Penulisan Kode
@@ -194,7 +194,7 @@ src/codex/          → Submodule AI (ChatGPT/Codex plugin). Export terpisah via
 - **TypeScript strict mode** aktif — jangan tambahkan `@ts-ignore` atau `@ts-nocheck`
 - **Hindari `any`** sebisa mungkin. Jika terpaksa, gunakan `unknown` dan narrow secara eksplisit
 - **Semua export harus melalui `src/index.ts`** — tambahkan `export * from './module'` jika buat module baru
-- **Jangan tambah dependency runtime** tanpa alasan kuat. Library utama harus tetap zero-runtime-dependency; HTTP dan multipart memakai implementasi internal berbasis Node.js >=18.
+- **Jangan tambah dependency runtime** tanpa alasan kuat. Library utama harus tetap zero-runtime-dependency; HTTP dan multipart memakai implementasi internal berbasis Node.js >=20.
 - **Middleware harus mengikuti signature**: `(ctx: Context, next: NextFunction) => Promise<void> | void`
 - **Jangan mutasi `ctx.client` secara global** — setiap update mendapat scoped client via `Object.create()`
 - **Regex trigger**: selalu clone regex sebelum exec untuk hindari `lastIndex` leakage (lihat `Composer.cloneTriggerRegex`)

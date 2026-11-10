@@ -1,6 +1,11 @@
+import { resolve } from 'path';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
+    resolve: {
+        // Plugin tests import the vibegram peer dependency; resolve it to the core sources.
+        alias: [{ find: /^vibegram$/, replacement: resolve(__dirname, 'src/index.ts') }],
+    },
     test: {
         globals: true,
         environment: 'node',

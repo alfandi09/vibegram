@@ -78,7 +78,7 @@ function fillRandom(bytes: Uint8Array): Uint8Array {
         return webCrypto.getRandomValues(bytes);
     }
 
-    // Node.js 18 without the global Web Crypto object. These values are used
+    // Runtimes without the global Web Crypto object. These values are used
     // for multipart boundaries and draft ids, which need uniqueness, not secrecy.
     for (let index = 0; index < bytes.length; index++) {
         bytes[index] = Math.floor(Math.random() * 256);

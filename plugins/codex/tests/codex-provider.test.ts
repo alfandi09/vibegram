@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { codexProvider } from '../src/codex/providers/chatgpt-token';
+import { codexProvider } from '../src/providers/chatgpt-token';
 
 type CapturedRequest = {
     method?: string;
@@ -141,7 +141,7 @@ describe('codexProvider', () => {
 
     it('should not depend on the retired HTTP client in the provider source', () => {
         const source = readFileSync(
-            join(__dirname, '..', 'src', 'codex', 'providers', 'chatgpt-token.ts'),
+            join(__dirname, '..', 'src', 'providers', 'chatgpt-token.ts'),
             'utf8'
         );
         const retiredClientName = ['ax', 'ios'].join('');
