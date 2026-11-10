@@ -443,7 +443,7 @@ export class Context<S = any> {
      * Edit only the inline keyboard of the current ephemeral message (Bot API 10.2).
      */
     async editEphemeralMessageReplyMarkup(replyMarkup?: InlineKeyboardMarkup): Promise<boolean> {
-        return this.client.callApi('editEphemeralMessageReplyMarkup', {
+        return this.client.callApi<boolean>('editEphemeralMessageReplyMarkup', {
             ...this.getEphemeralTarget(),
             reply_markup: replyMarkup,
         });
@@ -453,7 +453,7 @@ export class Context<S = any> {
      * Delete the current ephemeral message (Bot API 10.2).
      */
     async deleteEphemeralMessage(): Promise<boolean> {
-        return this.client.callApi('deleteEphemeralMessage', this.getEphemeralTarget());
+        return this.client.callApi<boolean>('deleteEphemeralMessage', this.getEphemeralTarget());
     }
 
     /**
@@ -736,7 +736,7 @@ export class Context<S = any> {
      */
     async editMessageReplyMarkup(reply_markup: InlineKeyboardMarkup, extra?: ExtraEditReplyMarkup) {
         const target = this.getEditTarget();
-        return this.client.callApi('editMessageReplyMarkup', {
+        return this.client.callApi<any>('editMessageReplyMarkup', {
             business_connection_id: this.businessConnectionId,
             ...target,
             reply_markup,
@@ -785,7 +785,7 @@ export class Context<S = any> {
         }
     ) {
         const target = this.getEditTarget();
-        return this.client.callApi('editMessageLiveLocation', {
+        return this.client.callApi<any>('editMessageLiveLocation', {
             business_connection_id: this.businessConnectionId,
             ...target,
             latitude,
@@ -799,7 +799,7 @@ export class Context<S = any> {
      */
     async stopMessageLiveLocation(extra?: ExtraEditReplyMarkup) {
         const target = this.getEditTarget();
-        return this.client.callApi('stopMessageLiveLocation', {
+        return this.client.callApi<any>('stopMessageLiveLocation', {
             business_connection_id: this.businessConnectionId,
             ...target,
             ...extra,
@@ -826,7 +826,7 @@ export class Context<S = any> {
      */
     async deleteMessages(messageIds: number[]): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot delete messages: Chat ID is not available');
-        return this.client.callApi('deleteMessages', {
+        return this.client.callApi<boolean>('deleteMessages', {
             chat_id: this.chat.id,
             message_ids: messageIds,
         });
@@ -882,7 +882,7 @@ export class Context<S = any> {
         if (!this.update.callback_query) {
             throw new Error('Cannot answer callback query: Not a callback query update');
         }
-        return this.client.callApi('answerCallbackQuery', {
+        return this.client.callApi<any>('answerCallbackQuery', {
             callback_query_id: this.update.callback_query.id,
             text,
             show_alert: showAlert,
@@ -896,7 +896,7 @@ export class Context<S = any> {
     async answerPreCheckoutQuery(ok: boolean, errorMessage?: string) {
         if (!this.update.pre_checkout_query)
             throw new Error('Cannot answer pre-checkout: No pending pre_checkout_query');
-        return this.client.callApi('answerPreCheckoutQuery', {
+        return this.client.callApi<any>('answerPreCheckoutQuery', {
             pre_checkout_query_id: this.update.pre_checkout_query.id,
             ok,
             error_message: errorMessage,
@@ -917,7 +917,7 @@ export class Context<S = any> {
      */
     async sendChatAction(action: string, messageThreadId?: number) {
         if (!this.chat) throw new Error('Cannot send chat action: Chat ID is not available');
-        return this.client.callApi('sendChatAction', {
+        return this.client.callApi<any>('sendChatAction', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             action,
@@ -941,7 +941,7 @@ export class Context<S = any> {
         const formattedReaction: ReactionType[] =
             typeof reaction === 'string' ? [{ type: 'emoji', emoji: reaction }] : reaction;
 
-        return this.client.callApi('setMessageReaction', {
+        return this.client.callApi<any>('setMessageReaction', {
             chat_id: this.chat.id,
             message_id: this.message.message_id,
             reaction: formattedReaction,
@@ -987,7 +987,7 @@ export class Context<S = any> {
     async copyMessage(toChatId: number | string, extra?: Record<string, unknown>) {
         if (!this.chat || !this.message?.message_id)
             throw new Error('Cannot copy message: Origin Chat ID or Message ID is not available');
-        return this.client.callApi('copyMessage', {
+        return this.client.callApi<any>('copyMessage', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_id: this.message.message_id,
@@ -1004,7 +1004,7 @@ export class Context<S = any> {
         extra?: Record<string, unknown>
     ): Promise<number[]> {
         if (!this.chat) throw new Error('Cannot copy messages: Origin Chat ID is not available');
-        return this.client.callApi('copyMessages', {
+        return this.client.callApi<number[]>('copyMessages', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_ids: messageIds,
@@ -1020,7 +1020,7 @@ export class Context<S = any> {
             throw new Error(
                 'Cannot forward message: Origin Chat ID or Message ID is not available'
             );
-        return this.client.callApi('forwardMessage', {
+        return this.client.callApi<any>('forwardMessage', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_id: this.message.message_id,
@@ -1037,7 +1037,7 @@ export class Context<S = any> {
         extra?: Record<string, unknown>
     ): Promise<number[]> {
         if (!this.chat) throw new Error('Cannot forward messages: Origin Chat ID is not available');
-        return this.client.callApi('forwardMessages', {
+        return this.client.callApi<number[]>('forwardMessages', {
             chat_id: toChatId,
             from_chat_id: this.chat.id,
             message_ids: messageIds,
@@ -1052,7 +1052,7 @@ export class Context<S = any> {
         if (!this.chat) throw new Error('Cannot pin message: Chat ID is not available');
         const targetId = messageId || this.message?.message_id;
         if (!targetId) throw new Error('Cannot pin message: Target Message ID is not available');
-        return this.client.callApi('pinChatMessage', {
+        return this.client.callApi<any>('pinChatMessage', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             message_id: targetId,
@@ -1065,7 +1065,7 @@ export class Context<S = any> {
      */
     async unpinChatMessage(messageId?: number) {
         if (!this.chat) throw new Error('Cannot unpin message: Chat ID is not available');
-        return this.client.callApi('unpinChatMessage', {
+        return this.client.callApi<any>('unpinChatMessage', {
             chat_id: this.chat.id,
             business_connection_id: this.businessConnectionId,
             message_id: messageId || this.message?.message_id,
@@ -1082,7 +1082,7 @@ export class Context<S = any> {
      */
     async banChatMember(userId: number, extra?: ExtraBanMember) {
         if (!this.chat) throw new Error('Cannot ban member: Chat ID is not available');
-        return this.client.callApi('banChatMember', {
+        return this.client.callApi<any>('banChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
             ...extra,
@@ -1098,7 +1098,7 @@ export class Context<S = any> {
         extra?: ExtraRestrictMember
     ) {
         if (!this.chat) throw new Error('Cannot restrict member: Chat ID is not available');
-        return this.client.callApi('restrictChatMember', {
+        return this.client.callApi<any>('restrictChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
             permissions,
@@ -1111,7 +1111,7 @@ export class Context<S = any> {
      */
     async approveChatJoinRequest(userId: number) {
         if (!this.chat) throw new Error('Cannot approve join request: Chat ID is not available');
-        return this.client.callApi('approveChatJoinRequest', {
+        return this.client.callApi<any>('approveChatJoinRequest', {
             chat_id: this.chat.id,
             user_id: userId,
         });
@@ -1122,7 +1122,7 @@ export class Context<S = any> {
      */
     async declineChatJoinRequest(userId: number) {
         if (!this.chat) throw new Error('Cannot decline join request: Chat ID is not available');
-        return this.client.callApi('declineChatJoinRequest', {
+        return this.client.callApi<any>('declineChatJoinRequest', {
             chat_id: this.chat.id,
             user_id: userId,
         });
@@ -1133,7 +1133,7 @@ export class Context<S = any> {
      */
     async leaveChat() {
         if (!this.chat) throw new Error('Cannot leave chat: Chat ID is not available');
-        return this.client.callApi('leaveChat', {
+        return this.client.callApi<any>('leaveChat', {
             chat_id: this.chat.id,
         });
     }
@@ -1143,7 +1143,7 @@ export class Context<S = any> {
      */
     async unbanChatMember(userId: number, extra?: { only_if_banned?: boolean }) {
         if (!this.chat) throw new Error('Cannot unban member: Chat ID is not available');
-        return this.client.callApi('unbanChatMember', {
+        return this.client.callApi<any>('unbanChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
             only_if_banned: true,
@@ -1156,7 +1156,7 @@ export class Context<S = any> {
      */
     async banChatSenderChat(senderChatId: number): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot ban sender chat: Chat ID is not available');
-        return this.client.callApi('banChatSenderChat', {
+        return this.client.callApi<boolean>('banChatSenderChat', {
             chat_id: this.chat.id,
             sender_chat_id: senderChatId,
         });
@@ -1167,7 +1167,7 @@ export class Context<S = any> {
      */
     async unbanChatSenderChat(senderChatId: number): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot unban sender chat: Chat ID is not available');
-        return this.client.callApi('unbanChatSenderChat', {
+        return this.client.callApi<boolean>('unbanChatSenderChat', {
             chat_id: this.chat.id,
             sender_chat_id: senderChatId,
         });
@@ -1178,7 +1178,7 @@ export class Context<S = any> {
      */
     async promoteChatMember(userId: number, permissions?: ExtraPromoteMember) {
         if (!this.chat) throw new Error('Cannot promote member: Chat ID is not available');
-        return this.client.callApi('promoteChatMember', {
+        return this.client.callApi<any>('promoteChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
             ...permissions,
@@ -1190,7 +1190,7 @@ export class Context<S = any> {
      */
     async setChatMemberTag(userId: number, tag?: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set member tag: Chat ID is not available');
-        return this.client.callApi('setChatMemberTag', {
+        return this.client.callApi<boolean>('setChatMemberTag', {
             chat_id: this.chat.id,
             user_id: userId,
             tag,
@@ -1205,7 +1205,7 @@ export class Context<S = any> {
         extra?: { use_independent_chat_permissions?: boolean }
     ) {
         if (!this.chat) throw new Error('Cannot set permissions: Chat ID is not available');
-        return this.client.callApi('setChatPermissions', {
+        return this.client.callApi<any>('setChatPermissions', {
             chat_id: this.chat.id,
             permissions,
             ...extra,
@@ -1217,7 +1217,7 @@ export class Context<S = any> {
      */
     async setChatStickerSet(stickerSetName: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set sticker set: Chat ID is not available');
-        return this.client.callApi('setChatStickerSet', {
+        return this.client.callApi<boolean>('setChatStickerSet', {
             chat_id: this.chat.id,
             sticker_set_name: stickerSetName,
         });
@@ -1228,7 +1228,7 @@ export class Context<S = any> {
      */
     async deleteChatStickerSet(): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot delete sticker set: Chat ID is not available');
-        return this.client.callApi('deleteChatStickerSet', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('deleteChatStickerSet', { chat_id: this.chat.id });
     }
 
     /**
@@ -1236,7 +1236,7 @@ export class Context<S = any> {
      */
     async getChatMember(userId: number): Promise<ChatMember> {
         if (!this.chat) throw new Error('Cannot get chat member: Chat ID is not available');
-        return this.client.callApi('getChatMember', {
+        return this.client.callApi<ChatMember>('getChatMember', {
             chat_id: this.chat.id,
             user_id: userId,
         });
@@ -1247,7 +1247,7 @@ export class Context<S = any> {
      */
     async getChatMembersCount(): Promise<number> {
         if (!this.chat) throw new Error('Cannot get member count: Chat ID is not available');
-        return this.client.callApi('getChatMemberCount', {
+        return this.client.callApi<number>('getChatMemberCount', {
             chat_id: this.chat.id,
         });
     }
@@ -1257,7 +1257,7 @@ export class Context<S = any> {
      */
     async createChatInviteLink(extra?: ExtraInviteLink) {
         if (!this.chat) throw new Error('Cannot create invite link: Chat ID is not available');
-        return this.client.callApi('createChatInviteLink', {
+        return this.client.callApi<any>('createChatInviteLink', {
             chat_id: this.chat.id,
             ...extra,
         });
@@ -1268,7 +1268,7 @@ export class Context<S = any> {
      */
     async exportChatInviteLink() {
         if (!this.chat) throw new Error('Cannot export invite link: Chat ID is not available');
-        return this.client.callApi('exportChatInviteLink', {
+        return this.client.callApi<any>('exportChatInviteLink', {
             chat_id: this.chat.id,
         });
     }
@@ -1278,7 +1278,7 @@ export class Context<S = any> {
      */
     async editChatInviteLink(inviteLink: string, extra?: ExtraInviteLink): Promise<ChatInviteLink> {
         if (!this.chat) throw new Error('Cannot edit invite link: Chat ID is not available');
-        return this.client.callApi('editChatInviteLink', {
+        return this.client.callApi<ChatInviteLink>('editChatInviteLink', {
             chat_id: this.chat.id,
             invite_link: inviteLink,
             ...extra,
@@ -1290,7 +1290,7 @@ export class Context<S = any> {
      */
     async revokeChatInviteLink(inviteLink: string): Promise<ChatInviteLink> {
         if (!this.chat) throw new Error('Cannot revoke invite link: Chat ID is not available');
-        return this.client.callApi('revokeChatInviteLink', {
+        return this.client.callApi<ChatInviteLink>('revokeChatInviteLink', {
             chat_id: this.chat.id,
             invite_link: inviteLink,
         });
@@ -1306,7 +1306,7 @@ export class Context<S = any> {
     ): Promise<ChatInviteLink> {
         if (!this.chat)
             throw new Error('Cannot create subscription invite link: Chat ID is not available');
-        return this.client.callApi('createChatSubscriptionInviteLink', {
+        return this.client.callApi<ChatInviteLink>('createChatSubscriptionInviteLink', {
             chat_id: this.chat.id,
             subscription_period: subscriptionPeriod,
             subscription_price: subscriptionPrice,
@@ -1323,7 +1323,7 @@ export class Context<S = any> {
     ): Promise<ChatInviteLink> {
         if (!this.chat)
             throw new Error('Cannot edit subscription invite link: Chat ID is not available');
-        return this.client.callApi('editChatSubscriptionInviteLink', {
+        return this.client.callApi<ChatInviteLink>('editChatSubscriptionInviteLink', {
             chat_id: this.chat.id,
             invite_link: inviteLink,
             ...extra,
@@ -1335,7 +1335,7 @@ export class Context<S = any> {
      */
     async getChat(): Promise<ChatFullInfo> {
         if (!this.chat) throw new Error('Cannot get chat: Chat ID is not available');
-        return this.client.callApi('getChat', {
+        return this.client.callApi<ChatFullInfo>('getChat', {
             chat_id: this.chat.id,
         });
     }
@@ -1366,7 +1366,7 @@ export class Context<S = any> {
         extra?: { icon_color?: number; icon_custom_emoji_id?: string }
     ) {
         if (!this.chat) throw new Error('Cannot create forum topic: Chat ID is not available');
-        return this.client.callApi('createForumTopic', { chat_id: this.chat.id, name, ...extra });
+        return this.client.callApi<any>('createForumTopic', { chat_id: this.chat.id, name, ...extra });
     }
 
     /**
@@ -1377,7 +1377,7 @@ export class Context<S = any> {
         extra?: { name?: string; icon_custom_emoji_id?: string }
     ) {
         if (!this.chat) throw new Error('Cannot edit forum topic: Chat ID is not available');
-        return this.client.callApi('editForumTopic', {
+        return this.client.callApi<any>('editForumTopic', {
             chat_id: this.chat.id,
             message_thread_id: messageThreadId,
             ...extra,
@@ -1389,7 +1389,7 @@ export class Context<S = any> {
      */
     async closeForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot close forum topic: Chat ID is not available');
-        return this.client.callApi('closeForumTopic', {
+        return this.client.callApi<any>('closeForumTopic', {
             chat_id: this.chat.id,
             message_thread_id: messageThreadId,
         });
@@ -1400,7 +1400,7 @@ export class Context<S = any> {
      */
     async reopenForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot reopen forum topic: Chat ID is not available');
-        return this.client.callApi('reopenForumTopic', {
+        return this.client.callApi<any>('reopenForumTopic', {
             chat_id: this.chat.id,
             message_thread_id: messageThreadId,
         });
@@ -1411,7 +1411,7 @@ export class Context<S = any> {
      */
     async deleteForumTopic(messageThreadId: number) {
         if (!this.chat) throw new Error('Cannot delete forum topic: Chat ID is not available');
-        return this.client.callApi('deleteForumTopic', {
+        return this.client.callApi<any>('deleteForumTopic', {
             chat_id: this.chat.id,
             message_thread_id: messageThreadId,
         });
@@ -1423,7 +1423,7 @@ export class Context<S = any> {
     async unpinAllForumTopicMessages(messageThreadId: number) {
         if (!this.chat)
             throw new Error('Cannot unpin forum topic messages: Chat ID is not available');
-        return this.client.callApi('unpinAllForumTopicMessages', {
+        return this.client.callApi<any>('unpinAllForumTopicMessages', {
             chat_id: this.chat.id,
             message_thread_id: messageThreadId,
         });
@@ -1434,7 +1434,7 @@ export class Context<S = any> {
      */
     async editGeneralForumTopic(name: string) {
         if (!this.chat) throw new Error('Cannot edit general topic: Chat ID is not available');
-        return this.client.callApi('editGeneralForumTopic', { chat_id: this.chat.id, name });
+        return this.client.callApi<any>('editGeneralForumTopic', { chat_id: this.chat.id, name });
     }
 
     /**
@@ -1442,7 +1442,7 @@ export class Context<S = any> {
      */
     async hideGeneralForumTopic() {
         if (!this.chat) throw new Error('Cannot hide general topic: Chat ID is not available');
-        return this.client.callApi('hideGeneralForumTopic', { chat_id: this.chat.id });
+        return this.client.callApi<any>('hideGeneralForumTopic', { chat_id: this.chat.id });
     }
 
     /**
@@ -1450,7 +1450,7 @@ export class Context<S = any> {
      */
     async unhideGeneralForumTopic() {
         if (!this.chat) throw new Error('Cannot unhide general topic: Chat ID is not available');
-        return this.client.callApi('unhideGeneralForumTopic', { chat_id: this.chat.id });
+        return this.client.callApi<any>('unhideGeneralForumTopic', { chat_id: this.chat.id });
     }
 
     /**
@@ -1458,7 +1458,7 @@ export class Context<S = any> {
      */
     async closeGeneralForumTopic(): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot close general topic: Chat ID is not available');
-        return this.client.callApi('closeGeneralForumTopic', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('closeGeneralForumTopic', { chat_id: this.chat.id });
     }
 
     /**
@@ -1466,7 +1466,7 @@ export class Context<S = any> {
      */
     async reopenGeneralForumTopic(): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot reopen general topic: Chat ID is not available');
-        return this.client.callApi('reopenGeneralForumTopic', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('reopenGeneralForumTopic', { chat_id: this.chat.id });
     }
 
     /**
@@ -1475,14 +1475,14 @@ export class Context<S = any> {
     async unpinAllGeneralForumTopicMessages(): Promise<boolean> {
         if (!this.chat)
             throw new Error('Cannot unpin general topic messages: Chat ID is not available');
-        return this.client.callApi('unpinAllGeneralForumTopicMessages', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('unpinAllGeneralForumTopicMessages', { chat_id: this.chat.id });
     }
 
     /**
      * Get custom emoji stickers that can be used as forum topic icons.
      */
     async getForumTopicIconStickers(): Promise<Sticker[]> {
-        return this.client.callApi('getForumTopicIconStickers');
+        return this.client.callApi<Sticker[]>('getForumTopicIconStickers');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1493,7 +1493,7 @@ export class Context<S = any> {
      * Get the list of gifts that can be sent by the bot.
      */
     async getAvailableGifts(): Promise<Gifts> {
-        return this.client.callApi('getAvailableGifts');
+        return this.client.callApi<Gifts>('getAvailableGifts');
     }
 
     /**
@@ -1538,7 +1538,7 @@ export class Context<S = any> {
         businessConnectionId: string,
         ownedGiftId: string | number
     ): Promise<boolean> {
-        return this.client.callApi('convertGiftToStars', {
+        return this.client.callApi<boolean>('convertGiftToStars', {
             business_connection_id: businessConnectionId,
             owned_gift_id: String(ownedGiftId),
         });
@@ -1563,7 +1563,7 @@ export class Context<S = any> {
      * Get the number of Telegram Stars owned by the bot.
      */
     async getMyStarBalance(): Promise<StarAmount> {
-        return this.client.callApi('getMyStarBalance');
+        return this.client.callApi<StarAmount>('getMyStarBalance');
     }
 
     /**
@@ -1577,7 +1577,7 @@ export class Context<S = any> {
      * Refund a Telegram Stars payment to the user.
      */
     async refundStarPayment(userId: number, telegramPaymentChargeId: string): Promise<boolean> {
-        return this.client.callApi('refundStarPayment', {
+        return this.client.callApi<boolean>('refundStarPayment', {
             user_id: userId,
             telegram_payment_charge_id: telegramPaymentChargeId,
         });
@@ -1590,7 +1590,7 @@ export class Context<S = any> {
         offset?: number;
         limit?: number;
     }): Promise<StarTransactions> {
-        return this.client.callApi('getStarTransactions', extra);
+        return this.client.callApi<StarTransactions>('getStarTransactions', extra);
     }
 
     /**
@@ -1600,7 +1600,7 @@ export class Context<S = any> {
         businessConnectionId: string,
         extra?: GetBusinessAccountGiftsOptions
     ): Promise<OwnedGifts> {
-        return this.client.callApi('getBusinessAccountGifts', {
+        return this.client.callApi<OwnedGifts>('getBusinessAccountGifts', {
             business_connection_id: businessConnectionId,
             ...extra,
         });
@@ -1610,7 +1610,7 @@ export class Context<S = any> {
      * Get Telegram Stars balance of a managed business account.
      */
     async getBusinessAccountStarBalance(businessConnectionId: string): Promise<StarAmount> {
-        return this.client.callApi('getBusinessAccountStarBalance', {
+        return this.client.callApi<StarAmount>('getBusinessAccountStarBalance', {
             business_connection_id: businessConnectionId,
         });
     }
@@ -1622,7 +1622,7 @@ export class Context<S = any> {
         businessConnectionId: string,
         starCount: number
     ): Promise<boolean> {
-        return this.client.callApi('transferBusinessAccountStars', {
+        return this.client.callApi<boolean>('transferBusinessAccountStars', {
             business_connection_id: businessConnectionId,
             star_count: starCount,
         });
@@ -1636,7 +1636,7 @@ export class Context<S = any> {
         extra?: { send_date?: number }
     ): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot approve suggested post: Chat ID is not available');
-        return this.client.callApi('approveSuggestedPost', {
+        return this.client.callApi<boolean>('approveSuggestedPost', {
             chat_id: this.chat.id,
             message_id: messageId,
             ...extra,
@@ -1648,7 +1648,7 @@ export class Context<S = any> {
      */
     async declineSuggestedPost(messageId: number, extra?: { comment?: string }): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot decline suggested post: Chat ID is not available');
-        return this.client.callApi('declineSuggestedPost', {
+        return this.client.callApi<boolean>('declineSuggestedPost', {
             chat_id: this.chat.id,
             message_id: messageId,
             ...extra,
@@ -1663,14 +1663,14 @@ export class Context<S = any> {
      * Verify a user on behalf of the organization which is represented by the bot.
      */
     async verifyUser(userId: number, extra?: { custom_description?: string }): Promise<boolean> {
-        return this.client.callApi('verifyUser', { user_id: userId, ...extra });
+        return this.client.callApi<boolean>('verifyUser', { user_id: userId, ...extra });
     }
 
     /**
      * Remove verification from a user who is currently verified by the bot.
      */
     async removeUserVerification(userId: number): Promise<boolean> {
-        return this.client.callApi('removeUserVerification', { user_id: userId });
+        return this.client.callApi<boolean>('removeUserVerification', { user_id: userId });
     }
 
     /**
@@ -1680,14 +1680,14 @@ export class Context<S = any> {
         chatId: number | string,
         extra?: { custom_description?: string }
     ): Promise<boolean> {
-        return this.client.callApi('verifyChat', { chat_id: chatId, ...extra });
+        return this.client.callApi<boolean>('verifyChat', { chat_id: chatId, ...extra });
     }
 
     /**
      * Remove verification from a chat that is currently verified by the bot.
      */
     async removeChatVerification(chatId: number | string): Promise<boolean> {
-        return this.client.callApi('removeChatVerification', { chat_id: chatId });
+        return this.client.callApi<boolean>('removeChatVerification', { chat_id: chatId });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1699,7 +1699,7 @@ export class Context<S = any> {
      */
     async getUserChatBoosts(userId: number): Promise<UserChatBoosts> {
         if (!this.chat) throw new Error('Cannot get user chat boosts: Chat ID is not available');
-        return this.client.callApi('getUserChatBoosts', { chat_id: this.chat.id, user_id: userId });
+        return this.client.callApi<UserChatBoosts>('getUserChatBoosts', { chat_id: this.chat.id, user_id: userId });
     }
 
     /**
@@ -1710,7 +1710,7 @@ export class Context<S = any> {
         sticker: InputFile,
         stickerFormat: 'static' | 'animated' | 'video'
     ): Promise<TelegramFile> {
-        return this.client.callApi('uploadStickerFile', {
+        return this.client.callApi<TelegramFile>('uploadStickerFile', {
             user_id: userId,
             sticker,
             sticker_format: stickerFormat,
@@ -1747,7 +1747,7 @@ export class Context<S = any> {
      * Delete a sticker from a sticker set owned by the bot.
      */
     async deleteStickerFromSet(sticker: string): Promise<boolean> {
-        return this.client.callApi('deleteStickerFromSet', { sticker });
+        return this.client.callApi<boolean>('deleteStickerFromSet', { sticker });
     }
 
     /**
@@ -1765,7 +1765,7 @@ export class Context<S = any> {
      * Move a sticker to a new position in its set.
      */
     async setStickerPositionInSet(sticker: string, position: number): Promise<boolean> {
-        return this.client.callApi('setStickerPositionInSet', { sticker, position });
+        return this.client.callApi<boolean>('setStickerPositionInSet', { sticker, position });
     }
 
     /**
@@ -1789,21 +1789,21 @@ export class Context<S = any> {
      * Set the emoji list for a sticker.
      */
     async setStickerEmojiList(sticker: string, emojiList: string[]): Promise<boolean> {
-        return this.client.callApi('setStickerEmojiList', { sticker, emoji_list: emojiList });
+        return this.client.callApi<boolean>('setStickerEmojiList', { sticker, emoji_list: emojiList });
     }
 
     /**
      * Set search keywords for a sticker.
      */
     async setStickerKeywords(sticker: string, keywords?: string[]): Promise<boolean> {
-        return this.client.callApi('setStickerKeywords', { sticker, keywords });
+        return this.client.callApi<boolean>('setStickerKeywords', { sticker, keywords });
     }
 
     /**
      * Set mask position for a sticker.
      */
     async setStickerMaskPosition(sticker: string, maskPosition?: MaskPosition): Promise<boolean> {
-        return this.client.callApi('setStickerMaskPosition', {
+        return this.client.callApi<boolean>('setStickerMaskPosition', {
             sticker,
             mask_position: maskPosition,
         });
@@ -1813,7 +1813,7 @@ export class Context<S = any> {
      * Set a sticker set title.
      */
     async setStickerSetTitle(name: string, title: string): Promise<boolean> {
-        return this.client.callApi('setStickerSetTitle', { name, title });
+        return this.client.callApi<boolean>('setStickerSetTitle', { name, title });
     }
 
     /**
@@ -1823,7 +1823,7 @@ export class Context<S = any> {
         name: string,
         customEmojiId?: string
     ): Promise<boolean> {
-        return this.client.callApi('setCustomEmojiStickerSetThumbnail', {
+        return this.client.callApi<boolean>('setCustomEmojiStickerSetThumbnail', {
             name,
             custom_emoji_id: customEmojiId,
         });
@@ -1833,21 +1833,21 @@ export class Context<S = any> {
      * Delete an entire sticker set.
      */
     async deleteStickerSet(name: string): Promise<boolean> {
-        return this.client.callApi('deleteStickerSet', { name });
+        return this.client.callApi<boolean>('deleteStickerSet', { name });
     }
 
     /**
      * Get a sticker set by its name.
      */
     async getStickerSet(name: string): Promise<StickerSet> {
-        return this.client.callApi('getStickerSet', { name });
+        return this.client.callApi<StickerSet>('getStickerSet', { name });
     }
 
     /**
      * Get information about custom emoji stickers by their IDs.
      */
     async getCustomEmojiStickers(customEmojiIds: string[]): Promise<Sticker[]> {
-        return this.client.callApi('getCustomEmojiStickers', { custom_emoji_ids: customEmojiIds });
+        return this.client.callApi<Sticker[]>('getCustomEmojiStickers', { custom_emoji_ids: customEmojiIds });
     }
 
     /**
@@ -1867,7 +1867,7 @@ export class Context<S = any> {
      */
     async setChatAdministratorCustomTitle(userId: number, customTitle: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set admin title: Chat ID is not available');
-        return this.client.callApi('setChatAdministratorCustomTitle', {
+        return this.client.callApi<boolean>('setChatAdministratorCustomTitle', {
             chat_id: this.chat.id,
             user_id: userId,
             custom_title: customTitle,
@@ -1879,7 +1879,7 @@ export class Context<S = any> {
      */
     async getChatAdministrators(extra?: GetChatAdministratorsOptions): Promise<ChatMember[]> {
         if (!this.chat) throw new Error('Cannot get administrators: Chat ID is not available');
-        return this.client.callApi('getChatAdministrators', { chat_id: this.chat.id, ...extra });
+        return this.client.callApi<ChatMember[]>('getChatAdministrators', { chat_id: this.chat.id, ...extra });
     }
 
     /**
@@ -1895,7 +1895,7 @@ export class Context<S = any> {
             throw new Error('Cannot delete reaction: Message ID is not available');
         }
 
-        return this.client.callApi('deleteMessageReaction', {
+        return this.client.callApi<boolean>('deleteMessageReaction', {
             chat_id: this.chat.id,
             message_id: targetMessageId,
             ...extra,
@@ -1909,7 +1909,7 @@ export class Context<S = any> {
         extra?: DeleteAllMessageReactionsOptions
     ): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot delete reactions: Chat ID is not available');
-        return this.client.callApi('deleteAllMessageReactions', {
+        return this.client.callApi<boolean>('deleteAllMessageReactions', {
             chat_id: this.chat.id,
             ...extra,
         });
@@ -1995,7 +1995,7 @@ export class Context<S = any> {
     ): Promise<boolean> {
         if (!this.update.shipping_query)
             throw new Error('Cannot answer shipping query: Not a shipping_query update');
-        return this.client.callApi('answerShippingQuery', {
+        return this.client.callApi<boolean>('answerShippingQuery', {
             shipping_query_id: this.update.shipping_query.id,
             ok,
             ...extra,
@@ -2007,7 +2007,7 @@ export class Context<S = any> {
      */
     async unpinAllChatMessages(): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot unpin all messages: Chat ID is not available');
-        return this.client.callApi('unpinAllChatMessages', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('unpinAllChatMessages', { chat_id: this.chat.id });
     }
 
     /**
@@ -2015,7 +2015,7 @@ export class Context<S = any> {
      */
     async setChatPhoto(photo: InputFile): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set chat photo: Chat ID is not available');
-        return this.client.callApi('setChatPhoto', { chat_id: this.chat.id, photo });
+        return this.client.callApi<boolean>('setChatPhoto', { chat_id: this.chat.id, photo });
     }
 
     /**
@@ -2023,7 +2023,7 @@ export class Context<S = any> {
      */
     async deleteChatPhoto(): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot delete chat photo: Chat ID is not available');
-        return this.client.callApi('deleteChatPhoto', { chat_id: this.chat.id });
+        return this.client.callApi<boolean>('deleteChatPhoto', { chat_id: this.chat.id });
     }
 
     /**
@@ -2031,7 +2031,7 @@ export class Context<S = any> {
      */
     async setChatTitle(title: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set chat title: Chat ID is not available');
-        return this.client.callApi('setChatTitle', { chat_id: this.chat.id, title });
+        return this.client.callApi<boolean>('setChatTitle', { chat_id: this.chat.id, title });
     }
 
     /**
@@ -2039,7 +2039,7 @@ export class Context<S = any> {
      */
     async setChatDescription(description: string): Promise<boolean> {
         if (!this.chat) throw new Error('Cannot set chat description: Chat ID is not available');
-        return this.client.callApi('setChatDescription', { chat_id: this.chat.id, description });
+        return this.client.callApi<boolean>('setChatDescription', { chat_id: this.chat.id, description });
     }
 
     /**

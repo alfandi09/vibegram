@@ -1,0 +1,98 @@
+name: Bot API Sync
+
+# Weekly check that vibegram's generated Bot API snapshot matches
+# https://core.telegram.org/bots/api. When the spec version, the generated
+# types or the coverage report change, the job fails and opens (or updates)
+# a tracking issue so the new Bot API release is not missed.
+
+on:
+    schedule:
+        - cron: '0 6 * * 1' # Mondays 06:00 UTC
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    issues: write
+
+jobs:
+    sync:
+        name: Check Bot API spec
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Use Node.js 20.x
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20.x'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Regenerate Bot API snapshot
+              run: node scripts/generate-bot-api.js
+
+            - name: Detect changes
+              id: diff
+              run: |
+                  FILES="scripts/bot-api/spec.json scripts/bot-api/coverage.json scripts/bot-api/COVERAGE.md src/api-methods.ts src/bot-api-types.ts"
+                  if git diff --quiet -- $FILES; then
+                      echo "changed=false" >> "$GITHUB_OUTPUT"
+                      echo "Bot API snapshot is up to date."
+                  else
+                      echo "changed=true" >> "$GITHUB_OUTPUT"
+                      OLD_VERSION=$(git show HEAD:scripts/bot-api/spec.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).version))")
+                      NEW_VERSION=$(node -e "console.log(require('./scripts/bot-api/spec.json').version)")
+                      echo "old_version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+                      {
+                          echo "Bot API spec: **$OLD_VERSION** (committed) → **$NEW_VERSION** (live)."
+                          echo
+                          echo "Run \`node scripts/generate-bot-api.js\` locally, review the diff and \`scripts/bot-api/COVERAGE.md\`, then update \`src/types.ts\` and the wrappers."
+                          echo
+                          echo "<details><summary>Diff stat</summary>"
+                          echo
+                          echo '```'
+                          git diff --stat -- $FILES
+                          echo '```'
+                          echo
+                          echo "</details>"
+                          echo
+                          echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                      } > issue-body.md
+                      git diff -- $FILES > bot-api-sync.diff
+                  fi
+
+            - name: Upload regenerated files
+              if: steps.diff.outputs.changed == 'true'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: bot-api-sync
+                  path: |
+                      bot-api-sync.diff
+                      scripts/bot-api/
+                      src/api-methods.ts
+                      src/bot-api-types.ts
+
+            - name: Open or update tracking issue
+              if: steps.diff.outputs.changed == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  NEW_VERSION: ${{ steps.diff.outputs.new_version }}
+              run: |
+                  TITLE="Bot API sync: spec changed (Bot API $NEW_VERSION)"
+                  EXISTING=$(gh issue list --state open --search "in:title \"Bot API sync:\"" --json number --jq '.[0].number')
+                  if [ -n "$EXISTING" ]; then
+                      gh issue comment "$EXISTING" --body-file issue-body.md
+                      gh issue edit "$EXISTING" --title "$TITLE"
+                  else
+                      gh issue create --title "$TITLE" --body-file issue-body.md
+                  fi
+
+            - name: Fail when the spec changed
+              if: steps.diff.outputs.changed == 'true'
+              run: |
+                  echo "::error::Telegram Bot API spec or coverage changed. See the tracking issue."
+                  exit 1

@@ -7,129 +7,206 @@
     "types": "./dist/types/index.d.ts",
     "exports": {
         ".": {
+            "types": "./dist/types/index.d.ts",
             "import": "./dist/esm/index.js",
-            "require": "./dist/cjs/index.js",
-            "types": "./dist/types/index.d.ts"
+            "require": "./dist/cjs/index.js"
         },
         "./codex": {
+            "types": "./dist/types/codex/index.d.ts",
             "import": "./dist/esm/codex/index.js",
-            "require": "./dist/cjs/codex/index.js",
-            "types": "./dist/types/codex/index.d.ts"
+            "require": "./dist/cjs/codex/index.js"
         },
         "./adapters": {
+            "types": "./dist/types/adapters.d.ts",
             "import": "./dist/esm/adapters.js",
-            "require": "./dist/cjs/adapters.js",
-            "types": "./dist/types/adapters.d.ts"
+            "require": "./dist/cjs/adapters.js"
         },
         "./bot": {
+            "types": "./dist/types/bot.d.ts",
             "import": "./dist/esm/bot.js",
-            "require": "./dist/cjs/bot.js",
-            "types": "./dist/types/bot.d.ts"
+            "require": "./dist/cjs/bot.js"
         },
         "./cache": {
+            "types": "./dist/types/cache.d.ts",
             "import": "./dist/esm/cache.js",
-            "require": "./dist/cjs/cache.js",
-            "types": "./dist/types/cache.d.ts"
+            "require": "./dist/cjs/cache.js"
         },
         "./client": {
+            "types": "./dist/types/client.d.ts",
             "import": "./dist/esm/client.js",
-            "require": "./dist/cjs/client.js",
-            "types": "./dist/types/client.d.ts"
+            "require": "./dist/cjs/client.js"
         },
         "./composer": {
+            "types": "./dist/types/composer.d.ts",
             "import": "./dist/esm/composer.js",
-            "require": "./dist/cjs/composer.js",
-            "types": "./dist/types/composer.d.ts"
+            "require": "./dist/cjs/composer.js"
         },
         "./context": {
+            "types": "./dist/types/context.d.ts",
             "import": "./dist/esm/context.js",
-            "require": "./dist/cjs/context.js",
-            "types": "./dist/types/context.d.ts"
+            "require": "./dist/cjs/context.js"
         },
         "./conversation": {
+            "types": "./dist/types/conversation.d.ts",
             "import": "./dist/esm/conversation.js",
-            "require": "./dist/cjs/conversation.js",
-            "types": "./dist/types/conversation.d.ts"
+            "require": "./dist/cjs/conversation.js"
         },
         "./dedupe": {
+            "types": "./dist/types/dedupe.d.ts",
             "import": "./dist/esm/dedupe.js",
-            "require": "./dist/cjs/dedupe.js",
-            "types": "./dist/types/dedupe.d.ts"
+            "require": "./dist/cjs/dedupe.js"
         },
         "./errors": {
+            "types": "./dist/types/errors.d.ts",
             "import": "./dist/esm/errors.js",
-            "require": "./dist/cjs/errors.js",
-            "types": "./dist/types/errors.d.ts"
+            "require": "./dist/cjs/errors.js"
         },
         "./filters": {
+            "types": "./dist/types/filters.d.ts",
             "import": "./dist/esm/filters.js",
-            "require": "./dist/cjs/filters.js",
-            "types": "./dist/types/filters.d.ts"
+            "require": "./dist/cjs/filters.js"
         },
         "./i18n": {
+            "types": "./dist/types/i18n.d.ts",
             "import": "./dist/esm/i18n.js",
-            "require": "./dist/cjs/i18n.js",
-            "types": "./dist/types/i18n.d.ts"
+            "require": "./dist/cjs/i18n.js"
         },
         "./inline": {
+            "types": "./dist/types/inline.d.ts",
             "import": "./dist/esm/inline.js",
-            "require": "./dist/cjs/inline.js",
-            "types": "./dist/types/inline.d.ts"
+            "require": "./dist/cjs/inline.js"
         },
         "./logger": {
+            "types": "./dist/types/logger.d.ts",
             "import": "./dist/esm/logger.js",
-            "require": "./dist/cjs/logger.js",
-            "types": "./dist/types/logger.d.ts"
+            "require": "./dist/cjs/logger.js"
         },
         "./markup": {
+            "types": "./dist/types/markup.d.ts",
             "import": "./dist/esm/markup.js",
-            "require": "./dist/cjs/markup.js",
-            "types": "./dist/types/markup.d.ts"
+            "require": "./dist/cjs/markup.js"
         },
         "./menu": {
+            "types": "./dist/types/menu.d.ts",
             "import": "./dist/esm/menu.js",
-            "require": "./dist/cjs/menu.js",
-            "types": "./dist/types/menu.d.ts"
+            "require": "./dist/cjs/menu.js"
         },
         "./plugin": {
+            "types": "./dist/types/plugin.d.ts",
             "import": "./dist/esm/plugin.js",
-            "require": "./dist/cjs/plugin.js",
-            "types": "./dist/types/plugin.d.ts"
+            "require": "./dist/cjs/plugin.js"
         },
         "./queue": {
+            "types": "./dist/types/queue.d.ts",
             "import": "./dist/esm/queue.js",
-            "require": "./dist/cjs/queue.js",
-            "types": "./dist/types/queue.d.ts"
+            "require": "./dist/cjs/queue.js"
         },
         "./ratelimit": {
+            "types": "./dist/types/ratelimit.d.ts",
             "import": "./dist/esm/ratelimit.js",
-            "require": "./dist/cjs/ratelimit.js",
-            "types": "./dist/types/ratelimit.d.ts"
+            "require": "./dist/cjs/ratelimit.js"
         },
         "./scene": {
+            "types": "./dist/types/scene.d.ts",
             "import": "./dist/esm/scene.js",
-            "require": "./dist/cjs/scene.js",
-            "types": "./dist/types/scene.d.ts"
+            "require": "./dist/cjs/scene.js"
         },
         "./session": {
+            "types": "./dist/types/session.d.ts",
             "import": "./dist/esm/session.js",
-            "require": "./dist/cjs/session.js",
-            "types": "./dist/types/session.d.ts"
+            "require": "./dist/cjs/session.js"
         },
         "./types": {
+            "types": "./dist/types/types.d.ts",
             "import": "./dist/esm/types.js",
-            "require": "./dist/cjs/types.js",
-            "types": "./dist/types/types.d.ts"
+            "require": "./dist/cjs/types.js"
         },
         "./webapp": {
+            "types": "./dist/types/webapp.d.ts",
             "import": "./dist/esm/webapp.js",
-            "require": "./dist/cjs/webapp.js",
-            "types": "./dist/types/webapp.d.ts"
+            "require": "./dist/cjs/webapp.js"
         },
         "./wizard": {
+            "types": "./dist/types/wizard.d.ts",
             "import": "./dist/esm/wizard.js",
-            "require": "./dist/cjs/wizard.js",
-            "types": "./dist/types/wizard.d.ts"
+            "require": "./dist/cjs/wizard.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "typesVersions": {
+        "*": {
+            "codex": [
+                "dist/types/codex/index.d.ts"
+            ],
+            "adapters": [
+                "dist/types/adapters.d.ts"
+            ],
+            "bot": [
+                "dist/types/bot.d.ts"
+            ],
+            "cache": [
+                "dist/types/cache.d.ts"
+            ],
+            "client": [
+                "dist/types/client.d.ts"
+            ],
+            "composer": [
+                "dist/types/composer.d.ts"
+            ],
+            "context": [
+                "dist/types/context.d.ts"
+            ],
+            "conversation": [
+                "dist/types/conversation.d.ts"
+            ],
+            "dedupe": [
+                "dist/types/dedupe.d.ts"
+            ],
+            "errors": [
+                "dist/types/errors.d.ts"
+            ],
+            "filters": [
+                "dist/types/filters.d.ts"
+            ],
+            "i18n": [
+                "dist/types/i18n.d.ts"
+            ],
+            "inline": [
+                "dist/types/inline.d.ts"
+            ],
+            "logger": [
+                "dist/types/logger.d.ts"
+            ],
+            "markup": [
+                "dist/types/markup.d.ts"
+            ],
+            "menu": [
+                "dist/types/menu.d.ts"
+            ],
+            "plugin": [
+                "dist/types/plugin.d.ts"
+            ],
+            "queue": [
+                "dist/types/queue.d.ts"
+            ],
+            "ratelimit": [
+                "dist/types/ratelimit.d.ts"
+            ],
+            "scene": [
+                "dist/types/scene.d.ts"
+            ],
+            "session": [
+                "dist/types/session.d.ts"
+            ],
+            "types": [
+                "dist/types/types.d.ts"
+            ],
+            "webapp": [
+                "dist/types/webapp.d.ts"
+            ],
+            "wizard": [
+                "dist/types/wizard.d.ts"
+            ]
         }
     },
     "files": [
@@ -172,7 +249,8 @@
         "plugins:typecheck": "node scripts/validate-plugins.js typecheck",
         "plugins:test": "node scripts/validate-plugins.js test",
         "plugins:build": "node scripts/validate-plugins.js build",
-        "plugins:validate": "node scripts/validate-plugins.js validate"
+        "plugins:validate": "node scripts/validate-plugins.js validate",
+        "bot-api:sync": "node scripts/generate-bot-api.js"
     },
     "keywords": [
         "telegram",
