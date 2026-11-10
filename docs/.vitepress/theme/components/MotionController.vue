@@ -1,102 +1,16 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
-import { useRoute } from 'vitepress';
-
-const route = useRoute();
-const revealSelector = [
-    '.vg-home-section',
-    '.vp-doc .not-prose',
-    '.vp-doc h2',
-    '.vp-doc h3',
-    '.vp-doc div[class*="language-"]',
-    '.vp-doc table',
-    '.vp-doc .custom-block',
-].join(',');
-
-let observer: IntersectionObserver | undefined;
-let observedElements: HTMLElement[] = [];
-let setupTimer: ReturnType<typeof setTimeout> | undefined;
-
-const prefersReducedMotion = (): boolean =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const resetRevealState = () => {
-    observer?.disconnect();
-    observer = undefined;
-
-    for (const element of observedElements) {
-        element.removeAttribute('data-vg-reveal');
-        element.classList.remove('is-visible');
-        element.style.removeProperty('--vg-reveal-index');
-    }
-
-    observedElements = [];
-    document.documentElement.classList.remove('vg-motion-ready');
-};
-
-const setupRevealState = async () => {
-    resetRevealState();
-    await nextTick();
-
-    if (prefersReducedMotion()) {
-        return;
-    }
-
-    observer = new IntersectionObserver(
-        entries => {
-            for (const entry of entries) {
-                if (!entry.isIntersecting) {
-                    continue;
-                }
-
-                entry.target.classList.add('is-visible');
-                observer?.unobserve(entry.target);
-            }
-        },
-        {
-            rootMargin: '0px 0px -12% 0px',
-            threshold: 0.12,
-        }
-    );
-
-    observedElements = Array.from(document.querySelectorAll<HTMLElement>(revealSelector));
-    observedElements.forEach((element, index) => {
-        element.setAttribute('data-vg-reveal', '');
-        element.style.setProperty('--vg-reveal-index', String(Math.min(index % 6, 5)));
-        observer?.observe(element);
-    });
-
-    document.documentElement.classList.add('vg-motion-ready');
-};
-
-const scheduleSetup = () => {
-    if (setupTimer) {
-        clearTimeout(setupTimer);
-    }
-
-    setupTimer = setTimeout(() => {
-        void setupRevealState();
-    }, 40);
-};
-
-onMounted(() => {
-    scheduleSetup();
-});
-
-watch(
-    () => route.path,
-    () => {
-        scheduleSetup();
-    }
-);
-
-onBeforeUnmount(() => {
-    if (setupTimer) {
-        clearTimeout(setupTimer);
-    }
-
-    resetRevealState();
-});
+/**
+ * Motion policy for the docs theme:
+ *
+ * - The homepage hero enters once on load through a CSS animation (motion.css).
+ * - Docs content (headings, code blocks, tables, callouts) never fades in on
+ *   scroll: readers jump to anchors, search with Ctrl+F, and print pages, and a
+ *   scroll trigger could leave tall blocks invisible on small screens.
+ * - Hover and press feedback lives in motion.css and respects reduced motion.
+ *
+ * The component stays mounted in Layout.vue as the single home for motion
+ * behaviour that needs script; today none does.
+ */
 </script>
 
 <template>

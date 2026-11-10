@@ -43,14 +43,16 @@
 }
 
 .vg-home-hero {
-    padding-top: 112px;
+    padding-top: 48px;
+    padding-bottom: 40px;
 }
 
 .vg-home-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 48px;
-    max-width: 1200px;
+    /* Same box as the sections' max-w-6xl px-6, so every content edge lines up. */
+    max-width: 72rem;
     margin: 0 auto;
     padding: 0 24px;
 }
@@ -70,13 +72,11 @@
 
 .vg-feature-card {
     min-height: 100%;
-    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Lift and shadow come from motion.css, which respects prefers-reduced-motion. */
 .vg-feature-card:hover {
     border-color: var(--vg-brand);
-    box-shadow: var(--vg-shadow-panel);
-    transform: translateY(-3px);
 }
 
 .vg-home-cta {
@@ -97,6 +97,18 @@
     }
 
     .vg-home-hero {
-        padding-top: 72px;
+        padding-top: 48px;
+    }
+}
+
+/* Phones: every control outside running text is at least 44px tall. */
+@media (max-width: 639px) {
+    .vg-home [data-slot='button'],
+    .vg-home [role='tab'] {
+        min-height: 44px;
+    }
+
+    .vg-home [role='tablist'] {
+        height: auto;
     }
 }

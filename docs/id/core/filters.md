@@ -1,115 +1,170 @@
 # Filter Combinator
 
-Filter combinator memungkinkan Anda menyusun kondisi routing yang kompleks menggunakan logika `and()`, `or()`, dan `not()` — dikombinasikan dengan 20+ predikat bawaan.
-
-## Memulai Cepat
+**Filter** (atau predikat) adalah fungsi yang melihat `ctx` lalu menjawab ya atau
+tidak: "apakah ini chat pribadi?", "apakah pesannya berisi foto?", "apakah pengirimnya
+admin?". VibeGram menyediakan 20+ filter siap pakai dan tiga combinator, `and()`,
+`or()`, dan `not()`, untuk menyusun kondisi besar dari kondisi kecil.
 
 ```typescript
-import { Bot, and, or, not, isPrivate, isGroup, isAdmin, hasText, hasPhoto } from 'vibegram';
+import {
+    Bot,
+    and,
+    or,
+    not,
+    isAdmin,
+    isBot,
+    isPrivate,
+    isUser,
+    hasDocument,
+    hasPhoto,
+    hasVideo,
+} from 'vibegram';
 
-// Hanya merespons teks di chat privat
-bot.on('message', and(isPrivate, hasText), async (ctx, next) => {
-    console.log('Pesan teks di chat privat');
-    await next();
-});
+const bot = new Bot(process.env.BOT_TOKEN!);
 
-// Perintah khusus admin di grup
-bot.command('ban', and(isGroup, isAdmin()), async (ctx) => {
-    await ctx.reply('Aksi admin berhasil.');
-});
+// Foto atau video yang dikirim orang (bukan bot) di chat pribadi.
+const mediaDariOrang = and(isPrivate, not(isBot), or(hasPhoto, hasVideo));
+
+bot.filter(mediaDariOrang, ctx => ctx.reply('Media yang bagus!'));
+```
+
+## Memilih Alat yang Tepat
+
+VibeGram punya tiga cara menjalankan handler hanya untuk update tertentu. Pilih yang
+paling sederhana:
+
+| Yang ingin dicocokkan | Gunakan | Contoh |
+| --- | --- | --- |
+| **Jenis** update atau pesan | [Filter query](/id/core/handling#filter-query) | `bot.on('message:photo', ...)` |
+| **Kondisi** tentang chat, user, atau isi pesan | `bot.filter(predicate, ...)` | `bot.filter(isPrivate, ...)` |
+| Kondisi **di depan satu handler** | Filter inline | `bot.command('ban', isAdmin(), ...)` |
+
+Filter query juga mempersempit tipe TypeScript (`ctx.message.photo` dijamin ada), jadi
+pakai itu untuk "pesan jenis apa ini". Pakai predikat di halaman ini untuk sisanya.
+
+## Filter Inline Menghentikan Update
+
+Filter yang ditaruh langsung di daftar argumen handler bekerja seperti gerbang. Jika
+gagal, **update berhenti di situ** dan handler setelahnya tidak pernah menerimanya:
+
+```typescript
+bot.command('ban', isAdmin(), ctx => ctx.reply('Di-ban.'));
+bot.command('ban', ctx => ctx.reply('Hanya admin yang bisa ban.')); // tidak pernah dijalankan
+```
+
+Sebaliknya, `bot.filter()` **meneruskan** update ke handler berikutnya saat predikat
+gagal, dan biasanya inilah yang Anda inginkan untuk routing:
+
+```typescript
+bot.filter(isAdmin(), ctx => ctx.reply('Panel admin'));
+bot.use(ctx => ctx.reply('Anda bukan admin.')); // berjalan untuk semua yang lain
 ```
 
 ## Combinator
 
-| Fungsi | Deskripsi |
-|--------|-----------|
-| `and(...filter)` | Semua filter harus lolos |
-| `or(...filter)` | Minimal satu filter harus lolos |
-| `not(filter)` | Membalik hasil filter |
+| Fungsi | Lolos jika |
+| --- | --- |
+| `and(...filters)` | Semua filter lolos |
+| `or(...filters)` | Minimal satu filter lolos |
+| `not(filter)` | Filter gagal |
+
+Combinator bisa disarangkan dengan bebas, dan hasilnya bisa dipakai sebagai filter
+inline maupun di dalam `bot.filter()`, `guard()`, atau combinator lain:
+
+```typescript
+const mediaVip = and(isUser(111, 222), or(hasPhoto, hasVideo, hasDocument));
+
+bot.on('message', mediaVip, ctx => ctx.reply('Upload VIP diterima.'));
+bot.filter(not(mediaVip), ctx => ctx.reply('Upload hanya untuk anggota VIP.'));
+```
 
 ## Predikat Bawaan
 
-### Tipe Chat
+### Jenis Chat
 
-| Predikat | Deskripsi |
-|----------|-----------|
-| `isPrivate` | Chat privat (DM) |
-| `isGroup` | Grup atau supergrup |
-| `isSupergroup` | Hanya supergrup |
-| `isChannel` | Posting channel |
+| Predikat | Lolos untuk |
+| --- | --- |
+| `isPrivate` | Chat pribadi (satu lawan satu) |
+| `isGroup` | Grup dan supergrup |
+| `isSupergroup` | Supergrup saja |
+| `isChannel` | Postingan channel |
 
-### Tipe Pengguna
+### Pengirim
 
-| Predikat | Deskripsi |
-|----------|-----------|
-| `isBot` | Pesan dari bot lain |
-| `isHuman` | Pesan dari pengguna nyata |
-| `isUser(...ids)` | ID pengguna tertentu |
-| `isAdmin()` | Admin atau kreator chat (async) |
+| Predikat | Lolos untuk |
+| --- | --- |
+| `isBot` | Pesan dari bot |
+| `isHuman` | Pesan dari manusia |
+| `isUser(...ids)` | Id user yang disebutkan |
+| `isAdmin()` | Admin dan pemilik chat (selalu lolos di chat pribadi) |
 
-### Tipe Konten
+### Isi Pesan
 
-| Predikat | Deskripsi |
-|----------|-----------|
-| `hasText` | Pesan berisi teks |
-| `hasPhoto` | Pesan berisi foto |
-| `hasDocument` | Pesan berisi dokumen |
-| `hasVideo` | Pesan berisi video |
-| `hasAudio` | Pesan berisi audio |
-| `hasVoice` | Pesan berisi pesan suara |
-| `hasSticker` | Pesan berisi stiker |
-| `hasAnimation` | Pesan berisi GIF |
-| `hasLocation` | Pesan berisi lokasi |
-| `hasContact` | Pesan berisi kontak |
+| Predikat | Lolos jika pesan berisi |
+| --- | --- |
+| `hasText` | Teks |
+| `hasPhoto` | Foto |
+| `hasDocument` | Dokumen (file) |
+| `hasVideo` | Video |
+| `hasAudio` | File audio |
+| `hasVoice` | Voice note |
+| `hasSticker` | Stiker |
+| `hasAnimation` | GIF |
+| `hasLocation` | Lokasi |
+| `hasContact` | Kontak yang dibagikan |
 
-### Properti Pesan
+### Pesan dan Update
 
-| Predikat | Deskripsi |
-|----------|-----------|
+| Predikat | Lolos jika |
+| --- | --- |
 | `isForwarded` | Pesan diteruskan (forward) |
-| `isReply` | Pesan adalah balasan |
-| `isCallbackQuery` | Update adalah callback query |
-| `isInlineQuery` | Update adalah inline query |
+| `isReply` | Pesan membalas pesan lain |
+| `isCallbackQuery` | Update berupa penekanan tombol |
+| `isInlineQuery` | Update berupa inline query |
 
-### Predikat Kustom
+### Factory
 
-| Factory | Deskripsi |
-|---------|-----------|
-| `isChat(...ids)` | ID chat tertentu |
-| `hasTextContaining(str)` | Teks atau caption mengandung substring |
+| Factory | Lolos jika |
+| --- | --- |
+| `isChat(...ids)` | Update berasal dari salah satu id chat |
+| `hasTextContaining(text)` | Teks atau caption mengandung `text` (tanpa membedakan huruf besar/kecil) |
+| `toFilter(predicate)` | Predikat buatan Anda lolos (membuatnya bisa dipakai inline) |
 
-## Contoh Penggunaan
+## Membuat Filter Sendiri
+
+Fungsi apa pun berbentuk `(ctx) => boolean` (atau `Promise<boolean>`) adalah filter,
+jadi bisa digabung dengan filter bawaan:
 
 ```typescript
-// Foto atau video dari pengguna nyata (bukan bot)
-bot.on('message', and(not(isBot), or(hasPhoto, hasVideo)), ctx => {
-    ctx.reply('Media diterima dari pengguna nyata.');
-});
+import type { Context } from 'vibegram';
 
-// Perintah khusus VIP
-const VIP_IDS = [123456, 789012];
-bot.command('vip', isUser(...VIP_IDS), ctx => {
-    ctx.reply('Selamat datang, VIP! 🌟');
-});
+const jamKerja = (ctx: Context) => {
+    const jam = new Date().getUTCHours();
+    return jam >= 8 && jam < 17;
+};
 
-// Perintah admin hanya di supergrup
-bot.command('pengaturan', and(isSupergroup, isAdmin()), ctx => {
-    ctx.reply('Panel pengaturan grup.');
-});
-
-// Abaikan pesan bot dari grup
-bot.on('message', and(isGroup, not(isBot)), async (ctx, next) => {
-    console.log('Pesan manusia di grup:', ctx.message?.text);
-    await next();
-});
-
-// Hanya untuk chat tertentu
-const CHANNEL_ID = -100123456789;
-bot.on('channel_post', isChat(CHANNEL_ID), ctx => {
-    console.log('Posting baru di channel kita!');
-});
+bot.filter(and(isPrivate, not(jamKerja)), ctx =>
+    ctx.reply('Kami sedang offline. Kami membalas antara pukul 08.00 dan 17.00 UTC.')
+);
 ```
 
-::: info isAdmin() & Caching
-`isAdmin()` memanggil API `getChatMember` — gunakan middleware [API Cache](/id/security/caching) untuk menghindari panggilan berulang yang tidak perlu.
+Untuk memasang predikat buatan sendiri secara **inline** di daftar handler, bungkus
+dengan `toFilter()`. Filter bawaan dan combinator sudah dibungkus. Fungsi
+`(ctx) => boolean` polos yang dipasang inline tidak pernah memanggil `next()`, sehingga
+handler-nya tidak akan pernah berjalan:
+
+```typescript
+import { toFilter } from 'vibegram';
+
+const filterJamKerja = toFilter(jamKerja);
+bot.command('bantuan', filterJamKerja, ctx => ctx.reply('Agen akan segera membalas.'));
+```
+
+Filter type-guard (`(ctx): ctx is MyContext => ...`) juga mempersempit tipe `ctx` di
+dalam `bot.filter()` dan `guard()`.
+
+::: tip `isAdmin()` memanggil Bot API
+`isAdmin()` menanyakan status anggota pengirim ke Telegram di setiap update yang
+dicek. Untuk grup yang ramai, cache hasilnya dengan plugin
+[`@vibegram/chat-members`](/id/plugins/chat-members) atau [API cache](/id/security/caching).
 :::

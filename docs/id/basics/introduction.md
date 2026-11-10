@@ -95,18 +95,20 @@ VibeGram menargetkan Telegram Bot API 10.3 dengan:
   Join Request Queries, media link pada poll, Ephemeral Messages, Communities,
   dan rich message berbasis block.
 
-## Yang Baru di 2.5.0
+## Yang Baru di 3.0
 
-- Perlindungan update duplikat lewat `dedupeUpdates()`,
-  `MemoryUpdateDedupeStore`, dan subpath `vibegram/dedupe`.
-- Kontrol commit offset polling dengan `polling.offsetCommit: 'processed'`
-  untuk retry update yang gagal sebelum offset dinaikkan.
-- Batas ukuran response lewat `TelegramClientOptions.maxResponseBytes`.
-- Routing command lebih aman untuk mention bot dan tabrakan prefix command.
-- Timeout HTTP kini mencakup parsing body dan cleanup stream.
-- Opsi queue dan rate-limit kini gagal cepat saat nilai numeriknya tidak valid.
-- Interpolasi Markdown plugin Codex di-escape untuk nilai dari user.
-- Plugin security kini menyediakan helper production preset.
+- **Bot API 10.3:** ephemeral message, rich message berbasis block, community, dan
+  tombol stop untuk draft yang di-stream.
+- **Filter yang mempersempit tipe:** `bot.on('message:photo', ctx => ctx.message.photo)`
+  bisa dipakai tanpa `?.` atau `!`. Lihat [Filter Query](/id/core/handling#filter-query).
+- **Helper routing:** `filter`, `branch`, `route`, `errorBoundary`, `chatType`,
+  dan lainnya. Lihat [Kombinator Composer](/id/core/middleware#kombinator).
+- **Bisa jalan di edge:** `createFetchHandler()` untuk Cloudflare Workers, Deno, Bun,
+  dan Next.js. Lihat [Fetch API & Edge](/id/adapters/fetch).
+- **Durable conversation** yang tahan restart, dan [testing kit](/id/advanced/testing)
+  untuk test offline.
+- **AI streaming** dengan draft dan tombol stop, serta builder untuk rich message.
+- Template proyek **`npm create vibegram@latest`**.
 
-Lihat [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md)
-untuk detail release lengkap.
+Upgrade dari 2.x hanya butuh beberapa menit: lihat [Upgrade ke 3.0](/id/basics/upgrading).
+Daftar lengkapnya ada di [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).

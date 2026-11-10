@@ -1,4 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
+
+// Shown in the homepage preview; always the version in package.json.
+const packageVersion = JSON.parse(
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+).version;
 
 export default async () => {
     const { default: tailwindcss } = await import('@tailwindcss/vite');
@@ -6,7 +12,7 @@ export default async () => {
     return {
         title: 'VibeGram',
         description:
-            'Enterprise-Grade Telegram Bot Framework for Node.js with broad Bot API 10.1 support',
+            'TypeScript framework for Telegram bots on Node.js, Bun, Deno, and Cloudflare Workers. Covers Telegram Bot API 10.3.',
         base: '/vibegram/',
 
         vite: {
@@ -75,14 +81,16 @@ export default async () => {
                 lang: 'en',
                 link: '/',
                 title: 'VibeGram',
-                description: 'Enterprise-Grade Telegram Bot Framework for Node.js',
+                description:
+                    'TypeScript framework for Telegram bots on Node.js, Bun, Deno, and Cloudflare Workers. Covers Telegram Bot API 10.3.',
             },
             id: {
                 label: 'Bahasa Indonesia',
                 lang: 'id',
                 link: '/id/',
                 title: 'VibeGram',
-                description: 'Framework Bot Telegram Kelas Enterprise untuk Node.js',
+                description:
+                    'Framework TypeScript untuk bot Telegram di Node.js, Bun, Deno, dan Cloudflare Workers. Mendukung Telegram Bot API 10.3.',
                 themeConfig: {
                     nav: [
                         { text: 'Beranda', link: '/id/' },
@@ -232,6 +240,7 @@ export default async () => {
         // ENGLISH THEME CONFIG (root)
         // ─────────────────────────────────────────────────────────
         themeConfig: {
+            version: packageVersion,
             nav: [
                 { text: 'Home', link: '/' },
                 { text: 'Guide', link: '/basics/introduction' },

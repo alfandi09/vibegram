@@ -94,18 +94,20 @@ VibeGram targets Telegram Bot API 10.3 with:
   Join Request Queries, poll link media, Ephemeral Messages, Communities,
   and block-based rich messages.
 
-## What's New in 2.5.0
+## What's New in 3.0
 
-- Duplicate update protection with `dedupeUpdates()`,
-  `MemoryUpdateDedupeStore`, and the `vibegram/dedupe` subpath.
-- Polling offset commit control with `polling.offsetCommit: 'processed'` for
-  retrying failed updates before advancing offsets.
-- Response size limits with `TelegramClientOptions.maxResponseBytes`.
-- Safer command routing for bot mentions and command prefix collisions.
-- HTTP timeout coverage now includes body parsing and stream cleanup.
-- Queue and rate-limit options now fail fast on invalid numeric values.
-- Codex plugin Markdown interpolation is escaped for user-controlled values.
-- The security plugin now includes a production preset helper.
+- **Bot API 10.3:** ephemeral messages, block-based rich messages, communities, and a
+  stop button for streamed drafts.
+- **Type-narrowing filters:** `bot.on('message:photo', ctx => ctx.message.photo)`
+  works without `?.` or `!`. See [Filter Queries](/core/handling#filter-queries).
+- **Routing helpers:** `filter`, `branch`, `route`, `errorBoundary`, `chatType`,
+  and more. See [Composer Combinators](/core/middleware#combinators).
+- **Runs on the edge:** `createFetchHandler()` for Cloudflare Workers, Deno, Bun,
+  and Next.js. See [Fetch API & Edge](/adapters/fetch).
+- **Durable conversations** that survive restarts, and an offline
+  [testing kit](/advanced/testing).
+- **AI streaming** with drafts and a stop button, plus a builder for rich messages.
+- **`npm create vibegram@latest`** project templates.
 
-See the full [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md)
-for release details.
+Upgrading from 2.x takes a few minutes: see [Upgrading to 3.0](/basics/upgrading).
+The full list is in the [CHANGELOG](https://github.com/alfandi09/vibegram/blob/main/CHANGELOG.md).

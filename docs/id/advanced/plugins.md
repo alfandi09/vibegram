@@ -1,9 +1,9 @@
 # Sistem Plugin
 
 <FeatureGrid title="Komposisi plugin" description="Kemas middleware, command, handler, dan lifecycle hook menjadi unit reusable.">
-  <FeatureCard title="Install plugin" description="Mount plugin class atau function melalui `bot.plugin()`." href="#install-plugin" cta="Buka install" />
-  <FeatureCard title="Fitur reusable" description="Bagikan analytics, auth, logging, atau behavior domain antar bot." href="#membuat-plugin" cta="Buka pembuatan" />
-  <FeatureCard title="Opsi bertipe" description="Jaga konfigurasi plugin tetap eksplisit dan mudah divalidasi." href="#opsi-plugin" cta="Buka opsi" />
+  <FeatureCard title="Install plugin" description="Mount plugin class atau function melalui `bot.plugin()`." href="#memulai-cepat" cta="Buka install" />
+  <FeatureCard title="Fitur reusable" description="Bagikan analytics, auth, logging, atau behavior domain antar bot." href="#membuat-plugin-yang-bisa-digunakan-ulang" cta="Buka pembuatan" />
+  <FeatureCard title="Plugin vs middleware" description="Kapan memakai plugin dan kapan cukup middleware biasa." href="#plugin-vs-middleware" cta="Buka perbandingan" />
 </FeatureGrid>
 
 Sistem plugin VibeGram memungkinkan komposisi fitur secara modular. Plugin mengenkapsulasi middleware, command, dan handler menjadi unit yang bisa digunakan ulang dan diinstal.

@@ -81,7 +81,8 @@
     --vg-surface-muted: #171822;
     --vg-text: #F4F4F5;
     --vg-text-soft: #A1A1AA;
-    --vg-text-muted: #71717A;
+    /* #71717A was 3.7:1 on cards (below WCAG AA); #8B8B94 is 5.2:1 and stays dimmer than text-soft. */
+    --vg-text-muted: #8B8B94;
     --vg-border: rgba(255, 255, 255, 0.06);
     --vg-border-strong: rgba(255, 255, 255, 0.12);
     --vg-brand: #60a5fa;

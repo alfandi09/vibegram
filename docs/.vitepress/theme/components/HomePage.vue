@@ -9,17 +9,19 @@ import {
     Check,
     Code2,
     Copy,
+    CopyCheck,
+    FlaskConical,
     Gauge,
     Github,
+    Globe,
     Layers,
     LockKeyhole,
     MessageCircle,
-    RadioTower,
     Route,
     Server,
     ShieldCheck,
+    Sparkles,
     Terminal,
-    Workflow,
 } from 'lucide-vue-next';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,8 @@ interface FeatureItem {
     title: string;
     description: string;
     href: string;
+    /** Visible link text that names its destination (no repeated "Learn more"). */
+    link: string;
 }
 
 interface StepItem {
@@ -42,6 +46,7 @@ interface StepItem {
     description: string;
     command: string;
     href?: string;
+    link?: string;
 }
 
 const route = useRoute();
@@ -49,11 +54,10 @@ const { lang, site } = useData();
 const copiedCommandId = ref<string | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Extract version from package data, fallback to the current documented release line.
-const versionBadge = computed(() => {
-    const v = (site.value as { themeConfig?: { version?: string } }).themeConfig?.version;
-    return v ?? '2.4.0';
-});
+// The version comes from package.json through themeConfig.version (see config.js).
+const versionBadge = computed(
+    () => (site.value as { themeConfig?: { version?: string } }).themeConfig?.version
+);
 
 const isIndonesian = computed(
     () => lang.value === 'id' || route.path === '/id/' || route.path.startsWith('/id/')
@@ -67,7 +71,7 @@ const copy = computed(() =>
               title: 'VibeGram',
               subtitle: 'Framework Bot Telegram',
               description:
-                  'Bangun bot Telegram siap produksi dengan middleware, webhook, conversation, session, adapter framework, dan cakupan Bot API v10.3 yang kuat.',
+                  'Framework TypeScript untuk bot Telegram. Handler bertipe, session, conversation, dan webhook yang berjalan di Node.js, Bun, Deno, dan Cloudflare Workers. Mendukung Bot API 10.3.',
               primary: { label: 'Mulai dari Quickstart', href: '/id/basics/quickstart' },
               secondary: { label: 'Referensi API', href: '/id/api/context' },
               github: 'Lihat GitHub',
@@ -75,31 +79,35 @@ const copy = computed(() =>
               copied: 'Tersalin',
               copyAction: 'Salin',
               copyLabel: 'Salin command',
-              proofIntro: 'Dasar produksi yang sudah tersedia',
+              consoleCaption: 'Bot pertama Anda',
+              consoleCards: [
+                  { title: 'Filter bertipe', text: 'ctx.message.text sudah string' },
+                  { title: 'Jalan di edge', text: 'Workers, Deno, Bun' },
+              ],
+              proofIntro: 'Sudah termasuk',
               proofDescription:
-                  'Type safety, secret token, dedupe update, rate limit, session, dan adapter framework.',
-              featuresTitle: 'Semua alur bot inti dalam satu framework',
+                  'Webhook dengan secret token, dedupe update, rate limit, session, dan testing kit.',
+              featuresTitle: 'Yang dibutuhkan bot Telegram, sudah tersedia',
               featuresDescription:
-                  'Homepage ini mengutamakan jalur belajar cepat: pahami pipeline, pilih adapter, lalu lanjut ke API yang paling sering dipakai.',
-              readinessTitle: 'Siap untuk runtime production',
+                  'Setiap kartu membuka panduan berisi contoh yang bisa langsung dijalankan.',
+              readinessTitle: 'Default yang aman untuk production',
               readinessDescription:
-                  'VibeGram membuat bagian yang penting tetap eksplisit: API bertipe, launch mode yang jelas, batas adapter, dan error yang mudah ditangani.',
-              quickPathTitle: 'Jalur cepat dari install ke launch',
+                  'Bagian yang sering bikin bot down sudah ditangani: tipe yang ketat, webhook yang terlindungi, batas laju, dan update ganda.',
+              quickPathTitle: 'Dari install sampai bot jalan dalam empat langkah',
               quickPathDescription:
-                  'Empat langkah yang sama dengan struktur docs: install, buat bot, tambah handler, lalu pilih polling atau webhook.',
-              learnMore: 'Pelajari',
-              footerTitle: 'Lanjutkan ke guide yang paling relevan',
+                  'Langkah yang sama dengan Quickstart: install, buat bot, tambah handler, lalu jalankan dengan polling atau webhook.',
+              footerTitle: 'Mulai dari mana?',
               footerDescription:
-                  'Mulai dari quickstart jika baru mencoba, atau langsung ke API reference jika sedang migrasi dari bot yang sudah ada.',
+                  'Baru mencoba? Ikuti Quickstart. Sudah punya bot? Buka referensi API atau panduan upgrade ke 3.0.',
               footerPrimary: { label: 'Buka Quickstart', href: '/id/basics/quickstart' },
-              footerSecondary: { label: 'Buka API Context', href: '/id/api/context' },
+              footerSecondary: { label: 'Lihat referensi API', href: '/id/api/context' },
           }
         : {
               eyebrow: 'TypeScript Telegram Bot Framework',
               title: 'VibeGram',
               subtitle: 'Telegram Bot Framework',
               description:
-                  'Build production-ready Telegram bots with middleware, webhooks, conversations, sessions, framework adapters, and broad Bot API v10.3 coverage.',
+                  'A TypeScript framework for Telegram bots. Typed handlers, sessions, conversations, and webhooks that run on Node.js, Bun, Deno, and Cloudflare Workers. Covers Bot API 10.3.',
               primary: { label: 'Get Started', href: '/basics/quickstart' },
               secondary: { label: 'API Reference', href: '/api/context' },
               github: 'View GitHub',
@@ -107,24 +115,27 @@ const copy = computed(() =>
               copied: 'Copied',
               copyAction: 'Copy',
               copyLabel: 'Copy command',
-              proofIntro: 'Production foundations included',
+              consoleCaption: 'Your first bot',
+              consoleCards: [
+                  { title: 'Typed filters', text: 'ctx.message.text is a string' },
+                  { title: 'Runs on the edge', text: 'Workers, Deno, Bun' },
+              ],
+              proofIntro: 'Included',
               proofDescription:
-                  'Type safety, secret tokens, update dedupe, rate limits, sessions, and framework adapters.',
-              featuresTitle: 'The core bot workflow in one framework',
-              featuresDescription:
-                  'The homepage now points developers to the practical path: understand the pipeline, choose an adapter, then reach for the API surfaces they need.',
-              readinessTitle: 'Built for production runtime',
+                  'Webhooks with secret tokens, update dedupe, rate limits, sessions, and a testing kit.',
+              featuresTitle: 'What a Telegram bot needs, already built',
+              featuresDescription: 'Each card opens a guide with examples you can run as they are.',
+              readinessTitle: 'Safe defaults for production',
               readinessDescription:
-                  'VibeGram keeps the important pieces explicit: typed APIs, predictable launch modes, adapter boundaries, and errors you can reason about.',
-              quickPathTitle: 'From install to launch without ceremony',
+                  'The parts that usually take a bot down are handled: strict types, protected webhooks, rate limits, and duplicate updates.',
+              quickPathTitle: 'From install to a running bot in four steps',
               quickPathDescription:
-                  'A short path that mirrors the docs structure: install, create a bot, add handlers, then choose polling or webhook mode.',
-              learnMore: 'Learn more',
-              footerTitle: 'Keep moving through the docs',
+                  'The same steps as the Quickstart: install, create the bot, add handlers, then start it with polling or a webhook.',
+              footerTitle: 'Where to start',
               footerDescription:
-                  'Start with the quickstart when you are exploring, or jump into API reference when you are integrating an existing bot.',
-              footerPrimary: { label: 'Read Quickstart', href: '/basics/quickstart' },
-              footerSecondary: { label: 'Open API Context', href: '/api/context' },
+                  'New here? Follow the Quickstart. Already running a bot? Open the API reference or the 3.0 upgrade guide.',
+              footerPrimary: { label: 'Read the Quickstart', href: '/basics/quickstart' },
+              footerSecondary: { label: 'Browse the API reference', href: '/api/context' },
           }
 );
 
@@ -138,16 +149,16 @@ const managerCommands = [
 const proofItems = computed(() =>
     isIndonesian.value
         ? [
-              { value: 'Node.js 20+', label: 'runtime modern' },
-              { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 10.3', label: 'cakupan luas' },
-              { value: 'Strict TS', label: 'DX bertipe' },
+              { value: 'Bot API 10.3', label: 'versi terbaru' },
+              { value: 'Node.js 20+', label: 'juga Bun & Deno' },
+              { value: '0 dependency', label: 'di paket inti' },
+              { value: 'CJS + ESM', label: 'dengan tipe' },
           ]
         : [
-              { value: 'Node.js 20+', label: 'modern runtime' },
-              { value: 'CJS + ESM', label: 'dual output' },
-              { value: 'Bot API 10.3', label: 'broad coverage' },
-              { value: 'Strict TS', label: 'typed DX' },
+              { value: 'Bot API 10.3', label: 'latest version' },
+              { value: 'Node.js 20+', label: 'also Bun & Deno' },
+              { value: '0 dependencies', label: 'in the core' },
+              { value: 'CJS + ESM', label: 'with types' },
           ]
 );
 
@@ -156,75 +167,101 @@ const featureItems = computed<FeatureItem[]>(() =>
         ? [
               {
                   icon: Layers,
-                  title: 'Middleware',
+                  title: 'Routing bertipe',
                   description:
-                      'Pipeline async model onion untuk command, filter, plugin, dan flow multi-step.',
-                  href: '/id/core/middleware',
+                      "bot.on('message:photo') langsung memberi ctx.message.photo bertipe. Ditambah filter, branch, route, dan error boundary.",
+                  href: '/id/core/handling',
+                  link: 'Panduan routing',
               },
               {
-                  icon: RadioTower,
-                  title: 'Webhook adapters',
+                  icon: Globe,
+                  title: 'Webhook di mana saja',
                   description:
-                      'Express, Fastify, Hono, Koa, dan native HTTP dengan validasi secret token.',
-                  href: '/id/adapters/express',
+                      'Express, Fastify, Hono, HTTP native, atau Fetch API untuk Cloudflare Workers, Deno, Bun, dan Next.js.',
+                  href: '/id/adapters/fetch',
+                  link: 'Panduan webhook & edge',
               },
               {
                   icon: MessageCircle,
-                  title: 'Conversations',
+                  title: 'Conversation',
                   description:
-                      'Wait-state async untuk dialog bot yang terasa natural dan mudah dites.',
-                  href: '/id/state/conversations',
+                      'Tanya, tunggu jawaban, lanjut. Versi durable tetap berjalan setelah restart atau deploy.',
+                  href: '/id/state/durable-conversations',
+                  link: 'Panduan conversation',
               },
               {
                   icon: Boxes,
-                  title: 'Sessions',
+                  title: 'Session',
                   description:
-                      'State per user/chat dengan storage adapter dan typing yang mudah dikembangkan.',
+                      'State per user dan per chat dengan tipe sendiri, disimpan di memory atau Redis.',
                   href: '/id/state/session',
+                  link: 'Panduan session',
               },
               {
-                  icon: Code2,
-                  title: 'Bot API coverage',
+                  icon: FlaskConical,
+                  title: 'Testing kit',
                   description:
-                      'Metode context dan tipe modern untuk pesan, media, admin, bisnis, dan flows baru.',
-                  href: '/id/api/context',
+                      'Jalankan bot di test tanpa token dan tanpa jaringan, lalu cek pesan yang dikirim.',
+                  href: '/id/advanced/testing',
+                  link: 'Panduan testing',
+              },
+              {
+                  icon: Sparkles,
+                  title: 'AI streaming',
+                  description:
+                      'Jawaban model tampil langsung di draft dengan tombol stop, lalu dikirim sebagai pesan.',
+                  href: '/id/advanced/streaming',
+                  link: 'Panduan AI streaming',
               },
           ]
         : [
               {
                   icon: Layers,
-                  title: 'Middleware',
+                  title: 'Typed routing',
                   description:
-                      'Async onion-model pipeline for commands, filters, plugins, and multi-step flows.',
-                  href: '/core/middleware',
+                      "bot.on('message:photo') hands you a typed ctx.message.photo. Plus filter, branch, route, and error boundaries.",
+                  href: '/core/handling',
+                  link: 'Routing guide',
               },
               {
-                  icon: RadioTower,
-                  title: 'Webhook adapters',
+                  icon: Globe,
+                  title: 'Webhooks anywhere',
                   description:
-                      'Express, Fastify, Hono, Koa, and native HTTP with secret token validation.',
-                  href: '/adapters/express',
+                      'Express, Fastify, Hono, native HTTP, or the Fetch API for Cloudflare Workers, Deno, Bun, and Next.js.',
+                  href: '/adapters/fetch',
+                  link: 'Webhook & edge guide',
               },
               {
                   icon: MessageCircle,
                   title: 'Conversations',
                   description:
-                      'Async wait-state conversations for natural bot dialogs that stay testable.',
-                  href: '/state/conversations',
+                      'Ask, wait for the answer, continue. The durable version keeps going after a restart or deploy.',
+                  href: '/state/durable-conversations',
+                  link: 'Conversations guide',
               },
               {
                   icon: Boxes,
                   title: 'Sessions',
                   description:
-                      'Per-user and per-chat state with storage adapters and approachable typing.',
+                      'Per-user and per-chat state with your own types, stored in memory or Redis.',
                   href: '/state/session',
+                  link: 'Sessions guide',
               },
               {
-                  icon: Code2,
-                  title: 'Bot API coverage',
+                  icon: FlaskConical,
+                  title: 'Testing kit',
                   description:
-                      'Modern context methods and types for messages, media, admin, business, and new flows.',
-                  href: '/api/context',
+                      'Run your bot in tests with no token and no network, then check what it sent.',
+                  href: '/advanced/testing',
+                  link: 'Testing guide',
+              },
+              {
+                  icon: Sparkles,
+                  title: 'AI streaming',
+                  description:
+                      'Model output appears live in a draft with a stop button, then arrives as a message.',
+                  href: '/advanced/streaming',
+                  link: 'AI streaming guide',
               },
           ]
 );
@@ -232,18 +269,20 @@ const featureItems = computed<FeatureItem[]>(() =>
 const readinessItems = computed(() =>
     isIndonesian.value
         ? [
-              { icon: ShieldCheck, title: 'TypeScript strict', text: 'Kontrak API lebih jelas.' },
-              { icon: Server, title: 'CJS + ESM', text: 'Aman untuk setup Node modern.' },
-              { icon: LockKeyhole, title: 'Webhook security', text: 'Secret token dan validasi.' },
-              { icon: Gauge, title: 'Rate limit', text: 'Throttle middleware bawaan.' },
-              { icon: Route, title: 'Observability', text: 'Hook lifecycle dan logger.' },
+              { icon: ShieldCheck, title: 'TypeScript strict', text: 'Salah ketik API ketahuan saat compile.' },
+              { icon: LockKeyhole, title: 'Webhook aman', text: 'Secret token dicek, body dibatasi.' },
+              { icon: CopyCheck, title: 'Anti update ganda', text: 'Retry Telegram tidak menjalankan handler dua kali.' },
+              { icon: Gauge, title: 'Rate limit', text: 'Batasi user yang spam dengan satu middleware.' },
+              { icon: Route, title: 'Observability', text: 'Hook untuk log, metrik, dan error.' },
+              { icon: Server, title: 'CJS + ESM', text: 'Bisa di-import dari setup Node mana pun.' },
           ]
         : [
-              { icon: ShieldCheck, title: 'TypeScript strict', text: 'Clearer API contracts.' },
-              { icon: Server, title: 'CJS + ESM', text: 'Safe for modern Node setups.' },
-              { icon: LockKeyhole, title: 'Webhook security', text: 'Secret token validation.' },
-              { icon: Gauge, title: 'Rate limit', text: 'Built-in throttle middleware.' },
-              { icon: Route, title: 'Observability', text: 'Lifecycle hooks and logger.' },
+              { icon: ShieldCheck, title: 'Strict TypeScript', text: 'API typos fail at compile time.' },
+              { icon: LockKeyhole, title: 'Secure webhooks', text: 'Secret token checked, body size capped.' },
+              { icon: CopyCheck, title: 'No duplicate updates', text: 'Telegram retries never run a handler twice.' },
+              { icon: Gauge, title: 'Rate limits', text: 'Slow down spamming users with one middleware.' },
+              { icon: Route, title: 'Observability', text: 'Hooks for logs, metrics, and errors.' },
+              { icon: Server, title: 'CJS + ESM', text: 'Imports cleanly from any Node setup.' },
           ]
 );
 
@@ -253,60 +292,68 @@ const quickPath = computed<StepItem[]>(() =>
               {
                   label: '01',
                   title: 'Install',
-                  description: 'Tambahkan package ke project Node.js.',
+                  description: 'Butuh Node.js 20+, Bun, atau Deno.',
                   command: 'npm install vibegram',
                   href: '/id/basics/installation',
+                  link: 'Panduan instalasi',
               },
               {
                   label: '02',
-                  title: 'Create bot',
-                  description: 'Buat instance Bot dengan token dari env.',
+                  title: 'Buat bot',
+                  description: 'Ambil token dari @BotFather dan simpan di env.',
                   command: 'const bot = new Bot(process.env.BOT_TOKEN!)',
                   href: '/id/basics/quickstart',
+                  link: 'Quickstart',
               },
               {
                   label: '03',
-                  title: 'Add handlers',
-                  description: 'Susun command, filter, middleware, dedupe, dan scene.',
-                  command: "bot.command('start', ctx => ctx.reply('Ready'))",
-                  href: '/id/core/middleware',
+                  title: 'Tambah handler',
+                  description: 'Balas command, teks, foto, atau tombol.',
+                  command: "bot.command('start', ctx => ctx.reply('Halo'))",
+                  href: '/id/core/handling',
+                  link: 'Panduan routing',
               },
               {
                   label: '04',
-                  title: 'Launch',
-                  description: 'Pilih polling lokal atau webhook production.',
+                  title: 'Jalankan',
+                  description: 'Polling untuk lokal, webhook untuk production.',
                   command: 'await bot.launch()',
                   href: '/id/basics/instance',
+                  link: 'Polling vs webhook',
               },
           ]
         : [
               {
                   label: '01',
                   title: 'Install',
-                  description: 'Add the package to a Node.js project.',
+                  description: 'Needs Node.js 20+, Bun, or Deno.',
                   command: 'npm install vibegram',
                   href: '/basics/installation',
+                  link: 'Installation guide',
               },
               {
                   label: '02',
-                  title: 'Create bot',
-                  description: 'Create a Bot instance with a token from env.',
+                  title: 'Create the bot',
+                  description: 'Get a token from @BotFather and keep it in an env var.',
                   command: 'const bot = new Bot(process.env.BOT_TOKEN!)',
                   href: '/basics/quickstart',
+                  link: 'Quickstart',
               },
               {
                   label: '03',
                   title: 'Add handlers',
-                  description: 'Compose commands, filters, middleware, dedupe, and scenes.',
-                  command: "bot.command('start', ctx => ctx.reply('Ready'))",
-                  href: '/core/middleware',
+                  description: 'Answer commands, text, photos, or button presses.',
+                  command: "bot.command('start', ctx => ctx.reply('Hi'))",
+                  href: '/core/handling',
+                  link: 'Routing guide',
               },
               {
                   label: '04',
-                  title: 'Launch',
-                  description: 'Choose local polling or production webhooks.',
+                  title: 'Start it',
+                  description: 'Polling while developing, a webhook in production.',
                   command: 'await bot.launch()',
                   href: '/basics/instance',
+                  link: 'Polling vs webhook',
               },
           ]
 );
@@ -366,7 +413,7 @@ onBeforeUnmount(() => {
     <div class="vg-home" aria-labelledby="vg-home-title">
         <section class="vg-home-section vg-home-hero">
             <div class="vg-home-grid">
-                <div class="flex flex-col gap-7">
+                <div class="flex flex-col gap-6">
                     <Badge
                         variant="secondary"
                         class="w-fit border-border bg-accent text-accent-foreground"
@@ -378,7 +425,7 @@ onBeforeUnmount(() => {
                     <div class="flex flex-col gap-5">
                         <h1
                             id="vg-home-title"
-                            class="max-w-3xl text-5xl leading-none font-bold text-foreground md:text-6xl lg:text-7xl"
+                            class="max-w-3xl text-5xl leading-none font-bold text-foreground lg:text-6xl"
                         >
                             {{ copy.title }}
                             <span class="block text-primary">{{ copy.subtitle }}</span>
@@ -440,7 +487,7 @@ onBeforeUnmount(() => {
                             class="m-0"
                         >
                             <div class="flex items-center justify-between gap-4 px-4 py-5">
-                                <code class="truncate font-mono text-sm text-card-foreground">
+                                <code class="min-w-0 font-mono text-sm break-all text-card-foreground">
                                     {{ manager.command }}
                                 </code>
                                 <Button
@@ -489,32 +536,6 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <!-- Social proof badges -->
-                    <div class="flex flex-wrap items-center gap-2">
-                        <a
-                            href="https://www.npmjs.com/package/vibegram"
-                            target="_blank"
-                            rel="noopener"
-                            class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-                            aria-label="View vibegram on npm"
-                        >
-                            <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 0v24h24V0H0zm6.6 19.2V7.2h4.8V19.2H6.6zm5.4 0V7.2h6v7.2h-3.6v4.8H12z"/></svg>
-                            npm · vibegram
-                        </a>
-                        <a
-                            href="https://github.com/alfandi09/vibegram"
-                            target="_blank"
-                            rel="noopener"
-                            class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-                            aria-label="View vibegram on GitHub"
-                        >
-                            <Github class="size-3 shrink-0" aria-hidden="true" />
-                            alfandi09/vibegram
-                        </a>
-                        <span class="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-                            ISC License
-                        </span>
-                    </div>
                 </div>
 
                 <aside class="vg-console min-w-0" aria-label="VibeGram workflow preview">
@@ -523,10 +544,10 @@ onBeforeUnmount(() => {
                             <img :src="logoSrc" alt="" class="size-8 rounded-md" />
                             <div>
                                 <p class="text-sm font-semibold text-card-foreground">VibeGram</p>
-                                <p class="text-xs text-muted-foreground">bot runtime surface</p>
+                                <p class="text-xs text-muted-foreground">{{ copy.consoleCaption }}</p>
                             </div>
                         </div>
-                        <Badge variant="outline">v{{ versionBadge }}</Badge>
+                        <Badge v-if="versionBadge" variant="outline">v{{ versionBadge }}</Badge>
                     </div>
 
                     <div class="flex flex-col gap-4 p-4">
@@ -543,26 +564,27 @@ onBeforeUnmount(() => {
 
 const bot = new Bot(token)
 
-bot.command('start', ctx =&gt; {
-  return ctx.reply('Ready')
-})
+// ctx.message.text: string
+bot.on('message:text', ctx =&gt;
+  ctx.reply('Got it'))
 
 await bot.launch()</code></pre>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="rounded-lg border border-border bg-background p-3">
-                                <Workflow class="mb-3 size-4 text-primary" aria-hidden="true" />
-                                <p class="text-sm font-semibold text-card-foreground">Composer</p>
+                            <div
+                                v-for="(card, index) in copy.consoleCards"
+                                :key="card.title"
+                                class="rounded-lg border border-border bg-background p-3"
+                            >
+                                <component
+                                    :is="index === 0 ? Layers : Globe"
+                                    class="mb-3 size-4 text-primary"
+                                    aria-hidden="true"
+                                />
+                                <p class="text-sm font-semibold text-card-foreground">{{ card.title }}</p>
                                 <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                                    cached middleware chain
-                                </p>
-                            </div>
-                            <div class="rounded-lg border border-border bg-background p-3">
-                                <RadioTower class="mb-3 size-4 text-primary" aria-hidden="true" />
-                                <p class="text-sm font-semibold text-card-foreground">Webhook</p>
-                                <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                                    adapter-ready delivery
+                                    {{ card.text }}
                                 </p>
                             </div>
                         </div>
@@ -611,7 +633,7 @@ await bot.launch()</code></pre>
                         </CardHeader>
                         <CardFooter>
                             <Button as="a" :href="localHref(item.href)" variant="link" class="px-0">
-                                {{ copy.learnMore }}
+                                {{ item.link }}
                                 <ArrowRight data-icon="inline-end" />
                             </Button>
                         </CardFooter>
@@ -679,9 +701,10 @@ await bot.launch()</code></pre>
                             {{ step.description }}
                         </p>
                         <Separator class="my-4" />
-                        <code class="block truncate font-mono text-xs text-muted-foreground">
-                            {{ step.command }}
-                        </code>
+                        <code
+                            class="block font-mono text-xs leading-5 break-all whitespace-pre-wrap text-muted-foreground"
+                            >{{ step.command }}</code
+                        >
                         <Button
                             v-if="step.href"
                             as="a"
@@ -689,7 +712,7 @@ await bot.launch()</code></pre>
                             variant="link"
                             class="mt-3 h-auto px-0 py-0 text-xs"
                         >
-                            {{ copy.learnMore }}
+                            {{ step.link }}
                             <ArrowRight data-icon="inline-end" class="size-3" />
                         </Button>
                     </div>

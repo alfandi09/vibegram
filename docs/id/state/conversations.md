@@ -73,7 +73,7 @@ if (result.type === 'text') {
 }
 
 if (result.type === 'callback') {
-    await result.ctx.answerCallbackQuery();
+    await result.ctx.answerCbQuery();
 }
 
 if (result.type === 'media') {

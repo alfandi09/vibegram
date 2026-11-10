@@ -7,8 +7,8 @@ tidak memblokir update handler atau menyentuh limit platform.
 
 <FeatureGrid title="Use case queue" description="Gunakan queue saat pekerjaan perlu rate limit, retry, atau dipisahkan dari update masuk.">
   <FeatureCard title="Broadcasting" description="Kirim pesan ke banyak user tanpa menyentuh rate limit Telegram." href="#broadcasting" cta="Buka broadcast" />
-  <FeatureCard title="Background job" description="Tunda pekerjaan non-kritis di luar update handler." href="#background-job" cta="Buka job" />
-  <FeatureCard title="Retry" description="Tangani kegagalan Telegram atau network sementara secara terprediksi." href="#retry" cta="Buka retry" />
+  <FeatureCard title="Penjadwalan" description="Jalankan job sekali atau berulang di luar update handler." href="#penjadwalan" cta="Buka penjadwalan" />
+  <FeatureCard title="Strategi rate limit" description="Atur concurrency dan jeda agar tetap di dalam batas Telegram." href="#strategi-rate-limit" cta="Buka strategi" />
 </FeatureGrid>
 
 `BotQueue` menyediakan broadcasting massal dengan rate-limiting dan penjadwalan tugas — penting bagi bot yang perlu mengirim pesan ke ribuan pengguna tanpa menyentuh batas Telegram.
