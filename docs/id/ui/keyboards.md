@@ -3,6 +3,15 @@
 VibeGram menyediakan builder deklaratif `Markup` untuk inline keyboard, reply
 keyboard, pagination, dan escaping teks yang aman.
 
+Telegram punya dua jenis keyboard:
+
+| | Inline keyboard | Reply keyboard |
+| --- | --- | --- |
+| Muncul di | Bawah pesan | Menggantikan keyboard ponsel |
+| Saat ditekan mengirim | Callback query (tidak terlihat di chat) | Pesan teks biasa dari user |
+| Ditangani dengan | `bot.action(data, ...)` | `bot.hears(text, ...)` |
+| Contoh pemakaian | Menu, konfirmasi, paginasi | Menu utama tetap, berbagi nomor atau lokasi |
+
 ## Inline Keyboard
 
 Inline keyboard muncul di bawah pesan dan biasanya memicu callback query atau
@@ -18,6 +27,36 @@ const keyboard = Markup.inlineKeyboard([
 
 await ctx.reply('Pilih opsi:', { reply_markup: keyboard });
 ```
+
+## Menangani Penekanan Tombol
+
+Tombol callback mengirim `callback_data`-nya kembali ke bot. Cocokkan dengan
+`bot.action()`, jawab penekanannya, lalu biasanya edit pesan aslinya:
+
+```ts
+bot.command('pesan', ctx =>
+    ctx.reply('Konfirmasi pesanan?', {
+        reply_markup: Markup.inlineKeyboard([
+            [Markup.button.callback('✅ Konfirmasi', 'order:confirm'), Markup.button.callback('❌ Batal', 'order:cancel')],
+        ]),
+    })
+);
+
+bot.action('order:confirm', async ctx => {
+    await ctx.answerCbQuery('Pesanan dibuat'); // notifikasi singkat; juga menghentikan ikon loading
+    await ctx.editMessageText('✅ Pesanan dikonfirmasi.'); // ganti teks dan hapus tombol
+});
+
+// RegExp memasukkan capture group ke ctx.match.
+bot.action(/^product:(\d+)$/, async ctx => {
+    await ctx.answerCbQuery();
+    await ctx.reply(`Produk #${ctx.match![1]}`);
+});
+```
+
+Selalu panggil `ctx.answerCbQuery()`, meski tanpa teks; kalau tidak, Telegram
+menampilkan ikon loading di tombol selama beberapa detik. `callback_data` dibatasi
+**64 byte**, jadi simpan id di dalamnya, bukan objek utuh.
 
 ## Markup.grid()
 
@@ -46,6 +85,7 @@ await ctx.reply('Pilih hari:', {
 | `Markup.button.switchInlineQueryCurrentChat(text, query)` | Membuka inline mode di chat saat ini. |
 | `Markup.button.login(text, loginUrl)` | Tombol Telegram Login. |
 | `Markup.button.copy(text, textToCopy)` | Tombol copy-to-clipboard. |
+| `Markup.button.disabled(text)` | Tombol yang tidak melakukan apa-apa saat ditekan (Bot API 10.3). |
 
 ## Contoh Login Button
 
@@ -97,7 +137,8 @@ Tangani `actionPrev`, `actionNext`, dan callback data item dengan
 
 ## Reply Keyboard
 
-Reply keyboard mengganti keyboard perangkat dengan tombol native Telegram.
+Reply keyboard mengganti keyboard perangkat dengan tombol native Telegram. Saat
+ditekan, teks tombol dikirim sebagai pesan biasa, jadi tangani dengan `bot.hears('Berita', ...)`.
 
 ```ts
 const keyboard = Markup.keyboard(

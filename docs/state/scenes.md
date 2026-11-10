@@ -1,77 +1,114 @@
 # Scenes
 
-Scenes isolate portions of your bot's conversation logic into independent routers. When a user enters a scene, only the scene's handlers are active — global handlers are bypassed.
+A scene is a **mode** the user enters and later leaves, with its own handlers. While
+a user is in the `settings` scene, the words "theme" or "back" mean something different
+than they do elsewhere in your bot. Each user's current scene is stored in their
+[session](/state/session).
 
 ## Quick Start
 
 ```typescript
 import { Bot, session, Scene, Stage } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
-bot.use(session());
+const bot = new Bot(process.env.BOT_TOKEN!);
+bot.use(session()); // 1. scenes store the current scene in the session
 
-// Define a scene
-const settingsScene = new Scene('settings');
-
-settingsScene.command('theme', ctx => ctx.reply('Choose: light or dark?'));
-settingsScene.hears('back', ctx => {
-    ctx.reply('Exiting settings.');
-    ctx.scene?.leave();
+const settings = new Scene('settings');
+settings.hears('theme', ctx => ctx.reply('Choose: light or dark?'));
+settings.hears('back', async ctx => {
+    ctx.scene!.leave();
+    await ctx.reply('Left settings.');
 });
-settingsScene.on('message', ctx => ctx.reply('You are in settings. Type "back" to exit.'));
+settings.on('message', ctx => ctx.reply('You are in settings. Send "theme" or "back".'));
 
-// Register and activate
-const stage = new Stage([settingsScene]);
-bot.use(stage.middleware());
+bot.use(new Stage([settings]).middleware()); // 2. after session(), before other handlers
 
-// Enter the scene
-bot.command('settings', ctx => ctx.scene?.enter('settings'));
+bot.command('settings', async ctx => {
+    ctx.scene!.enter('settings'); // 3. enter from a normal handler
+    await ctx.reply('Settings. Send "theme" or "back".');
+});
 ```
 
-## Scene API
+Entering a scene sends nothing by itself, so reply with instructions right after
+`enter()`. The user's **next** update is the first one routed into the scene.
 
-| Method | Description |
-|--------|-------------|
-| `ctx.scene?.enter(name)` | Enter a scene by name |
-| `ctx.scene?.leave()` | Exit the current scene |
+## How Routing Works
 
-## How It Works
+For a user in a scene, the Stage middleware runs the scene's handlers first:
 
-1. When `ctx.scene?.enter('name')` is called, the session records the current scene
-2. On subsequent updates, the Stage middleware checks if the user is in a scene
-3. If yes, only that scene's handlers run — global handlers are skipped
-4. When `ctx.scene?.leave()` is called, normal routing resumes
+- If a scene handler handles the update, your global handlers do **not** run.
+- If no scene handler matches (or one calls `next()`), the update **continues** to
+  your global handlers.
 
-## Multiple Scenes
+So the catch-all `settings.on('message', ...)` above is what keeps every message
+inside the scene. Without it, a message the scene does not recognise reaches your
+global handlers. Updates the scene has no handler for, such as button presses here,
+always continue to the global handlers.
+
+## API
+
+| Member | Description |
+| --- | --- |
+| `new Scene(id)` | A scene; add handlers with `command`, `hears`, `on`, `action`, `filter`, ... |
+| `new Stage([scenes])` | Holds all scenes; register `stage.middleware()` once |
+| `ctx.scene.enter(id, state?)` | Enter a scene; `state` becomes `ctx.scene.state` |
+| `ctx.scene.reenter(state?)` | Stay in the current scene and reset its state |
+| `ctx.scene.leave()` | Exit the current scene |
+| `ctx.scene.current` | Id of the current scene, or `undefined` |
+| `ctx.scene.state` | Data kept for the user while they are in the scene |
+
+## Scene State
+
+Pass data in when entering and read it later; it is cleared on `leave()`:
 
 ```typescript
-const faqScene = new Scene('faq');
-faqScene.on('message', ctx => ctx.reply('FAQ: Ask a question or type "back".'));
-faqScene.hears('back', ctx => ctx.scene?.leave());
+const quiz = new Scene('quiz');
 
-const contactScene = new Scene('contact');
-contactScene.on('message', ctx => ctx.reply('Contact: Send your message or type "back".'));
-contactScene.hears('back', ctx => ctx.scene?.leave());
+quiz.hears(/^\d+$/, async ctx => {
+    const answer = Number(ctx.message?.text);
+    ctx.scene!.state.score = (ctx.scene!.state.score ?? 0) + (answer === 4 ? 1 : 0);
+    await ctx.reply(`Score: ${ctx.scene!.state.score}. Next: what is 2 + 2?`);
+});
+quiz.command('stop', async ctx => {
+    await ctx.reply(`Final score: ${ctx.scene!.state.score ?? 0}`);
+    ctx.scene!.leave();
+});
 
-const stage = new Stage([faqScene, contactScene]);
-bot.use(stage.middleware());
-
-bot.command('faq', ctx => ctx.scene?.enter('faq'));
-bot.command('contact', ctx => ctx.scene?.enter('contact'));
+bot.command('quiz', async ctx => {
+    ctx.scene!.enter('quiz', { score: 0 });
+    await ctx.reply('Quiz started! What is 2 + 2? (/stop to finish)');
+});
 ```
 
-## Practical Scenario: Main Menu
+## Several Scenes
+
+Register all scenes in one Stage. A user is in at most one scene at a time; entering
+another one replaces it.
 
 ```typescript
-const menuScene = new Scene('menu');
+const faq = new Scene('faq');
+faq.hears('back', ctx => ctx.scene!.leave());
+faq.on('message', ctx => ctx.reply('Ask a question, or send "back".'));
 
-menuScene.hears('profile', ctx => ctx.reply('Opening profile...'));
-menuScene.hears('orders', ctx => ctx.reply('Opening orders...'));
-menuScene.hears('back', ctx => ctx.scene?.leave());
+const contact = new Scene('contact');
+contact.hears('back', ctx => ctx.scene!.leave());
+contact.on('message', ctx => ctx.reply('Thanks! We will reply soon. Send "back" to leave.'));
 
-bot.command('menu', ctx => ctx.scene?.enter('menu'));
+bot.use(new Stage([faq, contact]).middleware());
+
+bot.command('faq', ctx => ctx.scene!.enter('faq'));
+bot.command('contact', ctx => ctx.scene!.enter('contact'));
 ```
 
-::: tip
-Register `bot.use(session())` **before** `bot.use(stage.middleware())` — the Stage depends on session data.
+## Scene, Wizard, or Conversation?
+
+| Use | When |
+| --- | --- |
+| **Scene** | A mode with its own commands and words, left when the user chooses |
+| [Wizard](/state/wizards) | A fixed list of questions asked in order |
+| [Conversation](/state/conversations) | Free-form flows written as one async function |
+
+::: tip Order matters
+Register `bot.use(session())` before `stage.middleware()`, and the stage before the
+handlers it should take priority over.
 :::

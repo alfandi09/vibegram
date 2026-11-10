@@ -1,6 +1,9 @@
 import { Middleware } from './composer';
 import { Context } from './context';
 
+/** One step of a Wizard: runs on a single incoming update. */
+export type WizardStep = (ctx: Context) => Promise<void> | void;
+
 /**
  * Wizard state machine for managing sequential multi-step conversations.
  * Provides linear step control using session middleware as its backing store.
@@ -8,7 +11,7 @@ import { Context } from './context';
 export class Wizard {
     constructor(
         public readonly id: string,
-        private steps: ((ctx: Context) => Promise<void> | void)[]
+        private steps: WizardStep[]
     ) {}
 
     private normalizeCursor(step: number): number {

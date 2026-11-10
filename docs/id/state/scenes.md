@@ -1,6 +1,9 @@
 # Scene
 
-Scene mengisolasi logika percakapan bot ke dalam router independen. Saat pengguna masuk ke sebuah scene, hanya handler scene tersebut yang aktif — handler global dilewati.
+Scene adalah **mode** yang dimasuki user lalu ditinggalkan, dengan handler sendiri.
+Saat user berada di scene `settings`, kata "tema" atau "kembali" punya arti berbeda
+dibanding di bagian lain bot Anda. Scene aktif setiap user disimpan di
+[session](/id/state/session)-nya.
 
 ## Memulai Cepat
 
@@ -8,83 +11,105 @@ Scene mengisolasi logika percakapan bot ke dalam router independen. Saat penggun
 import { Bot, session, Scene, Stage } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
-bot.use(session());
+bot.use(session()); // 1. scene menyimpan scene aktif di session
 
-// Definisikan scene
-const pengaturanScene = new Scene('pengaturan');
-
-pengaturanScene.command('tema', ctx => ctx.reply('Pilih tema: terang atau gelap?'));
-pengaturanScene.hears('kembali', ctx => {
-    ctx.reply('Keluar dari pengaturan.');
-    ctx.scene?.leave();
+const pengaturan = new Scene('settings');
+pengaturan.hears('tema', ctx => ctx.reply('Pilih: terang atau gelap?'));
+pengaturan.hears('kembali', async ctx => {
+    ctx.scene!.leave();
+    await ctx.reply('Keluar dari pengaturan.');
 });
-pengaturanScene.on('message', ctx =>
-    ctx.reply('Anda berada di pengaturan. Ketik "kembali" untuk keluar.')
-);
+pengaturan.on('message', ctx => ctx.reply('Anda di pengaturan. Kirim "tema" atau "kembali".'));
 
-// Daftarkan dan aktifkan
-const stage = new Stage([pengaturanScene]);
-bot.use(stage.middleware());
+bot.use(new Stage([pengaturan]).middleware()); // 2. setelah session(), sebelum handler lain
 
-// Masuk ke scene
-bot.command('pengaturan', ctx => ctx.scene?.enter('pengaturan'));
+bot.command('pengaturan', async ctx => {
+    ctx.scene!.enter('settings'); // 3. masuk dari handler biasa
+    await ctx.reply('Pengaturan. Kirim "tema" atau "kembali".');
+});
 ```
 
-## API Scene
+Masuk ke scene tidak mengirim apa pun dengan sendirinya, jadi balas dengan petunjuk
+tepat setelah `enter()`. Update **berikutnya** dari user adalah yang pertama
+diarahkan ke scene.
 
-| Metode | Deskripsi |
-|--------|-----------|
-| `ctx.scene?.enter(nama)` | Masuk ke scene berdasarkan nama |
-| `ctx.scene?.leave()` | Keluar dari scene saat ini |
+## Cara Kerja Routing
 
-## Cara Kerja
+Untuk user yang berada di scene, middleware Stage menjalankan handler scene lebih dulu:
 
-1. Saat `ctx.scene?.enter('nama')` dipanggil, session mencatat scene aktif
-2. Pada update berikutnya, Stage middleware mengecek apakah pengguna di dalam scene
-3. Jika ya, hanya handler scene tersebut yang berjalan — handler global dilewati
-4. Saat `ctx.scene?.leave()` dipanggil, routing normal dilanjutkan
+- Jika handler scene menangani update, handler global Anda **tidak** berjalan.
+- Jika tidak ada handler scene yang cocok (atau ada yang memanggil `next()`), update
+  **diteruskan** ke handler global.
+
+Jadi `pengaturan.on('message', ...)` di atas yang membuat semua pesan tetap di dalam
+scene. Tanpanya, pesan yang tidak dikenali scene akan sampai ke handler global. Update
+yang tidak punya handler di scene, misalnya penekanan tombol di sini, selalu diteruskan
+ke handler global.
+
+## API
+
+| Member | Deskripsi |
+| --- | --- |
+| `new Scene(id)` | Sebuah scene; tambah handler dengan `command`, `hears`, `on`, `action`, `filter`, ... |
+| `new Stage([scenes])` | Menampung semua scene; daftarkan `stage.middleware()` sekali |
+| `ctx.scene.enter(id, state?)` | Masuk ke scene; `state` menjadi `ctx.scene.state` |
+| `ctx.scene.reenter(state?)` | Tetap di scene saat ini dan reset state-nya |
+| `ctx.scene.leave()` | Keluar dari scene saat ini |
+| `ctx.scene.current` | Id scene saat ini, atau `undefined` |
+| `ctx.scene.state` | Data yang disimpan untuk user selama di dalam scene |
+
+## State Scene
+
+Kirim data saat masuk dan baca nanti; data dihapus saat `leave()`:
+
+```typescript
+const kuis = new Scene('quiz');
+
+kuis.hears(/^\d+$/, async ctx => {
+    const jawaban = Number(ctx.message?.text);
+    ctx.scene!.state.skor = (ctx.scene!.state.skor ?? 0) + (jawaban === 4 ? 1 : 0);
+    await ctx.reply(`Skor: ${ctx.scene!.state.skor}. Berikutnya: berapa 2 + 2?`);
+});
+kuis.command('stop', async ctx => {
+    await ctx.reply(`Skor akhir: ${ctx.scene!.state.skor ?? 0}`);
+    ctx.scene!.leave();
+});
+
+bot.command('kuis', async ctx => {
+    ctx.scene!.enter('quiz', { skor: 0 });
+    await ctx.reply('Kuis dimulai! Berapa 2 + 2? (/stop untuk selesai)');
+});
+```
 
 ## Beberapa Scene
 
-```typescript
-const faqScene = new Scene('faq');
-faqScene.on('message', ctx => ctx.reply('FAQ: Ajukan pertanyaan atau ketik "kembali".'));
-faqScene.hears('kembali', ctx => ctx.scene?.leave());
-
-const kontakScene = new Scene('kontak');
-kontakScene.on('message', ctx => ctx.reply('Kontak: Kirim pesan atau ketik "kembali".'));
-kontakScene.hears('kembali', ctx => ctx.scene?.leave());
-
-const stage = new Stage([faqScene, kontakScene]);
-bot.use(stage.middleware());
-
-bot.command('faq', ctx => ctx.scene?.enter('faq'));
-bot.command('kontak', ctx => ctx.scene?.enter('kontak'));
-```
-
-## Skenario Praktis: Menu Utama
+Daftarkan semua scene di satu Stage. User berada di paling banyak satu scene; masuk ke
+scene lain akan menggantikannya.
 
 ```typescript
-const menuScene = new Scene('menu');
+const faq = new Scene('faq');
+faq.hears('kembali', ctx => ctx.scene!.leave());
+faq.on('message', ctx => ctx.reply('Ajukan pertanyaan, atau kirim "kembali".'));
 
-menuScene.action('produk', ctx => ctx.scene?.enter('produk'));
-menuScene.action('profil', ctx => ctx.scene?.enter('profil'));
-menuScene.hears('exit', ctx => {
-    ctx.scene?.leave();
-    ctx.reply('Kembali ke menu utama.');
-});
+const kontak = new Scene('contact');
+kontak.hears('kembali', ctx => ctx.scene!.leave());
+kontak.on('message', ctx => ctx.reply('Terima kasih! Kami akan segera membalas. Kirim "kembali" untuk keluar.'));
 
-bot.command('menu', async ctx => {
-    await ctx.reply('📋 Menu Utama:', {
-        reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🛒 Produk', 'produk')],
-            [Markup.button.callback('👤 Profil', 'profil')],
-        ])
-    });
-    ctx.scene?.enter('menu');
-});
+bot.use(new Stage([faq, kontak]).middleware());
+
+bot.command('faq', ctx => ctx.scene!.enter('faq'));
+bot.command('kontak', ctx => ctx.scene!.enter('contact'));
 ```
 
-::: tip Urutan Middleware
-Daftarkan `bot.use(session())` **sebelum** `bot.use(stage.middleware())` — Stage bergantung pada data session.
+## Scene, Wizard, atau Conversation?
+
+| Pakai | Kapan |
+| --- | --- |
+| **Scene** | Mode dengan command dan kata sendiri, ditinggalkan saat user memilih |
+| [Wizard](/id/state/wizards) | Daftar pertanyaan tetap yang diajukan berurutan |
+| [Conversation](/id/state/conversations) | Alur bebas yang ditulis sebagai satu fungsi async |
+
+::: tip Urutan penting
+Daftarkan `bot.use(session())` sebelum `stage.middleware()`, dan stage sebelum handler
+yang harus kalah prioritas darinya.
 :::

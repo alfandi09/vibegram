@@ -162,7 +162,7 @@ export class Markup {
                   .replace('{total}', totalPages.toString())
             : `${page}/${totalPages}`;
 
-        // Empty callback_data prevents a "Loading..." flash on the client.
+        // Fixed callback_data; answer it with bot.action('ignore_nav', ctx => ctx.answerCbQuery()).
         navRow.push({ text: indicatorText, callback_data: 'ignore_nav' });
 
         // Next page button.

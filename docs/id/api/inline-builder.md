@@ -1,6 +1,16 @@
-# Builder Inline Query
+# Inline Query Builder
 
-`InlineResults` menyediakan API fluent untuk membangun array hasil inline query — bertipe dan bersih.
+Di **mode inline**, user mengetik `@botanda sesuatu` di chat mana pun lalu memilih hasil
+dari daftar yang dikirim bot Anda, seperti kotak pencarian yang bisa dipakai di mana
+saja. `InlineResults` menyusun daftar hasil itu dengan opsi bertipe untuk setiap jenis
+hasil.
+
+## Aktifkan Mode Inline Dulu
+
+Telegram hanya mengirim update `inline_query` ke bot yang mode inline-nya aktif. Buka
+[@BotFather](https://t.me/BotFather), kirim `/setinline`, pilih bot Anda, lalu ketik
+teks placeholder yang dilihat user (misalnya `Cari produk...`). Tanpa langkah ini,
+handler di bawah tidak akan pernah berjalan.
 
 ## Memulai Cepat
 
@@ -9,114 +19,133 @@ import { Bot, InlineResults } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-bot.on('inline_query', async (ctx) => {
-    const query = ctx.update.inline_query?.query || '';
+bot.on('inline_query', async ctx => {
+    const query = ctx.update.inline_query.query; // yang diketik user setelah @botanda
 
-    const hasil = InlineResults.builder()
+    const results = InlineResults.builder()
         .article({
-            id: '1',
-            title: 'Halo Dunia',
-            text: `Anda mencari: ${query}`,
-            description: 'Kirim pesan salam'
+            id: 'salam',
+            title: 'Kirim salam',
+            description: `Menyapa dengan "${query}"`,
+            text: `Halo! Anda mencari: ${query}`,
         })
         .photo({
-            id: '2',
+            id: 'foto-acak',
             url: 'https://picsum.photos/400',
-            caption: 'Foto acak'
+            caption: 'Foto acak',
         })
         .build();
 
-    await ctx.answerInlineQuery(hasil, { cache_time: 10 });
+    await ctx.answerInlineQuery(results, { cache_time: 10 });
 });
 ```
 
-## Tipe Hasil
+Saat user mengetuk sebuah hasil, Telegram mengirim isinya ke chat sebagai pesan
+"via @botanda". `answerInlineQuery` harus dipanggil dalam sekitar 10 detik.
 
-| Metode | Tipe Telegram | Deskripsi |
-|--------|--------------|-----------|
-| `.article(opts)` | `InlineQueryResultArticle` | Artikel teks dengan judul |
-| `.photo(opts)` | `InlineQueryResultPhoto` | Foto berdasarkan URL |
-| `.document(opts)` | `InlineQueryResultDocument` | File dokumen |
-| `.video(opts)` | `InlineQueryResultVideo` | Video berdasarkan URL |
-| `.gif(opts)` | `InlineQueryResultGif` | GIF animasi |
-| `.voice(opts)` | `InlineQueryResultVoice` | Pesan suara |
-| `.location(opts)` | `InlineQueryResultLocation` | Lokasi geografis |
-| `.venue(opts)` | `InlineQueryResultVenue` | Venue dengan alamat |
-| `.contact(opts)` | `InlineQueryResultContact` | Kontak telepon |
+## Aturan dari Telegram
+
+- Maksimal **50 hasil** per jawaban. Muat lebih banyak dengan `next_offset` (lihat di bawah).
+- Setiap `id` hasil harus unik dalam satu jawaban dan maksimal 64 byte.
+- `cache_time` (detik, default 300) membuat Telegram memakai ulang jawaban untuk query
+  yang sama. Pakai `is_personal: true` jika hasil bergantung pada siapa yang bertanya.
+
+## Jenis Hasil
+
+| Metode | Tipe Telegram | Opsi wajib |
+| --- | --- | --- |
+| `.article(opts)` | `InlineQueryResultArticle` | `id`, `title`, `text` |
+| `.photo(opts)` | `InlineQueryResultPhoto` | `id`, `url` (JPEG) |
+| `.document(opts)` | `InlineQueryResultDocument` | `id`, `title`, `document_url`, `mime_type` |
+| `.video(opts)` | `InlineQueryResultVideo` | `id`, `title`, `video_url`, `mime_type`, `thumbnail_url` |
+| `.gif(opts)` | `InlineQueryResultGif` | `id`, `gif_url` |
+| `.voice(opts)` | `InlineQueryResultVoice` | `id`, `title`, `voice_url` |
+| `.location(opts)` | `InlineQueryResultLocation` | `id`, `title`, `latitude`, `longitude` |
+| `.venue(opts)` | `InlineQueryResultVenue` | `id`, `title`, `latitude`, `longitude`, `address` |
+| `.contact(opts)` | `InlineQueryResultContact` | `id`, `phone_number`, `first_name` |
+
+Setiap metode builder mengembalikan builder itu sendiri sehingga bisa dirangkai;
+`.build()` mengembalikan array untuk `ctx.answerInlineQuery()`.
 
 ## Opsi Article
 
+Article mengirim pesan teks. Ini jenis hasil yang paling umum.
+
 ```typescript
-.article({
-    id: string,           // ID hasil yang unik
-    title: string,        // Judul hasil
-    text: string,         // Teks pesan yang akan dikirim
-    description?: string, // Subjudul yang ditampilkan
-    parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2',
-    url?: string,         // URL yang ditampilkan
-    thumbnail_url?: string,
-    reply_markup?: any    // Keyboard inline
-})
+InlineResults.builder().article({
+    id: 'faq-pengiriman', // unik, maksimal 64 byte
+    title: 'Lama pengiriman', // baris pertama yang tebal di daftar hasil
+    description: '2-5 hari kerja', // baris kedua berwarna abu-abu
+    text: '<b>Pengiriman</b>: 2-5 hari kerja.', // pesan yang dikirim
+    parse_mode: 'HTML',
+    url: 'https://example.com/pengiriman', // link opsional di hasil
+    thumbnail_url: 'https://example.com/icons/truk.png',
+    reply_markup: { inline_keyboard: [[{ text: 'Lacak pesanan', url: 'https://example.com/lacak' }]] },
+});
 ```
 
 ## Opsi Photo
 
 ```typescript
-.photo({
-    id: string,
-    url: string,            // URL foto
-    thumbnail_url?: string, // Default: sama dengan url
-    title?: string,
-    caption?: string,
-    parse_mode?: string,
-    photo_width?: number,
-    photo_height?: number,
-    reply_markup?: any
-})
+InlineResults.builder().photo({
+    id: 'kucing-1',
+    url: 'https://example.com/kucing.jpg', // JPEG; juga dipakai sebagai thumbnail secara default
+    title: 'Kucing',
+    caption: 'Kucing yang manis',
+    photo_width: 800,
+    photo_height: 600,
+});
 ```
 
-## Berantai (Chaining)
+## Contoh: Pencarian Produk dengan Halaman
 
-Semua metode mengembalikan `this` untuk chaining yang lancar:
-
-```typescript
-const hasil = InlineResults.builder()
-    .article({ id: '1', title: 'Pertama', text: 'Pesan 1' })
-    .article({ id: '2', title: 'Kedua', text: 'Pesan 2' })
-    .photo({ id: '3', url: 'https://contoh.com/gambar.jpg' })
-    .gif({ id: '4', gif_url: 'https://contoh.com/animasi.gif' })
-    .build();
-
-console.log(hasil.length); // 4
-```
-
-## Contoh Praktis: Bot Pencarian
+Input user dan nilai dari database harus di-escape sebelum masuk ke HTML; produk
+bernama `Garam & Merica` akan membuat Telegram menolak pesannya.
 
 ```typescript
-bot.on('inline_query', async (ctx) => {
-    const query = ctx.update.inline_query?.query?.toLowerCase() || '';
+import { InlineResults, Markup } from 'vibegram';
 
-    // Cari di database
-    const produk = await db.produk.findAll({
-        where: { nama: { contains: query } },
-        limit: 10,
+const UKURAN_HALAMAN = 20;
+
+bot.on('inline_query', async ctx => {
+    const { query, offset } = ctx.update.inline_query;
+    const halaman = Number(offset) || 0; // Telegram mengirim balik next_offset dari Anda
+
+    const produk = await db.products.findMany({
+        where: { name: { contains: query } },
+        skip: halaman * UKURAN_HALAMAN,
+        take: UKURAN_HALAMAN,
     });
 
-    const hasil = produk.reduce(
-        (builder, p) => builder.article({
-            id: `produk_${p.id}`,
-            title: p.nama,
-            text: `<b>${p.nama}</b>\nHarga: Rp${p.harga.toLocaleString()}`,
-            description: `Rp${p.harga.toLocaleString()} • Stok: ${p.stok}`,
+    const builder = InlineResults.builder();
+    for (const p of produk) {
+        builder.article({
+            id: `product_${p.id}`,
+            title: p.name,
+            description: `Rp${p.price} · stok ${p.stock}`,
+            text: `<b>${Markup.escapeHTML(p.name)}</b>\nHarga: Rp${p.price}`,
             parse_mode: 'HTML',
-            thumbnail_url: p.gambarUrl,
-        }),
-        InlineResults.builder()
-    ).build();
+            thumbnail_url: p.imageUrl,
+        });
+    }
 
-    await ctx.answerInlineQuery(hasil, {
+    await ctx.answerInlineQuery(builder.build(), {
         cache_time: 30,
-        is_personal: true,
+        is_personal: false,
+        next_offset: produk.length === UKURAN_HALAMAN ? String(halaman + 1) : '', // '' = tidak ada halaman lagi
     });
+});
+```
+
+## Mengetahui Hasil yang Dipilih
+
+Untuk tahu hasil mana yang dikirim user (untuk analitik atau menghitung pemakaian),
+aktifkan inline feedback dengan `/setinlinefeedback` di @BotFather lalu tangani
+`chosen_inline_result`:
+
+```typescript
+bot.on('chosen_inline_result', ctx => {
+    const { result_id, query } = ctx.update.chosen_inline_result;
+    console.log(`Mengirim ${result_id} untuk "${query}"`);
 });
 ```

@@ -3,6 +3,15 @@
 VibeGram provides a declarative `Markup` builder for Telegram inline keyboards,
 reply keyboards, pagination, and safe text escaping.
 
+Telegram has two kinds of keyboards:
+
+| | Inline keyboard | Reply keyboard |
+| --- | --- | --- |
+| Where it appears | Under a message | Instead of the phone's keyboard |
+| A press sends | A callback query (invisible to the chat) | A normal text message from the user |
+| Handle it with | `bot.action(data, ...)` | `bot.hears(text, ...)` |
+| Typical use | Menus, confirmations, pagination | Fixed main menu, sharing phone or location |
+
 ## Inline Keyboards
 
 Inline keyboards appear below a message and usually trigger callback queries or
@@ -18,6 +27,36 @@ const keyboard = Markup.inlineKeyboard([
 
 await ctx.reply('Choose an option:', { reply_markup: keyboard });
 ```
+
+## Handling Button Presses
+
+A callback button sends its `callback_data` back to the bot. Match it with
+`bot.action()`, answer the press, then usually edit the original message:
+
+```ts
+bot.command('order', ctx =>
+    ctx.reply('Confirm your order?', {
+        reply_markup: Markup.inlineKeyboard([
+            [Markup.button.callback('✅ Confirm', 'order:confirm'), Markup.button.callback('❌ Cancel', 'order:cancel')],
+        ]),
+    })
+);
+
+bot.action('order:confirm', async ctx => {
+    await ctx.answerCbQuery('Order placed'); // short toast; also stops the loading spinner
+    await ctx.editMessageText('✅ Order confirmed.'); // replaces the text and removes the buttons
+});
+
+// A RegExp puts the capture groups in ctx.match.
+bot.action(/^product:(\d+)$/, async ctx => {
+    await ctx.answerCbQuery();
+    await ctx.reply(`Product #${ctx.match![1]}`);
+});
+```
+
+Always call `ctx.answerCbQuery()`, even with no text; otherwise Telegram shows a
+loading spinner on the button for several seconds. `callback_data` is limited to
+**64 bytes**, so store ids in it, not whole objects.
 
 ## Markup.grid()
 
@@ -46,6 +85,7 @@ await ctx.reply('Pick a day:', {
 | `Markup.button.switchInlineQueryCurrentChat(text, query)` | Opens inline mode in the current chat. |
 | `Markup.button.login(text, loginUrl)` | Telegram Login button. |
 | `Markup.button.copy(text, textToCopy)` | Copy-to-clipboard button. |
+| `Markup.button.disabled(text)` | A button that does nothing when pressed (Bot API 10.3). |
 
 ## Login Button Example
 
@@ -96,7 +136,8 @@ Handle `actionPrev`, `actionNext`, and item callback data with `bot.action()`.
 
 ## Reply Keyboards
 
-Reply keyboards replace the device keyboard with Telegram-native buttons.
+Reply keyboards replace the device keyboard with Telegram-native buttons. A press
+sends the button text as a normal message, so handle it with `bot.hears('News', ...)`.
 
 ```ts
 const keyboard = Markup.keyboard(

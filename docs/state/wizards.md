@@ -1,117 +1,148 @@
 # Wizards
 
-Wizards guide users through multi-step conversations (forms, registration flows, onboarding). Each step is a function that runs sequentially.
+A wizard walks a user through a fixed sequence of questions: sign-up forms, order
+forms, onboarding. You give it an array of **steps**; the wizard remembers which step
+each user is on (in their [session](/state/session)) and sends their next message to
+that step.
+
+## How Steps Work
+
+Every step is a function that runs on **one incoming update**. The usual pattern:
+
+1. Step 0 runs right away when the wizard starts. It asks the first question and calls
+   `ctx.wizard.next()`.
+2. The user's answer arrives and runs step 1. It saves the answer, asks the next
+   question, and calls `next()` again.
+3. The last step saves the final answer and calls `ctx.wizard.leave()`.
+
+If a step does **not** call `next()`, the user stays on it, which is how you ask again
+after an invalid answer.
 
 ## Quick Start
 
 ```typescript
 import { Bot, session, Wizard } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
-bot.use(session());
+const bot = new Bot(process.env.BOT_TOKEN!);
+bot.use(session()); // the wizard stores its position in the session
 
-const registrationWizard = new Wizard('register', [
-    async (ctx) => {
-        await ctx.reply('Step 1: What is your name?');
-        ctx.wizard?.next();
+const signup = new Wizard('signup', [
+    async ctx => {
+        await ctx.reply('What is your name?');
+        ctx.wizard!.next();
     },
-    async (ctx) => {
-        ctx.wizard!.state.name = ctx.message?.text;
-        await ctx.reply(`Step 2: Hello ${ctx.wizard!.state.name}! What is your email?`);
-        ctx.wizard?.next();
+    async ctx => {
+        const name = ctx.message?.text;
+        if (!name) return ctx.reply('Please send your name as text.'); // stays on this step
+        ctx.wizard!.state.name = name;
+        await ctx.reply(`Nice to meet you, ${name}! What is your email?`);
+        ctx.wizard!.next();
     },
-    async (ctx) => {
-        ctx.wizard!.state.email = ctx.message?.text;
-        await ctx.reply(`Done!\nName: ${ctx.wizard!.state.name}\nEmail: ${ctx.wizard!.state.email}`);
-        ctx.wizard?.leave();
-    }
+    async ctx => {
+        const email = ctx.message?.text ?? '';
+        if (!email.includes('@')) return ctx.reply('That does not look like an email. Try again:');
+        await ctx.reply(`Done!\nName: ${ctx.wizard!.state.name}\nEmail: ${email}`);
+        ctx.wizard!.leave();
+    },
 ]);
 
-bot.use(registrationWizard.middleware());
-
-bot.command('register', ctx => registrationWizard.enter(ctx));
+bot.use(signup.middleware()); // after session(), before your other handlers
+bot.command('signup', ctx => signup.enter(ctx));
 ```
 
-## Wizard API
+## API
 
-| Method | Description |
-|--------|-------------|
-| `wizard.enter(ctx)` | Start the wizard from step 0 |
-| `ctx.wizard?.next()` | Advance to the next step |
-| `ctx.wizard?.back()` | Go back to the previous step |
-| `ctx.wizard?.leave()` | Exit the wizard |
-| `ctx.wizard?.state` | Shared state object across all steps |
-| `ctx.wizard?.cursor` | Current step index (0-based) |
+| Member | Description |
+| --- | --- |
+| `wizard.enter(ctx)` | Start (or restart) the wizard and run step 0 immediately |
+| `ctx.wizard.next()` | Send the user's next update to the next step |
+| `ctx.wizard.back()` | Send the next update to the previous step |
+| `ctx.wizard.goto(index)` | Send the next update to any step (0-based) |
+| `ctx.wizard.leave()` | Exit the wizard and clear its state |
+| `ctx.wizard.state` | Object shared by all steps; put the collected answers here |
+| `ctx.wizard.cursor` | Index of the step that is running |
 
-## Wizard State
+`next()`, `back()`, and `goto()` only choose which step handles the **next** update.
+They do not run that step now, so ask the matching question yourself.
 
-The `ctx.wizard.state` object persists across all steps within a single wizard session:
+## While a User Is in a Wizard
 
-```typescript
-const orderWizard = new Wizard('order', [
-    async (ctx) => {
-        await ctx.reply('What product would you like to order?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        ctx.wizard!.state.product = ctx.message?.text;
-        await ctx.reply('How many units?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        ctx.wizard!.state.quantity = parseInt(ctx.message?.text || '1');
-        await ctx.reply('What is your delivery address?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        const { product, quantity } = ctx.wizard!.state;
-        const address = ctx.message?.text;
-        await ctx.reply(`Order confirmed!\nProduct: ${product}\nQuantity: ${quantity}\nAddress: ${address}`);
-        ctx.wizard?.leave();
-    }
-]);
-```
+The wizard middleware takes **every** update from that user: texts, photos, commands,
+and button presses all go to the current step, and your other handlers do not run.
+Two consequences:
 
-## Input Validation
+- **Check the input type.** A user may send a sticker where you expect text, so
+  `ctx.message?.text` can be `undefined` (see the Quick Start).
+- **Offer a way out.** `/cancel` also reaches the current step. Wrap steps so every one
+  understands it:
 
 ```typescript
-const validated = new Wizard('validated', [
-    async (ctx) => {
-        await ctx.reply('Enter your age (number only):');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        const age = parseInt(ctx.message?.text || '');
-        if (isNaN(age) || age < 1 || age > 150) {
-            return ctx.reply('Invalid age. Please enter a valid number:');
-            // Don't call next() — stay on same step
+import type { WizardStep } from 'vibegram';
+
+const cancellable =
+    (step: WizardStep): WizardStep =>
+    async ctx => {
+        if (ctx.message?.text === '/cancel') {
+            ctx.wizard!.leave();
+            await ctx.reply('Cancelled.');
+            return;
         }
-        ctx.wizard!.state.age = age;
-        await ctx.reply(`Age ${age} recorded. Done!`);
-        ctx.wizard?.leave();
-    }
-]);
+        await step(ctx);
+    };
+
+const order = new Wizard('order', [askProduct, saveProduct, saveQuantity].map(cancellable));
 ```
 
-## Navigation Buttons
+If the steps run out without `leave()`, the wizard ends itself and the next update
+goes to your normal handlers.
+
+## Buttons Inside a Wizard
+
+Because button presses also go to the current step, handle them **in the step**, not
+with `bot.action()` (a `bot.action()` handler never sees them while the user is in the
+wizard):
 
 ```typescript
 import { Markup } from 'vibegram';
 
-await ctx.reply('Review your answer:', {
-    reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('Back', 'wizard_back')],
-        [Markup.button.callback('Confirm', 'wizard_confirm')],
-    ]),
-});
+const confirmOrder = new Wizard('confirm', [
+    async ctx => {
+        await ctx.reply('How many units?');
+        ctx.wizard!.next();
+    },
+    async ctx => {
+        const quantity = Number(ctx.message?.text);
+        if (!Number.isInteger(quantity) || quantity < 1) return ctx.reply('Send a whole number:');
+        ctx.wizard!.state.quantity = quantity;
+        await ctx.reply(`Order ${quantity} units?`, {
+            reply_markup: Markup.inlineKeyboard([
+                [Markup.button.callback('✅ Confirm', 'confirm'), Markup.button.callback('↩️ Change', 'change')],
+            ]),
+        });
+        ctx.wizard!.next();
+    },
+    async ctx => {
+        const choice = ctx.update.callback_query?.data;
+        if (!choice) return ctx.reply('Please use the buttons above.');
+        await ctx.answerCbQuery();
 
-bot.action('wizard_back', ctx => ctx.wizard?.back());
-bot.action('wizard_confirm', ctx => ctx.wizard?.next());
+        if (choice === 'change') {
+            ctx.wizard!.back(); // the next message goes to the quantity step again
+            return ctx.reply('How many units?');
+        }
+        await ctx.editMessageText(`✅ Ordered ${ctx.wizard!.state.quantity} units.`);
+        ctx.wizard!.leave();
+    },
+]);
 ```
 
-Use callback buttons when users should explicitly confirm, go back, or leave a
-wizard step.
+## Wizard, Scene, or Conversation?
 
-::: tip
-If you don't call `ctx.wizard?.next()`, the user stays on the current step — perfect for input validation loops.
-:::
+| Use | When |
+| --- | --- |
+| **Wizard** | A fixed list of questions asked in order |
+| [Scene](/state/scenes) | A mode with its own commands, entered and left by the user |
+| [Conversation](/state/conversations) | Free-form flows written as one async function (`await conv.waitForText()`) |
+
+Wizard progress lives in the session, so it survives restarts when the session uses a
+persistent store such as Redis.

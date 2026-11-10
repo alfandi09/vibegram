@@ -1,6 +1,22 @@
 # Wizard
 
-Wizard membimbing pengguna melalui percakapan multi-langkah (form, registrasi, onboarding). Setiap langkah adalah fungsi yang dijalankan secara berurutan.
+Wizard memandu user melewati urutan pertanyaan yang tetap: formulir pendaftaran,
+formulir pesanan, onboarding. Anda memberinya array **step**; wizard mengingat setiap
+user sedang di step mana (di [session](/id/state/session)-nya) dan mengirim pesan
+berikutnya dari user ke step tersebut.
+
+## Cara Kerja Step
+
+Setiap step adalah fungsi yang berjalan untuk **satu update yang masuk**. Pola umumnya:
+
+1. Step 0 langsung berjalan saat wizard dimulai. Step ini mengajukan pertanyaan
+   pertama lalu memanggil `ctx.wizard.next()`.
+2. Jawaban user datang dan menjalankan step 1. Step ini menyimpan jawaban, mengajukan
+   pertanyaan berikutnya, lalu memanggil `next()` lagi.
+3. Step terakhir menyimpan jawaban terakhir dan memanggil `ctx.wizard.leave()`.
+
+Jika step **tidak** memanggil `next()`, user tetap di step itu. Begitulah cara bertanya
+ulang setelah jawaban yang tidak valid.
 
 ## Memulai Cepat
 
@@ -8,129 +24,125 @@ Wizard membimbing pengguna melalui percakapan multi-langkah (form, registrasi, o
 import { Bot, session, Wizard } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
-bot.use(session());
+bot.use(session()); // wizard menyimpan posisinya di session
 
-const wizardRegistrasi = new Wizard('daftar', [
-    async (ctx) => {
-        await ctx.reply('Langkah 1/3: Siapa nama Anda?');
-        ctx.wizard?.next();
+const daftar = new Wizard('daftar', [
+    async ctx => {
+        await ctx.reply('Siapa nama Anda?');
+        ctx.wizard!.next();
     },
-    async (ctx) => {
-        ctx.wizard!.state.nama = ctx.message?.text;
-        await ctx.reply(`Halo ${ctx.wizard!.state.nama}! Langkah 2/3: Email Anda?`);
-        ctx.wizard?.next();
+    async ctx => {
+        const nama = ctx.message?.text;
+        if (!nama) return ctx.reply('Kirim nama Anda dalam bentuk teks.'); // tetap di step ini
+        ctx.wizard!.state.nama = nama;
+        await ctx.reply(`Senang bertemu, ${nama}! Apa email Anda?`);
+        ctx.wizard!.next();
     },
-    async (ctx) => {
-        ctx.wizard!.state.email = ctx.message?.text;
-        const { nama, email } = ctx.wizard!.state;
-        await ctx.reply(`✅ Pendaftaran selesai!\nNama: ${nama}\nEmail: ${email}`);
-        ctx.wizard?.leave();
-    }
+    async ctx => {
+        const email = ctx.message?.text ?? '';
+        if (!email.includes('@')) return ctx.reply('Sepertinya itu bukan email. Coba lagi:');
+        await ctx.reply(`Selesai!\nNama: ${ctx.wizard!.state.nama}\nEmail: ${email}`);
+        ctx.wizard!.leave();
+    },
 ]);
 
-bot.use(wizardRegistrasi.middleware());
-bot.command('daftar', ctx => wizardRegistrasi.enter(ctx));
+bot.use(daftar.middleware()); // setelah session(), sebelum handler lain
+bot.command('daftar', ctx => daftar.enter(ctx));
 ```
 
-## API Wizard
+## API
 
-| Metode | Deskripsi |
-|--------|-----------|
-| `wizard.enter(ctx)` | Mulai wizard dari langkah 0 |
-| `ctx.wizard?.next()` | Maju ke langkah berikutnya |
-| `ctx.wizard?.back()` | Mundur ke langkah sebelumnya |
-| `ctx.wizard?.leave()` | Keluar dari wizard |
-| `ctx.wizard?.state` | Objek state bersama antar semua langkah |
-| `ctx.wizard?.cursor` | Indeks langkah saat ini (0-based) |
+| Member | Deskripsi |
+| --- | --- |
+| `wizard.enter(ctx)` | Mulai (atau ulang) wizard dan langsung jalankan step 0 |
+| `ctx.wizard.next()` | Kirim update berikutnya dari user ke step berikutnya |
+| `ctx.wizard.back()` | Kirim update berikutnya ke step sebelumnya |
+| `ctx.wizard.goto(index)` | Kirim update berikutnya ke step mana pun (mulai dari 0) |
+| `ctx.wizard.leave()` | Keluar dari wizard dan hapus state-nya |
+| `ctx.wizard.state` | Objek yang dipakai bersama semua step; simpan jawaban di sini |
+| `ctx.wizard.cursor` | Indeks step yang sedang berjalan |
 
-## State Wizard
+`next()`, `back()`, dan `goto()` hanya memilih step yang menangani update **berikutnya**.
+Ketiganya tidak menjalankan step itu sekarang, jadi ajukan pertanyaannya sendiri.
 
-Objek `ctx.wizard.state` persisten di semua langkah dalam satu sesi wizard:
+## Saat User Berada di Wizard
 
-```typescript
-const wizardPesanan = new Wizard('pesan', [
-    async (ctx) => {
-        await ctx.reply('📦 Produk apa yang ingin Anda pesan?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        ctx.wizard!.state.produk = ctx.message?.text;
-        await ctx.reply('🔢 Berapa jumlahnya?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        ctx.wizard!.state.jumlah = parseInt(ctx.message?.text || '1');
-        await ctx.reply('📍 Alamat pengiriman?');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        const { produk, jumlah } = ctx.wizard!.state;
-        const alamat = ctx.message?.text;
-        await ctx.reply(
-            `✅ Pesanan dikonfirmasi!\n` +
-            `Produk: ${produk}\nJumlah: ${jumlah}\nAlamat: ${alamat}`
-        );
-        ctx.wizard?.leave();
-    }
-]);
-```
+Middleware wizard mengambil **semua** update dari user itu: teks, foto, command, dan
+penekanan tombol masuk ke step saat ini, dan handler Anda yang lain tidak berjalan.
+Dua akibatnya:
 
-## Validasi Input
-
-Jangan panggil `next()` untuk tetap di langkah yang sama — sempurna untuk validasi:
+- **Cek jenis input.** User bisa mengirim stiker saat Anda menunggu teks, jadi
+  `ctx.message?.text` bisa `undefined` (lihat Memulai Cepat).
+- **Sediakan jalan keluar.** `/batal` juga sampai ke step saat ini. Bungkus step agar
+  semuanya memahaminya:
 
 ```typescript
-const wizardUsia = new Wizard('usia', [
-    async (ctx) => {
-        await ctx.reply('Masukkan usia Anda (hanya angka):');
-        ctx.wizard?.next();
-    },
-    async (ctx) => {
-        const usia = parseInt(ctx.message?.text || '');
+import type { WizardStep } from 'vibegram';
 
-        if (isNaN(usia) || usia < 1 || usia > 150) {
-            // Tidak memanggil next() — pengguna tetap di langkah ini
-            return ctx.reply('❌ Usia tidak valid. Masukkan angka antara 1-150:');
+const bisaBatal =
+    (step: WizardStep): WizardStep =>
+    async ctx => {
+        if (ctx.message?.text === '/batal') {
+            ctx.wizard!.leave();
+            await ctx.reply('Dibatalkan.');
+            return;
         }
+        await step(ctx);
+    };
 
-        ctx.wizard!.state.usia = usia;
-        await ctx.reply(`✅ Usia ${usia} tahun tercatat.`);
-        ctx.wizard?.leave();
-    }
-]);
+const pesanan = new Wizard('pesanan', [tanyaProduk, simpanProduk, simpanJumlah].map(bisaBatal));
 ```
 
-## Tombol Navigasi
+Jika step habis tanpa `leave()`, wizard berakhir sendiri dan update berikutnya masuk
+ke handler biasa Anda.
 
-Izinkan pengguna kembali ke langkah sebelumnya:
+## Tombol di Dalam Wizard
+
+Karena penekanan tombol juga masuk ke step saat ini, tangani **di dalam step**, bukan
+dengan `bot.action()` (handler `bot.action()` tidak pernah menerimanya selama user di
+dalam wizard):
 
 ```typescript
-const wizard = new Wizard('form', [
-    async (ctx) => {
-        await ctx.reply('Nama Anda?', {
-            reply_markup: Markup.keyboard([
-                [Markup.replyButton.text('❌ Batal')]
-            ])
+import { Markup } from 'vibegram';
+
+const konfirmasi = new Wizard('konfirmasi', [
+    async ctx => {
+        await ctx.reply('Berapa unit?');
+        ctx.wizard!.next();
+    },
+    async ctx => {
+        const jumlah = Number(ctx.message?.text);
+        if (!Number.isInteger(jumlah) || jumlah < 1) return ctx.reply('Kirim bilangan bulat:');
+        ctx.wizard!.state.jumlah = jumlah;
+        await ctx.reply(`Pesan ${jumlah} unit?`, {
+            reply_markup: Markup.inlineKeyboard([
+                [Markup.button.callback('✅ Konfirmasi', 'confirm'), Markup.button.callback('↩️ Ubah', 'change')],
+            ]),
         });
-        ctx.wizard?.next();
+        ctx.wizard!.next();
     },
-    async (ctx) => {
-        if (ctx.message?.text === '❌ Batal') {
-            await ctx.reply('Form dibatalkan.', { reply_markup: Markup.removeKeyboard() });
-            return ctx.wizard?.leave();
+    async ctx => {
+        const pilihan = ctx.update.callback_query?.data;
+        if (!pilihan) return ctx.reply('Silakan pakai tombol di atas.');
+        await ctx.answerCbQuery();
+
+        if (pilihan === 'change') {
+            ctx.wizard!.back(); // pesan berikutnya kembali ke step jumlah
+            return ctx.reply('Berapa unit?');
         }
-        ctx.wizard!.state.nama = ctx.message?.text;
-        await ctx.reply(`Nama: ${ctx.wizard!.state.nama}\nEmail?`);
-        ctx.wizard?.next();
+        await ctx.editMessageText(`✅ Memesan ${ctx.wizard!.state.jumlah} unit.`);
+        ctx.wizard!.leave();
     },
-    async (ctx) => {
-        ctx.wizard!.state.email = ctx.message?.text;
-        await ctx.reply('✅ Selesai!', { reply_markup: Markup.removeKeyboard() });
-        ctx.wizard?.leave();
-    }
 ]);
 ```
 
-::: tip Validasi Step
-Jika tidak memanggil `ctx.wizard?.next()`, pengguna tetap di langkah saat ini — ideal untuk loop validasi input.
-:::
+## Wizard, Scene, atau Conversation?
+
+| Pakai | Kapan |
+| --- | --- |
+| **Wizard** | Daftar pertanyaan tetap yang diajukan berurutan |
+| [Scene](/id/state/scenes) | Mode dengan command sendiri, dimasuki dan ditinggalkan oleh user |
+| [Conversation](/id/state/conversations) | Alur bebas yang ditulis sebagai satu fungsi async (`await conv.waitForText()`) |
+
+Progres wizard tersimpan di session, jadi tetap bertahan setelah restart jika session
+memakai store persisten seperti Redis.

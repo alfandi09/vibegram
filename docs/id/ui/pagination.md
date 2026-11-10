@@ -1,137 +1,132 @@
 # Paginasi
 
-`Markup.pagination()` mengubah array item inline keyboard menjadi keyboard
-inline berpaginasi dengan navigasi previous/next.
+Keyboard Telegram jadi sulit dipakai jika tombolnya lebih dari belasan.
+`Markup.pagination()` menampilkan daftar panjang per halaman: fungsi ini menerima
+semua item dan nomor halaman saat ini, lalu mengembalikan inline keyboard berisi tombol
+halaman itu dan baris navigasi (`⬅️ Prev`, indikator halaman, `Next ➡️`).
+
+Fungsi ini hanya **menggambar** keyboard. Bot Anda yang mencatat halaman dan
+menggambar ulang keyboard saat tombol navigasi ditekan.
 
 ## Memulai Cepat
 
 ```ts
-import { Markup, type PaginationItem } from 'vibegram';
+import { Bot, Markup, type PaginationItem } from 'vibegram';
 
-const products: PaginationItem[] = Array.from({ length: 50 }).map((_, i) => ({
+const bot = new Bot(process.env.BOT_TOKEN!);
+
+const produk: PaginationItem[] = Array.from({ length: 50 }, (_, i) => ({
     text: `Produk #${i + 1}`,
-    callback_data: `buy_${i + 1}`,
+    callback_data: `buy:${i + 1}`,
 }));
 
-const keyboard = Markup.pagination(products, {
-    currentPage: 1,
-    itemsPerPage: 5,
-    actionNext: 'page_next',
-    actionPrev: 'page_prev',
-    pageIndicatorPattern: 'Hal {current} dari {total}',
+const halamanProduk = (halaman: number) =>
+    Markup.pagination(produk, {
+        currentPage: halaman,
+        itemsPerPage: 5,
+        actionPrev: `products:${halaman - 1}`, // halaman tujuan disimpan di tombolnya
+        actionNext: `products:${halaman + 1}`,
+        pageIndicatorPattern: 'Halaman {current} dari {total}',
+    });
+
+bot.command('katalog', ctx => ctx.reply('Lihat produk:', { reply_markup: halamanProduk(1) }));
+
+bot.action(/^products:(\d+)$/, async ctx => {
+    await ctx.answerCbQuery();
+    await ctx.editMessageReplyMarkup(halamanProduk(Number(ctx.match![1])));
 });
 
-await ctx.reply('Jelajahi produk:', { reply_markup: keyboard });
+bot.action('ignore_nav', ctx => ctx.answerCbQuery()); // tombol indikator halaman
+
+bot.action(/^buy:(\d+)$/, ctx => ctx.answerCbQuery(`Produk #${ctx.match![1]} ditambahkan`));
 ```
+
+Menyimpan halaman tujuan di callback data tombol navigasi membuat setiap pesan
+berdiri sendiri: dua katalog yang terbuka bersamaan, atau tombol di pesan lama, tetap
+menampilkan halaman yang benar, dan tidak ada yang perlu disimpan.
 
 ## Opsi
 
-| Opsi | Tipe | Default | Deskripsi |
+| Opsi | Tipe | Wajib | Deskripsi |
 | --- | --- | --- | --- |
-| `currentPage` | `number` | `1` | Nomor halaman saat ini. |
-| `itemsPerPage` | `number` | `1` di guard implementasi | Item per halaman. |
-| `columns` | `number` | `1` | Item per baris. |
-| `actionNext` | `string` | Wajib | Callback data tombol next. |
-| `actionPrev` | `string` | Wajib | Callback data tombol previous. |
-| `pageIndicatorPattern` | `string` | `'{current}/{total}'` | Pola label indikator halaman. |
+| `currentPage` | `number` | Ya | Halaman yang ditampilkan, mulai dari 1 (nilai di bawah 1 menjadi 1). |
+| `itemsPerPage` | `number` | Ya | Jumlah tombol per halaman (nilai di bawah 1 menjadi 1). |
+| `actionPrev` | `string` | Ya | Callback data tombol `⬅️ Prev` (disembunyikan di halaman 1). |
+| `actionNext` | `string` | Ya | Callback data tombol `Next ➡️` (disembunyikan di halaman terakhir). |
+| `columns` | `number` | Tidak | Jumlah tombol item per baris. Default `1`. |
+| `pageIndicatorPattern` | `string` | Tidak | Label indikator; `{current}` dan `{total}` diganti. Default `'{current}/{total}'`. |
 
-`currentPage` dan `itemsPerPage` dijaga minimal `1`.
+## Tombol Indikator Halaman
 
-## Menangani Navigasi
+Tombol tengah menampilkan nomor halaman. Callback data-nya selalu `ignore_nav`. Jawab
+sekali saja seperti di Memulai Cepat; kalau tidak, menekannya menampilkan ikon loading
+di tombol selama beberapa detik.
+
+## Menyimpan Halaman di Session
+
+Menyimpan halaman di [session](/id/state/session) juga bisa jika callback data harus
+tetap. Batasi nilainya: tombol di pesan lama masih bisa ditekan.
 
 ```ts
+import { session } from 'vibegram';
+
 bot.use(session({ initial: () => ({ page: 1 }) }));
 
-bot.action(/page_(next|prev)/, async ctx => {
-    const direction = ctx.match?.[1] === 'next' ? 1 : -1;
-    ctx.session.page = Math.max(1, ctx.session.page + direction);
+const PER_HALAMAN = 5;
+const totalHalaman = Math.ceil(produk.length / PER_HALAMAN);
 
-    const keyboard = Markup.pagination(products, {
-        currentPage: ctx.session.page,
-        itemsPerPage: 5,
-        actionNext: 'page_next',
-        actionPrev: 'page_prev',
-        pageIndicatorPattern: 'Hal {current} dari {total}',
-    });
+bot.action(/^page_(next|prev)$/, async ctx => {
+    const langkah = ctx.match![1] === 'next' ? 1 : -1;
+    ctx.session.page = Math.min(totalHalaman, Math.max(1, ctx.session.page + langkah));
 
     await ctx.answerCbQuery();
-    await ctx.editMessageReplyMarkup(keyboard);
+    await ctx.editMessageReplyMarkup(
+        Markup.pagination(produk, {
+            currentPage: ctx.session.page,
+            itemsPerPage: PER_HALAMAN,
+            actionNext: 'page_next',
+            actionPrev: 'page_prev',
+        })
+    );
 });
 ```
 
-Simpan halaman saat ini di session, database, atau callback data sesuai berapa
-lama state navigasi perlu bertahan.
+Session menyimpan satu halaman per user, jadi dua daftar yang terbuka di chat yang sama
+akan berbagi nilai yang sama.
 
 ## Tata Letak Grid
 
-Gunakan `columns` untuk halaman multi-kolom.
+Atur `columns` untuk menampilkan beberapa tombol item per baris:
 
 ```ts
-const keyboard = Markup.pagination(products, {
+const keyboard = Markup.pagination(produk, {
     currentPage: 1,
     itemsPerPage: 6,
     columns: 3,
-    actionNext: 'page_next',
-    actionPrev: 'page_prev',
+    actionPrev: 'products:0',
+    actionNext: 'products:2',
 });
 ```
 
-Ini merender maksimal tiga tombol item per baris, lalu menambahkan baris
-navigasi.
+Hasilnya dua baris berisi tiga item, lalu baris navigasi.
 
 ## Markup.grid() untuk Grid Sederhana
 
-Jika tidak perlu pagination, gunakan `Markup.grid()`.
+Jika daftar muat di satu layar, `Markup.grid()` menyusun tombol ke dalam baris tanpa
+navigasi:
 
 ```ts
-const categories = ['Elektronik', 'Pakaian', 'Makanan', 'Olahraga'];
+const kategori = ['Elektronik', 'Pakaian', 'Makanan', 'Olahraga'];
 
 await ctx.reply('Pilih kategori:', {
     reply_markup: Markup.grid(
-        categories.map(category => {
-            return Markup.button.callback(category, `cat_${category.toLowerCase()}`);
-        }),
+        kategori.map(k => Markup.button.callback(k, `cat:${k.toLowerCase()}`)),
         2
     ),
 });
 ```
 
-`Markup.grid()` hanya menyusun tombol. Method ini tidak menambahkan kontrol
-navigasi.
+## Batasan
 
-## Contoh Lengkap Katalog Produk
-
-```ts
-bot.use(session({ initial: () => ({ page: 1 }) }));
-
-function productKeyboard(page: number) {
-    return Markup.pagination(allProducts, {
-        currentPage: page,
-        itemsPerPage: 8,
-        columns: 2,
-        actionNext: 'products_next',
-        actionPrev: 'products_prev',
-        pageIndicatorPattern: '{current}/{total}',
-    });
-}
-
-bot.command('catalog', ctx => {
-    ctx.session.page = 1;
-    return ctx.reply('Katalog produk:', {
-        reply_markup: productKeyboard(ctx.session.page),
-    });
-});
-
-bot.action(/products_(next|prev)/, async ctx => {
-    const direction = ctx.match?.[1] === 'next' ? 1 : -1;
-    ctx.session.page = Math.max(1, ctx.session.page + direction);
-
-    await ctx.answerCbQuery();
-    await ctx.editMessageReplyMarkup(productKeyboard(ctx.session.page));
-});
-
-bot.action(/^buy_(\d+)$/, async ctx => {
-    const id = ctx.match?.[1];
-    await ctx.answerCbQuery(`Produk #${id} ditambahkan`);
-});
-```
+Setiap `callback_data` maksimal 64 byte, dan Telegram menerima hingga 100 tombol per
+keyboard. Buat halaman tetap kecil (5-10 item) agar muat di layar ponsel.
