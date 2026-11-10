@@ -232,3 +232,86 @@ describe('filters', () => {
         expect(await isAdmin()(failedCtx)).toBe(false);
     });
 });
+
+describe('nested filter combinators (regression: or() inside and() threw "next is not a function")', () => {
+    it('nests and/or/not as predicates and still works as middleware', async () => {
+        const { Bot } = await import('../src/bot');
+        const { createTestBot } = await import('../src/testing');
+        const { and, or, not, isBot, hasPhoto, hasVideo, guard } = await import('../src/filters');
+
+        const bot = new Bot('token');
+        const hits: string[] = [];
+        const record = (name: string) => (_ctx: unknown, next: () => Promise<void>) => {
+            hits.push(name);
+            return next();
+        };
+        bot.on('message', and(not(isBot), or(hasPhoto, hasVideo)), record('media'));
+        bot.on('message', guard(or(hasPhoto, hasVideo)), record('guard'));
+        bot.filter(and(not(isBot), hasVideo), record('filter-video'));
+        bot.filter(and(not(isBot), or(hasPhoto, hasVideo)), record('filter-media'));
+        const t = createTestBot(bot);
+
+        await t.sendMessage({
+            photo: [{ file_id: 'p', file_unique_id: 'u', width: 1, height: 1 }],
+        });
+        await t.sendText('plain text');
+
+        // Photo: every media filter passes except the video-only one; plain text matches none.
+        expect(hits).toEqual(['media', 'guard', 'filter-media']);
+    });
+
+    it('resolves to booleans when called as a predicate', async () => {
+        const { Context } = await import('../src/context');
+        const { createMockClient } = await import('./helpers/mock');
+        const { and, or, hasText, hasPhoto } = await import('../src/filters');
+        const ctx = new Context(
+            {
+                update_id: 1,
+                message: { message_id: 1, date: 1, chat: { id: 1, type: 'private' }, text: 'hi' },
+            },
+            createMockClient()
+        );
+        await expect(or(hasPhoto, hasText)(ctx)).resolves.toBe(true);
+        await expect(and(hasPhoto, hasText)(ctx)).resolves.toBe(false);
+    });
+});
+
+describe('built-in predicates used inline (regression: handler never ran)', () => {
+    it('run the handler when the predicate passes and stop otherwise', async () => {
+        const { Bot } = await import('../src/bot');
+        const { createTestBot } = await import('../src/testing');
+        const { isPrivate, isGroup, isAdmin, isUser, toFilter } = await import('../src/filters');
+
+        const bot = new Bot('token');
+        const hits: string[] = [];
+        bot.command('a', isPrivate, () => void hits.push('private'));
+        bot.command('b', isAdmin(), () => void hits.push('admin'));
+        bot.command('c', isUser(1001), () => void hits.push('user'));
+        bot.command('d', isGroup, () => void hits.push('group'));
+        bot.command(
+            'e',
+            toFilter(() => true),
+            () => void hits.push('custom')
+        );
+        const t = createTestBot(bot);
+
+        for (const name of ['a', 'b', 'c', 'd', 'e']) await t.sendCommand(name);
+
+        expect(hits).toEqual(['private', 'admin', 'user', 'custom']);
+    });
+
+    it('keeps synchronous predicates synchronous when called directly', async () => {
+        const { Context } = await import('../src/context');
+        const { createMockClient } = await import('./helpers/mock');
+        const { isPrivate, hasText } = await import('../src/filters');
+        const ctx = new Context(
+            {
+                update_id: 1,
+                message: { message_id: 1, date: 1, chat: { id: 1, type: 'private' }, text: 'hi' },
+            },
+            createMockClient()
+        );
+        expect(isPrivate(ctx)).toBe(true);
+        expect(hasText(ctx)).toBe(true);
+    });
+});
