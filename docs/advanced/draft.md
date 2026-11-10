@@ -1,59 +1,82 @@
 # Draft Messages (Bot API 9.5)
 
-<ApiMethodCard title="Draft messages" endpoint="sendMessageDraft" since="Bot API 9.5" returns="Message draft result" method="API">
-  Draft messages pre-fill the user's input field and are useful for guided replies,
-  AI-assisted text, and completion flows.
+<ApiMethodCard title="Draft messages" endpoint="sendMessageDraft" since="Bot API 9.5" returns="true" method="API">
+  Show a message while it is still being written, then replace it with the final one.
 </ApiMethodCard>
 
-Draft messages pre-fill the user's input field with text. This is useful for AI text streaming, auto-complete suggestions, and guided input.
+A draft is a **temporary preview** of a message that is still being written. Each time
+you send new text with the same `draft_id`, Telegram updates the preview in place, so the
+user sees the answer "typing" itself out. It is made for streaming long answers, such as
+AI replies, in **private chats**.
 
-## Usage
+A draft is not a real message: it disappears after about 30 seconds without an update
+and is never stored in the chat history. When the text is complete, send it with
+`ctx.reply()`.
 
-```typescript
-bot.command('draft', async ctx => {
-    await ctx.replyWithDraft('Pre-filled text appears in the input box...');
-});
-```
-
-## Use Cases
-
-### Guided Input Templates
-
-```typescript
-bot.command('support', async ctx => {
-    await ctx.replyWithDraft('/ticket title priority description');
-});
-```
-
-Use draft templates when users should edit a structured command before sending
-it.
-
-### AI Text Streaming
-
-```typescript
-bot.command('ai', async ctx => {
-    const prompt = ctx.command?.args?.join(' ') || '';
-    // Stream AI response as draft (user sees it typing)
-    for (const chunk of aiStream(prompt)) {
-        await ctx.replyWithDraft(chunk);
-    }
-});
-```
-
-### Auto-Complete
-
-```typescript
-bot.command('template', async ctx => {
-    await ctx.replyWithDraft('/order product_name quantity address');
-});
-```
-
-## API Details
-
-| Method                             | API                | Description              |
-| ---------------------------------- | ------------------ | ------------------------ |
-| `ctx.replyWithDraft(text, extra?)` | `sendMessageDraft` | Pre-fill the input field |
-
-::: info
-Draft messages use `crypto.randomBytes(8)` to generate secure 64-bit random IDs, preventing collisions even at high concurrency.
+::: tip Streaming AI answers
+For AI output, [ReplyStreamer](/advanced/streaming) does all of this for you: it
+throttles updates, uses drafts in private chats, falls back to message edits in groups,
+and sends the final message.
 :::
+
+## Quick Start
+
+```typescript
+bot.command('count', async ctx => {
+    const draft_id = Date.now() % 2 ** 31; // any non-zero number, reused for every update
+
+    for (const step of ['One', 'One, two', 'One, two, three']) {
+        await ctx.replyWithDraft(step, { draft_id });
+        await new Promise(resolve => setTimeout(resolve, 700));
+    }
+
+    await ctx.reply('One, two, three!'); // the real, permanent message
+});
+```
+
+Three rules make it work:
+
+1. **Reuse one `draft_id`** for the whole answer. A new id starts a new preview.
+2. **Send the full text so far** every time, not just the newest piece.
+3. **Finish with `ctx.reply()`**. Without it the user is left with nothing once the
+   preview expires.
+
+## Streaming a Generated Answer
+
+```typescript
+bot.command('ask', async ctx => {
+    const question = ctx.command?.args?.join(' ') || 'Tell me a joke';
+    const draft_id = Date.now() % 2 ** 31;
+    let answer = '';
+    let lastUpdate = 0;
+
+    for await (const chunk of generateAnswer(question)) {
+        answer += chunk;
+        // Update at most twice a second to stay well inside rate limits.
+        if (Date.now() - lastUpdate > 500) {
+            await ctx.replyWithDraft(answer, { draft_id });
+            lastUpdate = Date.now();
+        }
+    }
+
+    await ctx.reply(answer);
+});
+```
+
+`generateAnswer` stands for any async iterator of text, for example an AI SDK's stream.
+
+## Options
+
+| Option         | Description                                                           |
+| -------------- | --------------------------------------------------------------------- |
+| `draft_id`     | Identifies the preview. Generated randomly when omitted (one-off draft) |
+| `can_stop`     | Shows a stop button so the user can cancel the answer                  |
+| `keep_on_stop` | Keeps the partial text as a message when the user presses stop        |
+| `parse_mode`, `entities` | Formatting, as for `ctx.reply()`                            |
+
+## Limitations
+
+- Private chats only. In groups, send a message and edit it instead (ReplyStreamer
+  does this automatically).
+- The preview is temporary (about 30 seconds after the last update) and is not saved.
+- `ctx.replyWithDraft()` needs a chat, so it does not work in inline-query handlers.

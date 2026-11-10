@@ -89,8 +89,8 @@ interface BroadcastResult {
 ### Job Berulang
 
 ```typescript
-// Jalankan setiap 60 detik
-queue.scheduleInterval('tip_harian', 60_000, async () => {
+// Berjalan setiap 24 jam (interval dalam milidetik)
+queue.scheduleInterval('tip_harian', 24 * 60 * 60 * 1000, async () => {
     await bot.callApi('sendMessage', {
         chat_id: '@channel_saya',
         text: '💡 Tips hari ini: Minum air yang cukup!',
@@ -129,6 +129,43 @@ queue.cancelAllScheduled(); // Batalkan semua job
 | `queue.cancelAllScheduled()`                | Batalkan semua job                      |
 | `queue.stopBroadcast()`                     | Hentikan broadcast yang sedang berjalan |
 | `queue.activeJobs`                          | Jumlah job aktif                        |
+
+## Menangani Pengiriman yang Gagal
+
+Dalam skala besar, sebagian pengiriman pasti gagal: user memblokir bot
+(`403 Forbidden`), menghapus akunnya, atau belum pernah memulai chat dengan bot. Hasil
+broadcast mencantumkan setiap kegagalan, jadi Anda bisa berhenti mengirim ke user itu:
+
+```typescript
+import { TelegramApiError } from 'vibegram';
+
+const hasil = await queue.broadcastMessage(userIds, 'Fitur baru sudah tersedia!');
+
+const takTerjangkau = hasil.errors
+    .filter(({ error }) => error instanceof TelegramApiError && error.errorCode === 403)
+    .map(({ chatId }) => chatId);
+
+await db.users.markInactive(takTerjangkau); // lewati mereka di broadcast berikutnya
+```
+
+`429 Too Many Requests` otomatis dicoba ulang oleh client (hingga 3 kali, menunggu
+selama yang diminta Telegram), jadi hanya muncul di sini jika terus terjadi. Turunkan
+`concurrency` atau naikkan `delayMs` jika Anda melihatnya.
+
+## Batasan
+
+`BotQueue` menyimpan semuanya **di memori proses**:
+
+- Job terjadwal hilang saat bot restart atau di-deploy ulang. Buat ulang saat startup.
+- Dengan **beberapa instance bot**, setiap instance menjalankan salinan job-nya
+  sendiri, sehingga "tips harian" akan terkirim sekali per instance. Jalankan job
+  terjadwal di satu instance saja, atau pakai scheduler eksternal (cron, job queue
+  seperti BullMQ) untuk deployment multi-instance.
+- Di platform serverless (Cloudflare Workers, Vercel), proses tidak hidup cukup lama
+  untuk timer. Pakai cron trigger dari platformnya.
+- Broadcast ke 100.000 user dengan kecepatan default butuh sekitar satu jam. Jalankan di
+  luar update handler (misalnya dari command admin tanpa `await`, atau skrip terpisah)
+  agar bot tetap bisa melayani user lain.
 
 ## Strategi Rate Limit
 

@@ -49,11 +49,22 @@ const ownedGifts = await bot.getBusinessAccountGifts('business-connection-id', {
 
 ## Stories
 
+Story diposting atas nama akun bisnis, jadi butuh `business_connection_id`-nya. Telegram mengirimnya saat akun tersebut menghubungkan bot (update `business_connection`); simpan saat itu. Di dalam update bisnis, id ini juga tersedia sebagai `ctx.businessConnectionId`.
+
+Kirim file-nya langsung (`Buffer`, atau `{ source, filename }`); vibegram mengunggahnya dan mengisi referensi `attach://` untuk Anda:
+
 ```typescript
+import { readFile } from 'node:fs/promises';
+
+bot.on('business_connection', async ctx => {
+    const koneksi = ctx.update.business_connection!;
+    await db.saveConnection(koneksi.user.id, koneksi.id); // simpan untuk nanti
+});
+
 await bot.postStory(
-    'business-connection-id',
-    { type: 'photo', photo: 'attach://launch-photo' },
-    21600,
+    connectionId,
+    { type: 'photo', photo: await readFile('./launch.jpg') },
+    21600, // tampil selama 6 jam
     {
         caption: 'Update peluncuran',
         post_to_chat_page: true,

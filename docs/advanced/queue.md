@@ -18,7 +18,7 @@ The `BotQueue` provides rate-limited mass broadcasting and task scheduling — e
 ```typescript
 import { Bot, BotQueue } from 'vibegram';
 
-const bot = new Bot('YOUR_BOT_TOKEN');
+const bot = new Bot(process.env.BOT_TOKEN!);
 
 const queue = new BotQueue(bot.client, {
     concurrency: 25, // 25 messages per batch
@@ -88,8 +88,8 @@ interface BroadcastResult {
 ### Recurring Jobs
 
 ```typescript
-// Execute every 60 seconds
-queue.scheduleInterval('daily_tip', 60000, async () => {
+// Runs every 24 hours (the interval is in milliseconds)
+queue.scheduleInterval('daily_tip', 24 * 60 * 60 * 1000, async () => {
     await bot.callApi('sendMessage', {
         chat_id: '@my_channel',
         text: 'Daily tip: Stay hydrated! 💧',
@@ -128,6 +128,43 @@ queue.cancelAllScheduled(); // Cancel all jobs
 | `queue.cancelAllScheduled()`                | Cancel all jobs                     |
 | `queue.stopBroadcast()`                     | Abort a running broadcast           |
 | `queue.activeJobs`                          | Count of active scheduled jobs      |
+
+## Handling Failed Sends
+
+At scale, some sends always fail: users block the bot (`403 Forbidden`), delete their
+account, or never started a chat with it. The result lists every failure, so you can
+stop messaging those users:
+
+```typescript
+import { TelegramApiError } from 'vibegram';
+
+const result = await queue.broadcastMessage(userIds, 'New feature is live!');
+
+const unreachable = result.errors
+    .filter(({ error }) => error instanceof TelegramApiError && error.errorCode === 403)
+    .map(({ chatId }) => chatId);
+
+await db.users.markInactive(unreachable); // skip them next time
+```
+
+A `429 Too Many Requests` is retried automatically by the client (up to 3 times,
+waiting the time Telegram asks for), so it only shows up here if it keeps happening.
+Lower `concurrency` or raise `delayMs` if you see it.
+
+## Limitations
+
+`BotQueue` keeps everything **in the process's memory**:
+
+- Scheduled jobs disappear when the bot restarts or redeploys. Recreate them on startup.
+- With **several bot instances**, every instance runs its own copy of each job, so a
+  "daily tip" would be sent once per instance. Run scheduled jobs in a single instance,
+  or use an external scheduler (cron, a job queue such as BullMQ) for multi-instance
+  deployments.
+- On serverless platforms (Cloudflare Workers, Vercel), the process does not live long
+  enough for timers. Use the platform's cron triggers instead.
+- A broadcast to 100 000 users at the default rate takes about an hour. Start it
+  outside the update handler (for example from an admin command without `await`, or a
+  separate script) so the bot keeps answering other users.
 
 ## Rate Limit Strategy
 

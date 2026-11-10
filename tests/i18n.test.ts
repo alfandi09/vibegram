@@ -50,3 +50,16 @@ describe('I18n', () => {
         expect(fallbackCtx.i18n?.t('greeting', { name: 'Tono' })).toBe('Hello Tono');
     });
 });
+
+describe('I18n regressions', () => {
+    it('falls back per key to the default locale and inserts values literally', () => {
+        const i18n = new I18n('en');
+        i18n.loadLocale('en', { hi: 'Hi {name}', bye: 'Bye' });
+        i18n.loadLocale('id', { hi: 'Halo {name}' });
+        expect(i18n.t('id', 'bye')).toBe('Bye');
+        expect(i18n.t('id', 'nope')).toBe('nope');
+        expect(i18n.t('en', 'hi', { name: 'Tom$&Co' })).toBe('Hi Tom$&Co');
+        expect(i18n.t('en', 'hi', { name: '{name}' })).toBe('Hi {name}');
+        expect(i18n.t('id', 'hi')).toBe('Halo {name}');
+    });
+});

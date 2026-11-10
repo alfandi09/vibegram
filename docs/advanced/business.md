@@ -49,11 +49,22 @@ const ownedGifts = await bot.getBusinessAccountGifts('business-connection-id', {
 
 ## Stories
 
+Stories are posted on behalf of a business account, so they need its `business_connection_id`. Telegram sends it when the account connects the bot (the `business_connection` update); store it then. Inside business updates it is also available as `ctx.businessConnectionId`.
+
+Pass the file itself (a `Buffer`, or `{ source, filename }`); vibegram uploads it and fills in the `attach://` reference for you:
+
 ```typescript
+import { readFile } from 'node:fs/promises';
+
+bot.on('business_connection', async ctx => {
+    const connection = ctx.update.business_connection!;
+    await db.saveConnection(connection.user.id, connection.id); // keep it for later
+});
+
 await bot.postStory(
-    'business-connection-id',
-    { type: 'photo', photo: 'attach://launch-photo' },
-    21600,
+    connectionId,
+    { type: 'photo', photo: await readFile('./launch.jpg') },
+    21600, // visible for 6 hours
     {
         caption: 'Launch update',
         post_to_chat_page: true,

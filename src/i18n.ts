@@ -26,15 +26,15 @@ export class I18n {
      * Falls back to the key itself if no translation is found.
      */
     t(lang: string, key: string, placeholders?: Record<string, string>): string {
-        const dictionary = this.locales[lang] || this.locales[this.defaultLang] || {};
-        let text = dictionary[key] || key; // Fallback to the raw key if no translation is found.
+        // Per-key fallback: requested locale, then the default locale, then the raw key.
+        const text = this.locales[lang]?.[key] ?? this.locales[this.defaultLang]?.[key] ?? key;
+        if (!placeholders) return text;
 
-        if (placeholders) {
-            for (const p in placeholders) {
-                text = text.replace(new RegExp(`{${p}}`, 'g'), placeholders[p]);
-            }
-        }
-        return text;
+        // Single pass with a replacer function: values are inserted literally (no `$&`
+        // expansion) and a value that contains `{name}` is never substituted again.
+        return text.replace(/\{([^{}]+)\}/g, (match, name: string) =>
+            Object.prototype.hasOwnProperty.call(placeholders, name) ? String(placeholders[name]) : match
+        );
     }
 
     /**

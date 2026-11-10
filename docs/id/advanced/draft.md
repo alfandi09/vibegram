@@ -1,75 +1,80 @@
 # Pesan Draft (Bot API 9.5)
 
-<ApiMethodCard title="Pesan draft" endpoint="sendMessageDraft" since="Bot API 9.5" returns="Hasil draft message" method="API">
-  Pesan draft mengisi input pengguna dan cocok untuk reply terbimbing, teks berbantuan AI,
-  dan flow completion.
+<ApiMethodCard title="Pesan draft" endpoint="sendMessageDraft" since="Bot API 9.5" returns="true" method="API">
+  Tampilkan pesan selagi masih ditulis, lalu ganti dengan pesan final.
 </ApiMethodCard>
 
-Pesan draft mengisi kolom input pengguna dengan teks tertentu. Berguna untuk auto-complete, saran input terbimbing, dan streaming teks AI.
+Draft adalah **pratinjau sementara** dari pesan yang masih ditulis. Setiap kali Anda
+mengirim teks baru dengan `draft_id` yang sama, Telegram memperbarui pratinjau di tempat,
+sehingga user melihat jawaban seolah "sedang diketik". Fitur ini dibuat untuk streaming
+jawaban panjang, misalnya balasan AI, di **chat pribadi**.
 
-## Penggunaan
+Draft bukan pesan sungguhan: ia hilang sekitar 30 detik setelah update terakhir dan
+tidak tersimpan di riwayat chat. Setelah teks lengkap, kirim dengan `ctx.reply()`.
 
-```typescript
-bot.command('draft', async ctx => {
-    await ctx.replyWithDraft('Teks ini muncul di kolom input Anda...');
-});
-```
-
-## Kasus Penggunaan
-
-### Template Input Terbimbing
-
-```typescript
-bot.command('pesan', async ctx => {
-    // Pra-isi format perintah
-    await ctx.replyWithDraft('/kirim [nama_produk] [jumlah] [alamat]');
-});
-
-bot.command('laporan', async ctx => {
-    await ctx.replyWithDraft('/laporan_bug [judul] [deskripsi] [langkah_reproduksi]');
-});
-```
-
-### Streaming Teks AI
-
-```typescript
-bot.command('ai', async ctx => {
-    const prompt = ctx.command?.args?.join(' ') || '';
-
-    if (!prompt) {
-        return ctx.reply('Masukkan pertanyaan setelah /ai');
-    }
-
-    // Stream respons AI sebagai draft (pengguna melihatnya bertahap)
-    for await (const chunk of aiStream(prompt)) {
-        await ctx.replyWithDraft(chunk);
-    }
-
-    // Kirim respons final sebagai pesan
-    const responFinal = await aiComplete(prompt);
-    await ctx.reply(responFinal);
-});
-```
-
-### Auto-Complete Form
-
-```typescript
-bot.command('checkout', async ctx => {
-    // Pra-isi format pemesanan
-    await ctx.replyWithDraft('nama: | jumlah: | kota: ');
-});
-```
-
-## API
-
-| Metode                             | API Telegram       | Deskripsi                    |
-| ---------------------------------- | ------------------ | ---------------------------- |
-| `ctx.replyWithDraft(text, extra?)` | `sendMessageDraft` | Pra-isi kolom input pengguna |
-
-::: info Keamanan ID
-Draft message menggunakan `crypto.randomBytes(8)` untuk menghasilkan ID 64-bit yang aman, mencegah tabrakan bahkan di konkurensi tinggi.
+::: tip Streaming jawaban AI
+Untuk output AI, [ReplyStreamer](/id/advanced/streaming) mengerjakan semua ini: membatasi
+frekuensi update, memakai draft di chat pribadi, beralih ke edit pesan di grup, dan
+mengirim pesan final.
 :::
 
-::: tip Streaming AI
-Untuk streaming AI, kirim `replyWithDraft` setiap potongan teks, lalu tutup dengan `ctx.reply` untuk pesan final yang tetap di riwayat chat.
-:::
+## Memulai Cepat
+
+```typescript
+bot.command('hitung', async ctx => {
+    const draft_id = Date.now() % 2 ** 31; // angka bukan nol apa pun, dipakai di setiap update
+
+    for (const langkah of ['Satu', 'Satu, dua', 'Satu, dua, tiga']) {
+        await ctx.replyWithDraft(langkah, { draft_id });
+        await new Promise(resolve => setTimeout(resolve, 700));
+    }
+
+    await ctx.reply('Satu, dua, tiga!'); // pesan permanen yang sebenarnya
+});
+```
+
+Tiga aturan agar berfungsi:
+
+1. **Pakai satu `draft_id`** untuk seluruh jawaban. Id baru memulai pratinjau baru.
+2. **Kirim seluruh teks sejauh ini** setiap kali, bukan hanya potongan terbaru.
+3. **Akhiri dengan `ctx.reply()`**. Tanpanya user tidak mendapat apa-apa setelah
+   pratinjau kedaluwarsa.
+
+## Streaming Jawaban yang Dihasilkan
+
+```typescript
+bot.command('tanya', async ctx => {
+    const pertanyaan = ctx.command?.args?.join(' ') || 'Ceritakan lelucon';
+    const draft_id = Date.now() % 2 ** 31;
+    let jawaban = '';
+    let updateTerakhir = 0;
+
+    for await (const potongan of generateAnswer(pertanyaan)) {
+        jawaban += potongan;
+        // Update paling banyak dua kali per detik agar aman dari rate limit.
+        if (Date.now() - updateTerakhir > 500) {
+            await ctx.replyWithDraft(jawaban, { draft_id });
+            updateTerakhir = Date.now();
+        }
+    }
+
+    await ctx.reply(jawaban);
+});
+```
+
+`generateAnswer` mewakili async iterator teks apa pun, misalnya stream dari SDK AI.
+
+## Opsi
+
+| Opsi           | Deskripsi                                                              |
+| -------------- | ---------------------------------------------------------------------- |
+| `draft_id`     | Identitas pratinjau. Dibuat acak jika tidak diisi (draft sekali pakai) |
+| `can_stop`     | Menampilkan tombol stop agar user bisa membatalkan jawaban             |
+| `keep_on_stop` | Menyimpan teks parsial sebagai pesan saat user menekan stop            |
+| `parse_mode`, `entities` | Format teks, sama seperti `ctx.reply()`                      |
+
+## Batasan
+
+- Hanya chat pribadi. Di grup, kirim pesan lalu edit (ReplyStreamer melakukannya otomatis).
+- Pratinjau bersifat sementara (sekitar 30 detik setelah update terakhir) dan tidak disimpan.
+- `ctx.replyWithDraft()` butuh chat, jadi tidak berfungsi di handler inline query.
