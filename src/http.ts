@@ -60,6 +60,31 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown request failure';
 }
 
+function toReadableStream(iterable: AsyncIterable<Uint8Array>): ReadableStream<Uint8Array> {
+    if (typeof ReadableStream !== 'undefined' && iterable instanceof ReadableStream) {
+        return iterable as ReadableStream<Uint8Array>;
+    }
+
+    const iterator = iterable[Symbol.asyncIterator]();
+    return new ReadableStream<Uint8Array>({
+        async pull(controller) {
+            try {
+                const { value, done } = await iterator.next();
+                if (done) {
+                    controller.close();
+                } else {
+                    controller.enqueue(value);
+                }
+            } catch (error) {
+                controller.error(error);
+            }
+        },
+        async cancel(reason) {
+            await iterator.return?.(reason);
+        },
+    });
+}
+
 function isAsyncIterableBody(body: unknown): body is AsyncIterable<Uint8Array> {
     return (
         typeof body === 'object' &&
@@ -262,7 +287,9 @@ export function createHttpTransport(): HttpTransport {
         const init: NodeRequestInit = {
             method,
             headers: options.headers,
-            body: options.body,
+            // Fetch implementations outside Node.js only accept standard bodies,
+            // so streamed (multipart) bodies are passed as a ReadableStream.
+            body: isAsyncIterableBody(options.body) ? toReadableStream(options.body) : options.body,
             signal: compositeSignal.signal,
         };
 

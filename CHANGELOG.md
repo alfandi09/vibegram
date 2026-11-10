@@ -9,6 +9,9 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Added
 
+- Runtime-neutral core: the main `vibegram` entry no longer loads Node.js built-in modules or requires the `Buffer` global (enforced by a CI import-graph test). `fs`, `http`, and `stream` load lazily only for disk downloads, the built-in webhook server, and stream responses; secret comparison and `WebAppUtils.validate()` use pure JavaScript (HMAC-SHA256 cross-checked against `node:crypto`); streamed multipart bodies are sent to `fetch` as a standard `ReadableStream`.
+- `createFetchHandler(bot, options)`: a Web-standard `(Request) => Promise<Response>` webhook handler for Cloudflare Workers, Deno, Bun, Vercel/Netlify Edge, and Next.js route handlers, with secret-token checks, streaming body limits, a health path, and optional `waitUntil` for immediate acknowledgement.
+- Uploads accept plain `Uint8Array` data (`InputFile` and `InputFileUpload.source`); `downloadFile(id)` returns a `Uint8Array` on runtimes without `Buffer`.
 - Composer combinators on `Bot`, `Composer`, and `Scene`: `filter()` (with type-guard narrowing), `drop()`, `branch()`, `fork()`, `lazy()`, `route()`, `errorBoundary()` (catches only wrapped middleware errors), `chatType()` (narrows `ctx.chat.type`), `reaction()` (newly added reactions), and `entity()`.
 - Type-narrowing filter queries for `bot.on()` / `Composer.on()`: `'message:photo'`, `':text'` (any message-like update), `'edited_message:text'`, `'callback_query:data'`, and plain update types narrow `ctx.message`, `ctx.chat`, and `ctx.update` so handlers no longer need `?.` or `!`. Malformed queries throw at registration. Exported `FilterQuery`, `Filter`, and `matchFilterQuery`.
 

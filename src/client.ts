@@ -577,7 +577,8 @@ export class TelegramClient {
     }
 
     /**
-     * Downloads a file from Telegram — either streams it to a local path or returns it as a Buffer.
+     * Downloads a file from Telegram — either streams it to a local path (Node.js
+     * only) or returns its bytes: a Buffer on Node.js, a Uint8Array on other runtimes.
      */
     async downloadFile(fileId: string, destPath?: string): Promise<Buffer | void> {
         const url = await this.getFileLink(fileId);
@@ -636,10 +637,11 @@ export class TelegramClient {
             });
         }
 
-        const buffer = Buffer.from(response.data as Buffer);
-        if (buffer.byteLength > DEFAULT_MAX_DOWNLOAD_BYTES) {
+        // The transport returns a Buffer on Node.js and a Uint8Array elsewhere.
+        const bytes = response.data as Buffer;
+        if (bytes.byteLength > DEFAULT_MAX_DOWNLOAD_BYTES) {
             throw createDownloadLimitError();
         }
-        return buffer;
+        return bytes;
     }
 }

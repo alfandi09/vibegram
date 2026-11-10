@@ -24,3 +24,4 @@ export default app;
 ```
 
 See the full adapter matrix and response codes in [Framework Adapters](/adapters/express).
+Without Hono, use [`createFetchHandler()`](/adapters/fetch) directly on Workers, Deno, Bun, or Next.js.

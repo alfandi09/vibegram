@@ -233,3 +233,46 @@ describe('HTTP transport', () => {
         expect(JSON.parse(capturedBody)).toEqual({ hello: 'world' });
     });
 });
+
+describe('HTTP transport: standard streaming bodies', () => {
+    it('sends multipart uploads to fetch as a ReadableStream and delivers them intact', async () => {
+        const { TelegramClient } = await import('../src/client');
+        let received = '';
+        let contentType = '';
+        const baseUrl = await startServer(async (req, res) => {
+            contentType = String(req.headers['content-type']);
+            received = await readRequestBody(req);
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify({ ok: true, result: { message_id: 7 } }));
+        });
+
+        const realFetch = globalThis.fetch;
+        const bodies: unknown[] = [];
+        globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+            bodies.push(init?.body);
+            return realFetch(input, init);
+        }) as typeof fetch;
+
+        try {
+            const client = new TelegramClient('123:abc', { apiRoot: baseUrl });
+            const result = await client.callApi('sendDocument', {
+                chat_id: 1,
+                document: {
+                    source: new TextEncoder().encode('edge-bytes'),
+                    filename: 'edge.txt',
+                    contentType: 'text/plain',
+                },
+            });
+
+            expect(result).toEqual({ message_id: 7 });
+            expect(bodies[0]).toBeInstanceOf(ReadableStream);
+            expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
+            expect(received).toContain('name="document"; filename="edge.txt"');
+            expect(received).toContain('Content-Type: text/plain');
+            expect(received).toContain('edge-bytes');
+            expect(received).toContain('name="chat_id"');
+        } finally {
+            globalThis.fetch = realFetch;
+        }
+    });
+});

@@ -24,3 +24,4 @@ export default app;
 ```
 
 Lihat ringkasan semua adapter dan kode respons di [Adapter Framework](/id/adapters/express).
+Tanpa Hono, pakai [`createFetchHandler()`](/id/adapters/fetch) langsung di Workers, Deno, Bun, atau Next.js.
