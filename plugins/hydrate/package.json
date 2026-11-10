@@ -50,7 +50,7 @@
     },
     "homepage": "https://alfandi09.github.io/vibegram/",
     "peerDependencies": {
-        "vibegram": "^2.6.0"
+        "vibegram": "^3.0.0"
     },
     "devDependencies": {
         "@types/node": "^25.5.2",
