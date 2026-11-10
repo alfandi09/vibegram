@@ -1,6 +1,8 @@
 # Caching API
 
-Middleware `apiCache` menyimpan respons dari metode API Telegram yang bersifat read-only untuk mengurangi panggilan jaringan yang berulang.
+Sebagian panggilan Telegram mengembalikan data yang jarang berubah: info chat, profil bot
+sendiri, sticker set. Jika handler Anda meminta hal yang sama di setiap update,
+`apiCache()` mengingat jawabannya untuk sementara dan melewati panggilan jaringan.
 
 ## Memulai Cepat
 
@@ -9,102 +11,117 @@ import { Bot, apiCache } from 'vibegram';
 
 const bot = new Bot(process.env.BOT_TOKEN!);
 
-// Cache respons API selama 5 menit
-bot.use(apiCache({ ttl: 300 }));
+bot.use(apiCache({ ttl: 300 })); // ingat jawaban selama 5 menit
 
-bot.command('info', async (ctx) => {
-    const chat = await ctx.getChat();    // memukul API
-    const lagi = await ctx.getChat();    // mengembalikan cache
-    await ctx.reply(`Chat: ${chat.title}`);
+bot.command('info', async ctx => {
+    const chat = await ctx.getChat(); // panggilan pertama dalam 5 menit: bertanya ke Telegram
+    await ctx.reply(`Chat: ${chat.title ?? chat.first_name}`);
 });
+// /info berikutnya di chat yang sama dalam 5 menit memakai jawaban yang tersimpan.
 ```
 
-## Metode yang Di-Cache
+Daftarkan dengan `bot.use()` **sebelum** handler yang ingin memakai cache. Ia meng-cache
+panggilan lewat `ctx` (seperti `ctx.getChat()` atau `ctx.client.callApi('getMe')`) di
+handler yang berjalan setelahnya. Cache-nya sendiri dipakai bersama oleh semua update
+dan user.
 
-Hanya metode API idempoten dan read-only yang di-cache:
+## Apa yang Di-cache
 
-| Metode | Deskripsi |
-|--------|-----------|
+Hanya metode baca. Selain itu, seperti mengirim, mengedit, atau menghapus, selalu
+diteruskan ke Telegram.
+
+| Metode | Mengembalikan |
+| --- | --- |
 | `getChat` | Informasi chat |
-| `getChatMember` | Info dan status anggota |
+| `getChatMember` | Status anggota (admin, member, banned, ...) |
 | `getChatMemberCount` | Jumlah anggota |
 | `getChatAdministrators` | Daftar admin |
-| `getFile` | Link unduhan file |
-| `getMe` | Informasi bot |
-| `getMyCommands` | Daftar command |
-| `getStickerSet` | Data stiker set |
-| `getUserProfilePhotos` | Foto profil pengguna |
+| `getFile` | Path file untuk diunduh |
+| `getMe` | Profil bot sendiri |
+| `getMyCommands` | Daftar command bot |
+| `getStickerSet`, `getCustomEmojiStickers` | Data sticker |
+| `getUserProfilePhotos` | Foto profil user |
+| `getGameHighScores` | Skor game |
+| `getForumTopicIconStickers` | Ikon topik forum |
 
-Metode tulis (`sendMessage`, `editMessage`, `deleteMessage`, dll.) **tidak pernah di-cache**.
+Kuncinya adalah nama metode ditambah parameternya, jadi `getChat` untuk dua chat berbeda
+disimpan terpisah.
+
+::: warning Data cache bisa usang
+Selama TTL, jawaban yang tersimpan tidak mencerminkan perubahan. Kasus terpenting adalah
+`getChatMember`, yang dipakai [`isAdmin()`](/id/core/filters): orang yang baru diturunkan
+dari admin masih bisa lolos pengecekan admin sampai entri kedaluwarsa. Pakai TTL pendek
+(misalnya `ttl: 30`) jika Anda mengandalkan pengecekan admin, atau daftarkan
+`apiCache()` setelahnya.
+:::
 
 ## Opsi
 
 | Opsi | Tipe | Default | Deskripsi |
-|------|------|---------|-----------|
-| `ttl` | `number` | `300` | Time-to-live dalam detik |
-| `store` | `CacheStore` | `MemoryCache` | Backend penyimpanan |
-| `keyGenerator` | `function` | Otomatis | Fungsi pembuat kunci cache kustom |
+| --- | --- | --- | --- |
+| `ttl` | `number` | `300` | Lama jawaban disimpan, dalam **detik** |
+| `store` | `CacheStore` | `new MemoryCache()` | Tempat jawaban disimpan |
+| `keyGenerator` | `(method, params) => string` | metode + JSON parameter | Membuat kunci cache |
 
-## Custom Store
+## Batas Memori
 
-Implementasikan interface `CacheStore` untuk Redis atau backend lain:
+`MemoryCache` bawaan menyimpan paling banyak 10.000 entri. Saat penuh, entri yang paling
+lama tidak dipakai dihapus lebih dulu. Berikan batas lain jika perlu:
 
 ```typescript
-import { CacheStore } from 'vibegram';
+import { apiCache, MemoryCache } from 'vibegram';
+
+bot.use(apiCache({ store: new MemoryCache(5000) }));
+```
+
+## Berbagi Cache Antar Instance (Redis)
+
+`MemoryCache` hidup di dalam satu proses. Untuk beberapa instance bot, atau agar cache
+tetap ada setelah restart, implementasikan `CacheStore` di atas Redis atau store lain:
+
+```typescript
+import type { CacheStore } from 'vibegram';
+
+const PREFIX = 'vibegram:cache:';
 
 class RedisCache implements CacheStore {
     async get(key: string) {
-        const data = await redis.get(key);
+        const data = await redis.get(PREFIX + key);
         return data ? JSON.parse(data) : undefined;
     }
-
-    async set(key: string, value: any, ttlMs: number) {
-        await redis.set(key, JSON.stringify(value), 'PX', ttlMs);
+    async set(key: string, value: unknown, ttlMs: number) {
+        await redis.set(PREFIX + key, JSON.stringify(value), { PX: ttlMs });
     }
-
     async delete(key: string) {
-        await redis.del(key);
+        await redis.del(PREFIX + key);
     }
-
     async clear() {
-        await redis.flushdb();
+        // Hapus hanya kunci cache ini, bukan seluruh database Redis.
+        for await (const key of redis.scanIterator({ MATCH: PREFIX + '*' })) {
+            await redis.del(key);
+        }
     }
 }
 
 bot.use(apiCache({ ttl: 600, store: new RedisCache() }));
 ```
 
-## Cache Mandiri
+`redis` mewakili client [node-redis](https://github.com/redis/node-redis); sesuaikan
+pemanggilannya jika Anda memakai client lain.
 
-Gunakan `cached()` untuk membungkus fungsi async apa pun:
+## Meng-cache Fungsi Sendiri
+
+`cached()` membungkus fungsi async apa pun, misalnya query database, dengan logika TTL
+yang sama. Argumennya menjadi kunci:
 
 ```typescript
 import { cached } from 'vibegram';
 
-const ambilPengguna = cached(
-    async (userId: number) => db.users.findById(userId),
-    { ttl: 60 }
-);
+const cariUser = cached(async (userId: number) => db.users.findById(userId), { ttl: 60 });
 
-const pengguna = await ambilPengguna(123); // di-cache selama 60 detik
+const user = await cariUser(123); // query ke database
+const lagi = await cariUser(123); // dalam 60 detik: hasil tersimpan
 ```
 
-## Manajemen Memori
-
-`MemoryCache` bawaan menerapkan batas keras (default: 10.000 entri) dengan eviksi LRU — strategi yang sama dengan session store:
-
-```typescript
-import { MemoryCache } from 'vibegram';
-
-const store = new MemoryCache(5000); // maks 5.000 entri
-bot.use(apiCache({ store }));
-```
-
-::: tip Gunakan Cache dengan isAdmin()
-Filter `isAdmin()` memanggil `getChatMember` setiap kali. Pasang `apiCache` untuk menghindari panggilan berulang:
-
-```typescript
-bot.use(apiCache({ ttl: 60 })); // cache 1 menit
-bot.command('admin', and(isGroup, isAdmin()), ctx => ctx.reply('Halo admin!'));
-```
-:::
+Hasil `undefined` tidak di-cache, jadi pencarian yang tidak menemukan apa pun dicoba
+ulang di panggilan berikutnya.
