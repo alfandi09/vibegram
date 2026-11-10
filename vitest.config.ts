@@ -5,7 +5,13 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         // Agent/editor worktrees live inside the repo; never collect their tests.
-        exclude: [...configDefaults.exclude, '.claude/**', '**/.claude/**'],
+        exclude: [
+            ...configDefaults.exclude,
+            '.claude/**',
+            '**/.claude/**',
+            // Scaffolding templates have their own tests, run via tests/create_vibegram.test.ts.
+            'packages/*/templates/**',
+        ],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'lcov', 'html'],

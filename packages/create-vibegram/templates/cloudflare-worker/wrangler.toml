@@ -1,0 +1,6 @@
+name = "{{PROJECT_NAME}}"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Secrets: npx wrangler secret put BOT_TOKEN
+#          npx wrangler secret put WEBHOOK_SECRET

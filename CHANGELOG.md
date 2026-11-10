@@ -9,6 +9,9 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic V
 
 ### Added
 
+- `ReplyStreamer` for AI bots: streams any `AsyncIterable<string>` (e.g. LLM tokens) into live message drafts in private chats with the Bot API 10.3 stop button, then sends the final message (split past 4096 characters via the exported `splitMessageText()`). Stopping closes the source iterator; supports throttling, `AbortSignal`, and `onStop: 'send' | 'discard'`.
+- `Rich` fluent builder for block-based rich messages (headings, lists, checklists, tables, quotes, details, buttons, media, maps) plus inline helpers (`Rich.bold()`, `Rich.link()`, `Rich.mention()`, ...).
+- `create-vibegram` scaffolder (`packages/create-vibegram`) with `polling`, `cloudflare-worker`, and `ai-bot` templates, each with offline tests; CI scaffolds every template, typechecks it against the current API, and runs its tests.
 - `DurableConversation`: restart-safe conversations that persist to any `ConversationStore` (memory, Redis, KV, ...) and replay deterministically, so they survive deploys, scale across instances, and run on serverless/edge. Recorded Bot API results are never re-sent; `conv.external()` records non-deterministic work; divergent replays raise `ConversationReplayError`.
 - `vibegram/testing`: `createTestBot(bot)` runs bots offline, records outgoing calls (`calls`, `callsOf()`, `lastCall()`), stubs results or errors, and builds updates (`sendText()`, `sendCommand()`, `sendMessage()`, `pressButton()`, `sendUpdate()`).
 - `BotOptions.commandsOnEditedMessages` (default `true`): set `false` so editing an old command message does not re-run its handler.

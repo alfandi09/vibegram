@@ -1,0 +1,4 @@
+# Used only by "npm run set-webhook"; the Worker reads secrets set with wrangler.
+BOT_TOKEN=123456:replace-with-your-token-from-BotFather
+WEBHOOK_SECRET=replace-with-a-long-random-string
+WEBHOOK_URL=https://{{PROJECT_NAME}}.your-subdomain.workers.dev/

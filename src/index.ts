@@ -4,6 +4,8 @@ export * from './composer';
 export * from './filter-query';
 export * from './bot';
 export * from './markup';
+export * from './rich';
+export * from './stream';
 export * from './types';
 export * from './errors';
 export * from './adapters';

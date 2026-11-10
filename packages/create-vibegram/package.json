@@ -1,0 +1,35 @@
+{
+    "name": "create-vibegram",
+    "version": "0.1.0",
+    "description": "Scaffold a new vibegram Telegram bot: npm create vibegram@latest",
+    "bin": {
+        "create-vibegram": "index.js"
+    },
+    "files": [
+        "index.js",
+        "templates"
+    ],
+    "vibegramVersion": "^2.7.0",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "vibegram",
+        "telegram",
+        "bot",
+        "create",
+        "scaffold",
+        "template"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alfandi09/vibegram.git",
+        "directory": "packages/create-vibegram"
+    },
+    "homepage": "https://alfandi09.github.io/vibegram/",
+    "author": "Alfa",
+    "license": "ISC",
+    "publishConfig": {
+        "access": "public"
+    }
+}

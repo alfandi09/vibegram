@@ -5,6 +5,12 @@ state, error handling, and graceful shutdown.
 
 <PackageStats />
 
+::: tip Start from a template
+`npm create vibegram@latest my-bot` scaffolds a ready-to-run project with tests.
+Templates: `polling` (default), `cloudflare-worker`, and `ai-bot`, e.g.
+`npm create vibegram@latest my-bot -- --template cloudflare-worker`.
+:::
+
 <InstallTabs />
 
 <SecurityNote title="Production baseline" variant="tip">

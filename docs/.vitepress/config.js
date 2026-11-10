@@ -142,6 +142,7 @@ export default async () => {
                                 { text: 'Keyboard', link: '/id/ui/keyboards' },
                                 { text: 'Menu Builder', link: '/id/ui/menu' },
                                 { text: 'Paginasi', link: '/id/ui/pagination' },
+                                { text: 'Rich Message', link: '/id/ui/rich-messages' },
                             ],
                         },
                         {
@@ -171,6 +172,7 @@ export default async () => {
                                 { text: 'Administrasi Grup', link: '/id/advanced/administration' },
                                 { text: 'Deployment', link: '/id/advanced/deployment' },
                                 { text: 'Testing', link: '/id/advanced/testing' },
+                                { text: 'AI Streaming', link: '/id/advanced/streaming' },
                             ],
                         },
                         {
@@ -288,6 +290,7 @@ export default async () => {
                         { text: 'Keyboards', link: '/ui/keyboards' },
                         { text: 'Menu Builder', link: '/ui/menu' },
                         { text: 'Pagination', link: '/ui/pagination' },
+                        { text: 'Rich Messages', link: '/ui/rich-messages' },
                     ],
                 },
                 {
@@ -314,6 +317,7 @@ export default async () => {
                         { text: 'Group Administration', link: '/advanced/administration' },
                         { text: 'Deployment', link: '/advanced/deployment' },
                         { text: 'Testing', link: '/advanced/testing' },
+                        { text: 'AI Streaming', link: '/advanced/streaming' },
                     ],
                 },
                 {

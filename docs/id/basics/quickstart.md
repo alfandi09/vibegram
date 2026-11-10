@@ -11,6 +11,12 @@ error handling, dan graceful shutdown.
   ]"
 />
 
+::: tip Mulai dari template
+`npm create vibegram@latest bot-saya` membuat proyek siap jalan lengkap dengan test.
+Template: `polling` (default), `cloudflare-worker`, dan `ai-bot`, misalnya
+`npm create vibegram@latest bot-saya -- --template cloudflare-worker`.
+:::
+
 <InstallTabs title="Install package" copy-label="Salin" copied-label="Tersalin" />
 
 <SecurityNote title="Baseline produksi" variant="tip">
