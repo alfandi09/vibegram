@@ -359,7 +359,7 @@ npm view vibegram versions --json
 ### CI gagal di GitHub tapi lokal pass
 
 1. Pastikan `package-lock.json` sudah di-commit (CI pakai `npm ci`)
-2. Cek versi Node.js — CI test di Node 18, 20, dan 22
+2. Cek versi Node.js — CI test di Node 20, 22, dan 24
 3. Jangan pakai fitur Node.js yang belum tersedia di versi 18
 
 ### Typecheck pass tapi lint gagal
